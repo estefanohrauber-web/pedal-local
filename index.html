@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1417" />
+    <title>Pedal Local</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script type="module" src="src/app.js"></script>
+  </head>
+  <body>
+    <main>
+      <section id="tela-inicio" class="tela">
+        <header class="topo">
+          <h1>Pedal Local</h1>
+          <button id="btn-config" type="button" class="icone" aria-label="Configurações">⚙</button>
+        </header>
+
+        <div class="cartao">
+          <p class="rotulo">Bike</p>
+          <p id="status-bike" class="status">Desconectada</p>
+          <div class="acoes">
+            <button id="btn-conectar" type="button" class="primario">Conectar bike</button>
+            <button id="btn-simulada" type="button">Usar bike simulada</button>
+          </div>
+          <button id="btn-todos" type="button" class="link">Não aparece? Procurar todos os aparelhos</button>
+          <pre id="diagnostico" hidden></pre>
+        </div>
+
+        <div class="cartao">
+          <div class="linha">
+            <p class="rotulo">Minhas rotas</p>
+            <button id="btn-nova-rota" type="button" class="primario">Nova rota</button>
+          </div>
+          <ul id="lista-rotas" class="lista"></ul>
+          <p id="sem-rotas" class="vazio">
+            Nenhuma rota ainda. Toque em “Nova rota” e desenhe um caminho no seu bairro.
+          </p>
+        </div>
+
+        <p id="aviso-armazenamento" class="aviso" hidden>
+          Este navegador não deixa salvar dados: as rotas somem ao fechar a página.
+        </p>
+      </section>
+
+      <section id="tela-rota" class="tela" hidden>
+        <header class="topo">
+          <button id="rota-voltar" type="button" class="icone" aria-label="Voltar">←</button>
+          <h1>Nova rota</h1>
+        </header>
+        <div id="mapa-rota" class="mapa"></div>
+        <p id="rota-dica" class="dica"></p>
+        <div class="acoes">
+          <button id="rota-desfazer" type="button">Desfazer</button>
+          <button id="rota-fechar" type="button">Fechar volta</button>
+          <button id="rota-calcular" type="button" class="primario">Calcular</button>
+        </div>
+        <p id="rota-msg" hidden></p>
+        <div id="rota-resultado" class="cartao" hidden>
+          <p id="rota-resumo"></p>
+          <canvas id="rota-grafico" class="grafico" aria-label="Perfil de relevo da rota"></canvas>
+          <label>Nome da rota<input id="rota-nome" type="text" maxlength="60" placeholder="Volta do bairro" /></label>
+          <button id="rota-salvar" type="button" class="primario">Salvar rota</button>
+        </div>
+      </section>
+
+      <section id="tela-pedal" class="tela" hidden>
+        <header class="topo">
+          <h1 id="pedal-nome">Pedal</h1>
+          <button id="btn-sair" type="button">Sair</button>
+        </header>
+        <div id="pedal-aviso" class="banner" hidden></div>
+        <div id="mapa-pedal" class="mapa mapa-pedal"></div>
+        <div class="metricas">
+          <div class="metrica destaque"><span id="m-vel">0,0</span><small>km/h</small></div>
+          <div class="metrica"><span id="m-pot">0</span><small>watts</small></div>
+          <div class="metrica"><span id="m-rpm">0</span><small>rpm</small></div>
+          <div class="metrica"><span id="m-incl">0,0</span><small>% inclinação</small></div>
+          <div class="metrica"><span id="m-dist">0,00</span><small>km de <span id="m-total">–</span></small></div>
+          <div class="metrica"><span id="m-tempo">0:00</span><small>tempo</small></div>
+        </div>
+        <canvas id="pedal-grafico" class="grafico" aria-label="Perfil de relevo com a sua posição"></canvas>
+        <div class="controles">
+          <div class="carga">
+            <button id="carga-menos" type="button" aria-label="Diminuir carga">−</button>
+            <span>Carga no botão da bike: <b id="carga-nivel">4</b></span>
+            <button id="carga-mais" type="button" aria-label="Aumentar carga">+</button>
+          </div>
+          <div id="controles-sim" class="acoes" hidden>
+            <button id="sim-fraco" type="button">Simular: mais fraco</button>
+            <button id="sim-forte" type="button">Simular: mais forte</button>
+          </div>
+          <div class="acoes">
+            <button id="btn-pausa" type="button">Pausar</button>
+            <button id="btn-reconectar" type="button" class="primario" hidden>Reconectar</button>
+          </div>
+        </div>
+        <p id="pedal-modo" class="dica"></p>
+
+        <div id="resumo" class="sobreposicao" hidden>
+          <div class="cartao">
+            <h2>Rota concluída!</h2>
+            <div class="resumo-grid">
+              <div><small>Distância</small><b id="r-dist"></b></div>
+              <div><small>Tempo</small><b id="r-tempo"></b></div>
+              <div><small>Potência média</small><b id="r-pot"></b></div>
+              <div><small>Velocidade média</small><b id="r-vel"></b></div>
+              <div><small>Subida total</small><b id="r-subida"></b></div>
+            </div>
+            <button id="resumo-voltar" type="button" class="primario">Voltar ao início</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="dialogo-config">
+      <form method="dialog" id="form-config">
+        <h2>Configurações</h2>
+        <label>Seu peso (kg)<input name="pesoKg" type="number" min="30" max="200" step="1" required /></label>
+        <label>
+          Potência
+          <select name="modoPotencia">
+            <option value="auto">Automática (usa a da bike; se não vier, estima)</option>
+            <option value="bike">Sempre a da bike</option>
+            <option value="estimada">Sempre estimada pela carga</option>
+          </select>
+        </label>
+        <details>
+          <summary>Calibração da estimativa</summary>
+          <p class="dica">Potência = RPM × (base + fator × carga)</p>
+          <label>Base<input name="base" type="number" step="0.05" min="0" /></label>
+          <label>Fator<input name="fator" type="number" step="0.05" min="0" /></label>
+        </details>
+        <div class="acoes">
+          <button value="cancelar" formnovalidate>Cancelar</button>
+          <button value="salvar" class="primario">Salvar</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>
