@@ -1,0 +1,11 @@
+{
+  "name": "pedal-local",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Protótipo: pedalar rotas reais do seu bairro numa bike ergométrica.",
+  "scripts": {
+    "test": "node --test",
+    "serve": "node serve.js"
+  }
+}
