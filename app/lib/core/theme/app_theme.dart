@@ -1,0 +1,92 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// Cores do Design 2 (claro e amigável).
+abstract final class AppColors {
+  static const fundo = Color(0xFFF4F6F5);
+  static const superficie = Color(0xFFFFFFFF);
+  static const borda = Color(0xFFE1E6E3);
+  static const texto = Color(0xFF14201A);
+  static const textoSuave = Color(0xFF5A6660);
+  static const destaque = Color(0xFF138A52);
+  static const destaqueSuave = Color(0xFFE3F4EA);
+  static const destaqueTexto = Color(0xFF0E6B3F);
+  static const posicao = Color(0xFF2F6FE4);
+  static const avisoFundo = Color(0xFFFFF1E0);
+  static const avisoTexto = Color(0xFF8A3C00);
+  static const escuro = Color(0xFF14201A);
+  static const neutro = Color(0xFFF1F4F2);
+}
+
+abstract final class AppText {
+  static const titulo = TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.texto);
+  static const subtitulo = TextStyle(fontSize: 15, color: AppColors.textoSuave);
+  static const secao = TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.texto);
+  static const corpoForte = TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.texto);
+  static const suave = TextStyle(fontSize: 13, color: AppColors.textoSuave);
+}
+
+ThemeData buildAppTheme({TextTheme? textTheme}) {
+  final scheme = ColorScheme.fromSeed(
+    seedColor: AppColors.destaque,
+    primary: AppColors.destaque,
+    onPrimary: Colors.white,
+    surface: AppColors.superficie,
+    onSurface: AppColors.texto,
+  );
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    scaffoldBackgroundColor: AppColors.fundo,
+    textTheme: textTheme,
+  );
+  const pill = StadiumBorder();
+  return base.copyWith(
+    cardTheme: CardThemeData(
+      color: AppColors.superficie,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: AppColors.borda),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.destaque,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(48, 52),
+        shape: pill,
+        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.texto,
+        minimumSize: const Size(48, 52),
+        shape: pill,
+        side: const BorderSide(color: Color(0xFFD5DCD8)),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+      ),
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.fundo,
+      foregroundColor: AppColors.texto,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.superficie,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.borda),
+      ),
+    ),
+  );
+}
+
+/// Sobrescrito no main() com a fonte Plus Jakarta Sans; os testes usam a fonte padrão.
+final appThemeProvider = Provider<ThemeData>((ref) => buildAppTheme());
