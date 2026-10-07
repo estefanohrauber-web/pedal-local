@@ -75,11 +75,11 @@ app/lib/
     stats.dart                   — semana (seg–dom), totais, conquistas, calorias
   bike/
     bike_source.dart             — interface
-    ftms_source.dart             — flutter_blue_plus
+    ftms_source.dart             — universal_ble
     sim_source.dart              — bike simulada
     bike_controller.dart         — estado da conexão, última bike, reconexão
   data/
-    db/                          — drift (SQLite): rotas, pedais, ajustes
+    db/                          — sqflite (SQLite): rotas, pedais, ajustes
     services/                    — routing (OSRM), elevation (Open-Meteo), geocoding (Photon),
                                    tiles; cada um atrás de uma interface
     repositories/                — rotas, pedais, ajustes
@@ -89,10 +89,10 @@ app/lib/
     inicio/ explorar/ criar_rota/ escolher_pedal/ pedalando/ resumo/ treinos/ voce/
 ```
 
-Pacotes: `flutter_riverpod`, `go_router`, `flutter_blue_plus`, `flutter_map`,
-`latlong2`, `drift` + `sqlite3_flutter_libs`, `http`, `geolocator`,
-`permission_handler`, `wakelock_plus`, `google_fonts` (Plus Jakarta Sans,
-empacotada em `assets` para funcionar offline).
+Pacotes: `flutter_riverpod`, `go_router`, `universal_ble`, `flutter_map`,
+`latlong2`, `sqflite`, `http`, `geolocator`,
+`wakelock_plus`, `google_fonts` (Plus Jakarta Sans,
+baixada na primeira abertura; empacotar em `assets` antes de publicar).
 
 Regra de dependência: `features → data/bike → domain`. O `domain` não importa nada
 das outras camadas.
@@ -209,7 +209,7 @@ e é testada sem rede.
   “incompleto” no histórico com o que foi feito.
 - Calorias: `kcal = energia mecânica (J) / 1000` (regra usual com ~24 % de eficiência).
 
-## Dados (drift / SQLite)
+## Dados (sqflite / SQLite)
 
 - `routes`: colunas do formato acima; listas em JSON.
 - `rides`: `id`, `routeId?`, `modo`, `inicio`, `tempoMovimentoS`, `distanciaM`,
@@ -254,7 +254,7 @@ própria em `data/services/`.
 
 - `domain/`: tradução dos 70 testes do protótipo + fantasma, instruções, geometria do
   gerador, estatísticas da semana e conquistas (`flutter test`).
-- `data/`: serviços com cliente HTTP falso; banco drift em memória; `route_builder`
+- `data/`: serviços com cliente HTTP falso; banco SQLite em memória (sqflite_common_ffi); `route_builder`
   e `loop_generator` com serviços falsos.
 - Widgets: Início, Escolher pedal e Pedalando renderizam com dados falsos.
 - Manual no SM-G780G: bike simulada primeiro, depois a Winnek SYNC.
@@ -271,3 +271,16 @@ própria em `data/services/`.
 6. Meta semanal, totais e conquistas refletem os pedais salvos.
 7. Desconectar a bike no meio do pedal pausa e reconecta.
 8. Todos os testes automáticos passam e o app instala e roda no SM-G780G.
+
+## Decisões tomadas ao planejar (2026-10-07)
+
+- **Bluetooth: `universal_ble` em vez de `flutter_blue_plus`.** A versão 2 do
+  flutter_blue_plus exige licença comercial paga para uso com fins lucrativos; a 1.x
+  está parada desde 2024. O universal_ble é BSD-3, mantido e cobre Android e iOS.
+- **Banco: `sqflite` em vez de `drift`.** Evita geração de código (build_runner);
+  testes usam `sqflite_common_ffi` com banco em memória.
+- **`wakelock_plus` 1.8.0** (a 1.8.1 conflita com o universal_ble por causa do `dbus`).
+- **Fonte:** `google_fonts` baixa a Plus Jakarta Sans na primeira abertura; empacotar
+  o arquivo da fonte em `assets` antes de publicar.
+- A Fase 1 é executada em 3 planos: (1) fundação, bike e pedal livre; (2) rotas;
+  (3) pedalar a rota, fantasma e estatísticas.
