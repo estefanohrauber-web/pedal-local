@@ -51,8 +51,8 @@ class AppSettings {
         'fator': '$fator',
         'cargaPadrao': '$cargaPadrao',
         'metaSemanalKm': '$metaSemanalKm',
-        if (ultimaBikeId != null) 'ultimaBikeId': ultimaBikeId!,
-        if (ultimaBikeNome != null) 'ultimaBikeNome': ultimaBikeNome!,
+        'ultimaBikeId': ?ultimaBikeId,
+        'ultimaBikeNome': ?ultimaBikeNome,
       };
 
   factory AppSettings.fromMap(Map<String, String> m) {

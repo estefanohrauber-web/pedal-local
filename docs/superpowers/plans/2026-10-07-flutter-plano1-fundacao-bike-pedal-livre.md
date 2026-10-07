@@ -4792,3 +4792,15 @@ Expected: `Success` e o app abre na aba Início.
 cd /c/dev/pedal-local && git push origin main
 ```
 Expected: push sem erro.
+
+---
+
+## Notas da execução (2026-10-07)
+
+- `google_fonts` fixado em **8.0.0**: a 9.x usa o pacote separado `material_ui`, cujo `TextTheme` é de outro tipo e não entra no `ThemeData` do Flutter.
+- `dart fix` trocou `power!` por `power` (o Dart 3.13 já promove) e usou elementos nulos-condicionais (`?valor`) no `toMap` dos ajustes.
+- Novo teste `app/test/widget/fluxo_test.dart` (celular de 360 × 690 dp): percorre as abas e faz um pedal livre completo com bike falsa. Ele achou três defeitos de layout, corrigidos:
+  - Barra de abas: itens com altura fixa estouravam com fonte maior → altura mínima 56 px, cada item em `Expanded` (1/5 da largura), rótulo com `FittedBox`.
+  - Botão central dentro de `Center` esticava a barra até a altura da tela → `Center(heightFactor: 1)`.
+  - Controle de carga no pedal livre estourava 41 px → texto em `Expanded` + `FittedBox`, botão Pausar com 104 px mínimos; `MetricTile` encolhe o número em vez de quebrar linha.
+- Resultado: `flutter analyze` sem avisos, **70 testes passando**, APK de debug compilando.

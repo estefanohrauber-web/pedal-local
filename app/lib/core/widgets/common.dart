@@ -84,16 +84,26 @@ class MetricTile extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
-            color: AppColors.texto,
-            fontFeatures: [FontFeature.tabularFigures()],
+        // Números grandes encolhem em vez de quebrar linha (ex.: "1:02:05" numa coluna estreita).
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: AppColors.texto,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
           ),
         ),
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textoSuave)),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textoSuave),
+        ),
       ],
     );
   }

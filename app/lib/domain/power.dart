@@ -49,7 +49,7 @@ class PowerResolver {
       }
     }
     if (_effective == PowerMode.estimada) return estimatePower(cadence, level, calibration);
-    if (hasPower) return power!;
+    if (hasPower) return power;
     return mode == PowerMode.auto ? estimatePower(cadence, level, calibration) : 0;
   }
 }
