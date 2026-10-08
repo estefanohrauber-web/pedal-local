@@ -1,14 +1,12 @@
-import 'dart:convert';
-
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
+import 'package:pedal_local/core/links.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
 import 'package:pedal_local/data/providers.dart';
@@ -17,10 +15,12 @@ import 'package:pedal_local/data/route_builder.dart';
 import 'package:pedal_local/data/routes_store.dart';
 import 'package:pedal_local/data/services/elevation_service.dart';
 import 'package:pedal_local/data/services/location_service.dart';
+import 'package:pedal_local/data/services/request_pacer.dart';
 import 'package:pedal_local/data/services/routing_service.dart';
 import 'package:pedal_local/data/settings_store.dart';
 import 'package:pedal_local/domain/geo.dart';
 
+import '../support/fake_valhalla.dart';
 import '../support/fakes.dart';
 import '../support/geo_helpers.dart';
 
@@ -38,35 +38,20 @@ RouteRecord rotaDeTeste(String id, String nome, int pontos) {
   );
 }
 
-/// Serviços falsos: OSRM devolve uma reta de 100 m; altimetria sobe 1 m a cada ponto.
-MockClient servicosFalsos() => MockClient((req) async {
-      if (req.url.host == 'routing.openstreetmap.de') {
-        final linha = northLine(2, 100);
-        return http.Response(
-          jsonEncode({
-            'code': 'Ok',
-            'routes': [
-              {
-                'geometry': {
-                  'coordinates': [
-                    for (final p in linha) [p.lon, p.lat],
-                  ],
-                },
-              },
-            ],
-          }),
-          200,
-        );
-      }
-      final k = req.url.queryParameters['latitude']!.split(',').length;
-      return http.Response(jsonEncode({'elevation': [for (var i = 0; i < k; i++) 700 + i]}), 200);
-    });
+final _semEspera = RequestPacer(gap: Duration.zero);
 
-Future<ProviderContainer> abrirApp(WidgetTester tester, {required MemoryRoutesStore routes, MemoryRidesStore? rides}) async {
+Future<ProviderContainer> abrirApp(
+  WidgetTester tester, {
+  required MemoryRoutesStore routes,
+  MemoryRidesStore? rides,
+  http.Client? servicos,
+  List<Uri>? links,
+}) async {
   tester.view.physicalSize = const Size(1080, 2070);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  final client = servicosFalsos();
+  // Valhalla falso: uma reta de 100 m; a altitude sobe 1 m a cada ponto.
+  final client = servicos ?? fakeValhalla(linha: northLine(2, 100), altura: (i) => 700.0 + i);
   await tester.pumpWidget(ProviderScope(
     overrides: [
       settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
@@ -75,8 +60,9 @@ Future<ProviderContainer> abrirApp(WidgetTester tester, {required MemoryRoutesSt
       wakeLockProvider.overrideWithValue(FakeWakeLock()),
       mapTilesEnabledProvider.overrideWithValue(false),
       locationServiceProvider.overrideWithValue(const FixedLocationService(GeoPoint(-23.5, -46.6))),
+      openLinkProvider.overrideWithValue((uri) async => links?.add(uri)),
       routeBuilderProvider.overrideWithValue(
-        RouteBuilder(routing: RoutingService(client), elevation: ElevationService(client)),
+        RouteBuilder(routing: RoutingService(client, _semEspera), elevation: ElevationService(client, _semEspera)),
       ),
     ],
     child: const PedalLocalApp(),
@@ -126,6 +112,49 @@ void main() {
     await tester.pumpAndSettle();
     expect((await routes.all()).single.name, 'Rua de casa');
     expect(find.text('Rua de casa'), findsOneWidget);
+  });
+
+  testWidgets('altitude fora do ar: avisa e deixa tentar de novo', (tester) async {
+    var altitudeNoAr = false;
+    final servicos = fakeValhalla(
+      linha: northLine(2, 100),
+      altura: (i) => 700.0 + i,
+      heightStatus: () => altitudeNoAr ? 200 : 503,
+    );
+    await abrirApp(tester, routes: MemoryRoutesStore(), servicos: servicos);
+    await tester.tap(find.text('Explorar').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Criar rota'));
+    await tester.pumpAndSettle();
+    final mapa = tester.getRect(find.byKey(const Key('mapa-criar-rota')));
+    await tester.tapAt(mapa.center.translate(-60, 0));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tapAt(mapa.center.translate(60, -60));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Calcular rota'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('subidas e descidas'), findsOneWidget);
+
+    altitudeNoAr = true;
+    await tester.tap(find.text('Tentar de novo'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('subidas e descidas'), findsNothing);
+    expect(find.text('Salvar rota'), findsOneWidget);
+  });
+
+  testWidgets('crédito do mapa leva a "Corrigir o mapa" do OpenStreetMap', (tester) async {
+    final links = <Uri>[];
+    await abrirApp(tester, routes: MemoryRoutesStore(), links: links);
+    await tester.tap(find.text('Explorar').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Criar rota'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Créditos do mapa'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Valhalla'), findsOneWidget);
+    await tester.tap(find.text('Corrigir o mapa'));
+    await tester.pumpAndSettle();
+    expect(links, [Uri.parse('https://www.openstreetmap.org/fixthemap')]);
   });
 
   testWidgets('pedalar uma rota até o fim leva ao resumo', (tester) async {

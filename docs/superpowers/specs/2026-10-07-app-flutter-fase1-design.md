@@ -70,7 +70,7 @@ app/lib/
     ftms_parser.dart             — Indoor Bike Data (0x2AD2)
     ride_session.dart            — estados, avanço, avisos, amostras de 1 s
     ghost.dart                   — diferença de tempo para o recorde
-    instructions.dart            — passos do OSRM → instruções em pt-BR com distância na rota
+    instructions.dart            — manobras do Valhalla (já em pt-BR) → instruções com distância na rota
     loop_geometry.dart           — pontos do gerador de voltas e ajuste de raio
     stats.dart                   — semana (seg–dom), totais, conquistas, calorias
   bike/
@@ -80,7 +80,7 @@ app/lib/
     bike_controller.dart         — estado da conexão, última bike, reconexão
   data/
     db/                          — sqflite (SQLite): rotas, pedais, ajustes
-    services/                    — routing (OSRM), elevation (Open-Meteo), geocoding (Photon),
+    services/                    — routing e elevation (Valhalla), geocoding (Photon),
                                    tiles; cada um atrás de uma interface
     repositories/                — rotas, pedais, ajustes
     route_builder.dart           — trechos em cache → linha, relevo, instruções
@@ -148,13 +148,13 @@ abstract class BikeSource {
 
 - Estado: lista de pontos (waypoints) + pilha de desfazer (cópias da lista).
 - Gestos: tocar no mapa adiciona no fim; arrastar move; toque longo apaga (com desfazer).
-- Cada trecho entre dois pontos vizinhos é pedido ao OSRM separadamente
-  (`steps=true`) e guardado num cache pela chave dos dois pontos. Mudar um ponto só
-  recalcula os trechos que o tocam.
-- Ida e volta: acrescenta os pontos em ordem inversa (os trechos de volta são pedidos
-  ao OSRM, não espelhados). Fechar volta: acrescenta o primeiro ponto no fim.
-- A linha completa é reamostrada a 20 m; a altimetria é pedida 800 ms depois da
-  última mudança, com cache por coordenada arredondada (5 casas).
+- A rota inteira vai num pedido só ao Valhalla (cada par de pontos vizinhos vira uma
+  "perna"). Os servidores da FOSSGIS aceitam 1 pedido por segundo, então pedir
+  trecho por trecho deixaria o editor lento.
+- Ida e volta: acrescenta os pontos em ordem inversa (a volta é traçada de novo,
+  não espelhada). Fechar volta: acrescenta o primeiro ponto no fim.
+- A linha completa é reamostrada a 20 m; a altimetria vem do Valhalla `/height`
+  (até 5000 pontos por pedido), na mesma fila de 1 pedido por segundo.
 - Busca de endereço: Photon com viés pela localização atual; escolher um resultado
   centraliza o mapa e oferece “adicionar ponto aqui”.
 
@@ -167,19 +167,21 @@ D ∈ {5, 10, 20} km, `maisSubida`.
    que passa pela partida, com centro a `r` metros na direção θ,
    `r = D / (2π) × 0,75`; coloca 3 pontos no círculo a 90°, 180° e 270° da partida
    e fecha na partida.
-2. Traça pelo OSRM e mede o comprimento L. Se |L − D| > 10 % de D, multiplica
+2. Traça pelo Valhalla e mede o comprimento L. Se |L − D| > 10 % de D, multiplica
    `r` por D / L e repete (até 3 tentativas).
 3. Com `maisSubida`, busca a altimetria dos candidatos e ordena por ganho por km;
    sem, ordena pela proximidade de D.
 4. Mostra as 3 melhores com distância e subida reais. Escolher uma abre no editor.
+
+Com 1 pedido por segundo, cada tentativa custa 1 s: mostrar o progresso enquanto gera.
 
 A geometria (círculo, pontos, ajuste do raio) fica em `domain/loop_geometry.dart`
 e é testada sem rede.
 
 ### Instruções de virar
 
-- Os passos do OSRM de todos os trechos são concatenados; “depart” e “arrive” dos
-  pontos intermediários são descartados.
+- O Valhalla devolve as manobras já em português (`language: pt-BR`); as de todas as
+  pernas são concatenadas, e a chegada dos pontos intermediários é descartada.
 - Cada manobra é projetada na linha reamostrada para obter a distância ao longo da rota.
 - Textos: “vire à direita/esquerda”, “mantenha-se à direita/esquerda”,
   “vire acentuadamente…”, “faça o retorno”, “siga em frente”,
@@ -229,12 +231,14 @@ e é testada sem rede.
 | Uso | Desenvolvimento / Fase 1 | Antes de publicar |
 |---|---|---|
 | Mapa | tiles do OpenStreetMap, com User-Agent do app | provedor com chave e cota grátis (ex.: MapTiler), estilo do Design 2 |
-| Rotas e manobras | `routing.openstreetmap.de/routed-bike` (uso justo) | avaliar serviço com chave própria se o volume crescer |
+| Rotas e manobras | Valhalla `valhalla1.openstreetmap.de/route`, bicicleta com BR, estrada principal, ladeira e contramão liberadas | Valhalla próprio ou serviço com chave; a FOSSGIS recomenda não fixar a URL no app |
 | Endereços | `photon.komoot.io` (uso justo) | idem |
-| Altimetria | `api.open-meteo.com/v1/elevation`, lotes de 100 | gratuito só para uso não comercial; plano pago se o app cobrar |
+| Altimetria | Valhalla `valhalla1.openstreetmap.de/height`, lotes de 5000 | idem |
 
 Todas as chamadas identificam o app no User-Agent. Cada serviço tem interface
-própria em `data/services/`.
+própria em `data/services/`. Regras da FOSSGIS para o Valhalla: no máximo 1 pedido
+por segundo (fila única no app) e crédito do mapa com link para
+`openstreetmap.org/fixthemap` (tocar no “© OpenStreetMap” do mapa).
 
 ## Erros
 
@@ -244,8 +248,9 @@ própria em `data/services/`.
 | Bike não encontrada / sem FTMS | Diagnóstico com nome e serviços |
 | Queda durante o pedal | Pausa, 3 tentativas automáticas, depois “Reconectar” |
 | Sem internet no editor ou no gerador | “Sem conexão — não deu para traçar a rota” |
-| OSRM sem caminho | “Não encontrei caminho entre esses pontos” |
-| Altimetria falha | Rota plana com aviso |
+| Sem caminho entre os pontos | “Não encontrei caminho entre esses pontos” |
+| Rota acima de 150 km (limite do Valhalla) | “A rota passou de 150 km. Use pontos mais próximos.” |
+| Altimetria falha | Rota plana com aviso e botão “Tentar de novo” |
 | Gerador fora de ±10 % | Mostra as melhores opções com a distância real |
 | Sem internet no pedal | Pedal funciona; o fundo do mapa pode não carregar |
 | App fechado no meio do pedal | Pedal incompleto salvo no histórico |
@@ -284,3 +289,21 @@ própria em `data/services/`.
   o arquivo da fonte em `assets` antes de publicar.
 - A Fase 1 é executada em 3 planos: (1) fundação, bike e pedal livre; (2) rotas;
   (3) pedalar a rota, fantasma e estatísticas.
+
+## Troca de serviço de rotas e altitude (2026-10-08)
+
+Testando em Herval d'Oeste (SC), duas falhas apareceram com OSRM + Open-Meteo:
+
+- **Altitude sumia em rotas acima de ~12 km.** O Open-Meteo conta cada ponto como um
+  pedido (limite de 600 por minuto); com um ponto a cada 20 m, a rota estourava o
+  limite (HTTP 429, "Minutely API request limit exceeded") e ficava plana.
+- **O traçado fugia das BRs e estradas principais.** O perfil de bicicleta do OSRM
+  proíbe vias `highway=trunk` (a BR-282 está marcada assim) e evita primary/secondary
+  por segurança. Herval → Erval Velho: 22,7 km por estrada de chão, contra 13 km pela BR.
+
+O Valhalla da FOSSGIS resolve as duas: bicicleta com `use_roads: 1`, `use_hills: 1`
+e `ignore_oneways: true` (pedal virtual, sem trânsito) foi pela BR-282 (12,4 km), e o
+`/height` devolveu 12 mil alturas num pedido. O relevo também é mais fiel: no mesmo
+trecho de 11 km da SC-150, com a suavização de 100 m, o Valhalla soma 269 m de subida
+contra 580 m do Open-Meteo, que vem em degraus de 90 m. O protótipo web continua no
+OSRM + Open-Meteo.

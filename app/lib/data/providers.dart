@@ -7,6 +7,7 @@ import 'route_builder.dart';
 import 'routes_store.dart';
 import 'services/elevation_service.dart';
 import 'services/location_service.dart';
+import 'services/request_pacer.dart';
 import 'services/routing_service.dart';
 import 'settings_store.dart';
 
@@ -41,9 +42,13 @@ final httpClientProvider = Provider<http.Client>((ref) {
   return client;
 });
 
+/// Fila única para o Valhalla: rota e altitude somadas ficam em no máximo 1 pedido por segundo.
+final valhallaPacerProvider = Provider<RequestPacer>((ref) => RequestPacer());
+
 final routeBuilderProvider = Provider<RouteBuilder>((ref) {
   final client = ref.watch(httpClientProvider);
-  return RouteBuilder(routing: RoutingService(client), elevation: ElevationService(client));
+  final pacer = ref.watch(valhallaPacerProvider);
+  return RouteBuilder(routing: RoutingService(client, pacer), elevation: ElevationService(client, pacer));
 });
 
 final locationServiceProvider = Provider<LocationService>((ref) => const GeolocatorLocationService());

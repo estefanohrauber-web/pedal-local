@@ -244,9 +244,13 @@ class _CriarRotaScreenState extends ConsumerState<CriarRotaScreen> {
                         ],
                       ),
                       if (_plana)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: AvisoFaixa(texto: 'Não consegui a altimetria: a rota ficou plana.'),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: AvisoFaixa(
+                            texto: 'Não consegui as subidas e descidas agora: a rota ficou plana.',
+                            acao: 'Tentar de novo',
+                            onAcao: _calculando ? null : _calcular,
+                          ),
                         ),
                       const SizedBox(height: 8),
                       SizedBox(height: 70, child: ElevationChart(profile: perfil)),
