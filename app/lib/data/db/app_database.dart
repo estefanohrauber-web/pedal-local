@@ -1,9 +1,21 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
-const _schemaVersion = 1;
+const _schemaVersion = 2;
 
-/// Abre (ou cria) o banco do app. Nos testes, passe `databaseFactoryFfi` e `inMemoryDatabasePath`.
+Future<void> _createRoutes(DatabaseExecutor db) => db.execute('''
+  CREATE TABLE routes (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    waypoints TEXT NOT NULL,
+    points TEXT NOT NULL,
+    distance_m REAL NOT NULL,
+    gain_m REAL NOT NULL,
+    loss_m REAL NOT NULL
+  )''');
+
+/// Abre (ou cria/atualiza) o banco do app. Nos testes, passe `databaseFactoryFfi` e `inMemoryDatabasePath`.
 Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async {
   final f = factory ?? databaseFactory;
   final dbPath = path ?? p.join(await f.getDatabasesPath(), 'pedal_local.db');
@@ -29,6 +41,10 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
             samples BLOB NOT NULL
           )''');
         await db.execute('CREATE INDEX rides_started ON rides(started_at DESC)');
+        await _createRoutes(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) await _createRoutes(db);
       },
     ),
   );

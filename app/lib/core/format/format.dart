@@ -24,7 +24,8 @@ String formatTime(double segundos) {
   return h > 0 ? '$h:${m.toString().padLeft(2, '0')}:$r' : '$m:$r';
 }
 
-String formatDateTime(DateTime d) {
-  String dois(int n) => n.toString().padLeft(2, '0');
-  return '${dois(d.day)}/${dois(d.month)} às ${dois(d.hour)}:${dois(d.minute)}';
-}
+String _dois(int n) => n.toString().padLeft(2, '0');
+
+String formatDate(DateTime d) => '${_dois(d.day)}/${_dois(d.month)}';
+
+String formatDateTime(DateTime d) => '${formatDate(d)} às ${_dois(d.hour)}:${_dois(d.minute)}';

@@ -22,7 +22,8 @@ void main() {
     expect(formatTime(3725), '1:02:05');
   });
 
-  test('formatDateTime', () {
+  test('formatDateTime e formatDate', () {
     expect(formatDateTime(DateTime(2026, 10, 7, 9, 5)), '07/10 às 09:05');
+    expect(formatDate(DateTime(2026, 10, 7)), '07/10');
   });
 }
