@@ -118,6 +118,30 @@ void main() {
     }
   });
 
+  test('treino: qual foi, como foi e o FTP medido; treinos feitos para o plano', () async {
+    final store = SqliteRidesStore(db);
+    final treino = pedal('t1', DateTime(2026, 10, 8, 7))
+        .copyWith(mode: RideMode.treino, workoutId: 'intervalos-5x1', laps: 1, ftp: 190);
+    await store.upsert(treino);
+    await store.upsert(pedal('t2', DateTime(2026, 10, 8, 9)).copyWith(mode: RideMode.treino, workoutId: 'tabata'));
+    await store.upsert(pedal('livre', DateTime(2026, 10, 8, 8)));
+    final lido = (await store.byId('t1'))!;
+    expect(lido.mode, RideMode.treino);
+    expect(lido.workoutId, 'intervalos-5x1');
+    expect(lido.workoutDone, isTrue);
+    expect(lido.ftp, 190);
+    expect((await store.recent()).firstWhere((r) => r.id == 't1').workoutId, 'intervalos-5x1');
+    final feitos = await store.doneWorkouts();
+    expect(feitos.map((f) => f.workoutId), ['intervalos-5x1']); // o tabata não foi até o fim
+    await store.setFeeling('t1', 2);
+    expect((await store.byId('t1'))!.feeling, 2);
+    final memoria = MemoryRidesStore();
+    await memoria.upsert(treino);
+    expect((await memoria.doneWorkouts()).single.workoutId, 'intervalos-5x1');
+    await memoria.setFeeling('t1', 4);
+    expect((await memoria.byId('t1'))!.feeling, 4);
+  });
+
   test('banco da versão 3: pedais de rota ganham o caminho da rota e a volta', () async {
     final dir = await Directory.systemTemp.createTemp('pedal_v3');
     final caminho = '${dir.path}/v3.db';
@@ -161,6 +185,8 @@ void main() {
     expect(inteiro.loop, isTrue);
     expect(inteiro.track!.length, rota.points.length);
     expect((await store.byId('metade'))!.laps, 0);
+    expect(inteiro.workoutId, isNull); // a versão 5 também entrou
+    expect(await store.doneWorkouts(), isEmpty);
     await novo.close();
     await dir.delete(recursive: true);
   });

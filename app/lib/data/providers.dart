@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
 import '../domain/stats.dart';
+import '../domain/training_plans.dart';
 import 'loop_generator.dart';
 import 'rides_store.dart';
 import 'route_builder.dart';
@@ -41,6 +42,9 @@ final ridesForRouteProvider = FutureProvider.autoDispose.family<List<RideRecord>
 final ghostRidesProvider = FutureProvider.autoDispose.family<List<RideRecord>, String>(
   (ref, routeId) => ref.watch(ridesStoreProvider).forRoute(routeId, withSamples: true),
 );
+
+/// Treinos feitos até o fim (progresso do plano).
+final doneWorkoutsProvider = FutureProvider<List<DoneWorkout>>((ref) => ref.watch(ridesStoreProvider).doneWorkouts());
 
 final rideByIdProvider = FutureProvider.family<RideRecord?, String>(
   (ref, id) => ref.watch(ridesStoreProvider).byId(id),

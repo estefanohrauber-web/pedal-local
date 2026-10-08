@@ -6,14 +6,21 @@ import '../domain/ride_samples.dart';
 import '../domain/ride_session.dart';
 import '../domain/route_profile.dart';
 import '../domain/stats.dart';
+import '../domain/training_plans.dart';
+import '../domain/workout.dart';
 
-enum RideMode { rota, fantasma, livre }
+enum RideMode { rota, fantasma, livre, treino }
 
 String rideModeLabel(RideMode mode) => switch (mode) {
       RideMode.rota => 'Rota',
       RideMode.fantasma => 'Contra o fantasma',
       RideMode.livre => 'Pedal livre',
+      RideMode.treino => 'Treino',
     };
+
+/// Nome do pedal para mostrar: a rota, o treino ou o tipo.
+String rideName(RideRecord r, {String? routeName}) =>
+    routeName ?? (r.workoutId == null ? null : workoutById(r.workoutId!)?.name) ?? rideModeLabel(r.mode);
 
 class RideRecord implements RideStat {
   const RideRecord({
@@ -34,6 +41,9 @@ class RideRecord implements RideStat {
     this.reversed = false,
     this.trimmedM = 0,
     this.track,
+    this.workoutId,
+    this.feeling,
+    this.ftp,
   });
 
   final String id;
@@ -68,6 +78,17 @@ class RideRecord implements RideStat {
   /// Caminho de uma volta, no sentido e começo pedalados (null no pedal livre).
   final List<ProfilePoint>? track;
 
+  /// Treino feito (null = não foi treino). No treino, [laps] = 1 quando foi até o fim.
+  final String? workoutId;
+
+  /// Resposta “como foi?” (índice de Feeling + 1), quando houve.
+  final int? feeling;
+
+  /// FTP medido no teste de rampa.
+  final double? ftp;
+
+  bool get workoutDone => workoutId != null && laps >= 1;
+
   RideRecord copyWith({
     String? id,
     String? routeId,
@@ -85,6 +106,9 @@ class RideRecord implements RideStat {
     bool? reversed,
     double? trimmedM,
     List<ProfilePoint>? track,
+    String? workoutId,
+    int? feeling,
+    double? ftp,
   }) =>
       RideRecord(
         id: id ?? this.id,
@@ -104,6 +128,9 @@ class RideRecord implements RideStat {
         reversed: reversed ?? this.reversed,
         trimmedM: trimmedM ?? this.trimmedM,
         track: track ?? this.track,
+        workoutId: workoutId ?? this.workoutId,
+        feeling: feeling ?? this.feeling,
+        ftp: ftp ?? this.ftp,
       );
 
   Map<String, Object?> toRow() => {
@@ -124,6 +151,9 @@ class RideRecord implements RideStat {
         'reversed': reversed ? 1 : 0,
         'trimmed_m': trimmedM,
         'track': track == null ? null : packTrack(track!),
+        'workout_id': workoutId,
+        'feeling': feeling,
+        'ftp': ftp,
       };
 
   factory RideRecord.fromRow(Map<String, Object?> r) => RideRecord(
@@ -144,6 +174,9 @@ class RideRecord implements RideStat {
         reversed: (r['reversed'] as int?) == 1,
         trimmedM: (r['trimmed_m'] as num?)?.toDouble() ?? 0,
         track: r['track'] == null ? null : unpackTrack(r['track'] as Uint8List),
+        workoutId: r['workout_id'] as String?,
+        feeling: r['feeling'] as int?,
+        ftp: (r['ftp'] as num?)?.toDouble(),
       );
 }
 
@@ -158,12 +191,18 @@ abstract class RidesStore {
 
   /// Só os números de todos os pedais (para os totais).
   Future<List<RideStat>> stats();
+
+  /// Treinos feitos até o fim, para o progresso do plano.
+  Future<List<DoneWorkout>> doneWorkouts();
+
+  /// Guarda a resposta “como foi?” de um pedal.
+  Future<void> setFeeling(String rideId, int feeling);
 }
 
 const _listColumns = [
   'id', 'route_id', 'mode', 'started_at', 'moving_time_s', 'distance_m',
   'avg_power_w', 'avg_speed_kmh', 'gain_m', 'kcal', 'completed', 'laps', 'loop', 'reversed',
-  'trimmed_m', 'track',
+  'trimmed_m', 'track', 'workout_id', 'feeling', 'ftp',
 ];
 
 class SqliteRidesStore implements RidesStore {
@@ -205,6 +244,20 @@ class SqliteRidesStore implements RidesStore {
   }
 
   @override
+  Future<List<DoneWorkout>> doneWorkouts() async {
+    final rows = await _db.query('rides',
+        columns: ['workout_id', 'started_at'], where: 'workout_id IS NOT NULL AND laps >= 1', orderBy: 'started_at');
+    return [
+      for (final r in rows)
+        DoneWorkout(r['workout_id'] as String, DateTime.fromMillisecondsSinceEpoch(r['started_at'] as int)),
+    ];
+  }
+
+  @override
+  Future<void> setFeeling(String rideId, int feeling) =>
+      _db.update('rides', {'feeling': feeling}, where: 'id = ?', whereArgs: [rideId]);
+
+  @override
   Future<List<RideRecord>> forRoute(String routeId, {bool withSamples = false}) async {
     final rows = await _db.query('rides',
         columns: withSamples ? null : _listColumns,
@@ -239,4 +292,16 @@ class MemoryRidesStore implements RidesStore {
 
   @override
   Future<List<RideStat>> stats() async => _rides.values.toList();
+
+  @override
+  Future<List<DoneWorkout>> doneWorkouts() async => [
+        for (final r in (_rides.values.toList()..sort((a, b) => a.startedAt.compareTo(b.startedAt))))
+          if (r.workoutDone) DoneWorkout(r.workoutId!, r.startedAt),
+      ];
+
+  @override
+  Future<void> setFeeling(String rideId, int feeling) async {
+    final r = _rides[rideId];
+    if (r != null) _rides[rideId] = r.copyWith(feeling: feeling);
+  }
 }

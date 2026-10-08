@@ -16,6 +16,7 @@ import '../../domain/laps.dart';
 import '../../domain/ride_analysis.dart';
 import '../../domain/route_profile.dart';
 import '../../domain/route_variant.dart';
+import '../../domain/training_plans.dart';
 import 'metric_chart.dart';
 
 /// Resumo e análise de um pedal. [novo] = acabou de pedalar (mostra “Concluir”).
@@ -119,6 +120,14 @@ class _ConteudoState extends ConsumerState<_Conteudo> {
           _ResultadoFantasma(gapS: widget.ghostGap!),
           const SizedBox(height: 14),
         ],
+        if (ride.ftp != null) ...[
+          _ResultadoFtp(ftp: ride.ftp!),
+          const SizedBox(height: 14),
+        ],
+        if (widget.novo && ride.workoutId != null) ...[
+          _ComoFoi(ride: ride),
+          const SizedBox(height: 14),
+        ],
         if (fatia != null && fatia.samples.length > 1)
           _Analise(
             ride: ride,
@@ -189,6 +198,106 @@ class _ConteudoState extends ConsumerState<_Conteudo> {
   }
 }
 
+class _ResultadoFtp extends StatelessWidget {
+  const _ResultadoFtp({required this.ftp});
+
+  final double ftp;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      borderColor: AppColors.destaque,
+      child: Row(
+        children: [
+          const Icon(Icons.emoji_events_outlined, color: AppColors.destaque, size: 32),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Seu FTP: ${formatNumber(ftp)} W', style: AppText.corpoForte),
+                const Text(
+                  'As metas dos treinos já usam esse valor. Refaça o teste daqui a 4 a 6 semanas.',
+                  style: AppText.suave,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// “Como foi o treino?”: a resposta ajusta as metas dos próximos treinos.
+class _ComoFoi extends ConsumerStatefulWidget {
+  const _ComoFoi({required this.ride});
+
+  final RideRecord ride;
+
+  @override
+  ConsumerState<_ComoFoi> createState() => _ComoFoiState();
+}
+
+class _ComoFoiState extends ConsumerState<_ComoFoi> {
+  Feeling? _resposta;
+
+  @override
+  void initState() {
+    super.initState();
+    final f = widget.ride.feeling;
+    if (f != null && f >= 1 && f <= Feeling.values.length) _resposta = Feeling.values[f - 1];
+  }
+
+  Future<void> _responder(Feeling f) async {
+    if (_resposta != null) return;
+    setState(() => _resposta = f);
+    final store = ref.read(settingsStoreProvider);
+    final s = await store.load();
+    await store.save(s.copyWith(intensidade: adjustIntensity(s.intensidade, f)));
+    await ref.read(ridesStoreProvider).setFeeling(widget.ride.id, f.index + 1);
+    if (mounted) ref.invalidate(settingsProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final r = _resposta;
+    final mudanca = r == null ? 0 : (r.delta * 100).round();
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Como foi o treino?', style: AppText.corpoForte),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              for (final f in Feeling.values)
+                ChoiceChip(
+                  showCheckmark: false,
+                  label: Text(f.label),
+                  selected: r == f,
+                  onSelected: r == null ? (_) => _responder(f) : null,
+                ),
+            ],
+          ),
+          if (r != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                mudanca == 0
+                    ? 'Anotado! As metas dos próximos treinos ficam como estão.'
+                    : 'Anotado! As metas dos próximos treinos vão ${mudanca > 0 ? 'subir' : 'baixar'} ${mudanca.abs()}%.',
+                style: AppText.suave,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ResultadoFantasma extends StatelessWidget {
   const _ResultadoFantasma({required this.gapS});
 
@@ -232,13 +341,16 @@ class _Cabecalho extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rota = ride.mode == RideMode.rota;
-    final concluiu = rota ? ride.laps >= 1 : ride.completed;
+    final treino = ride.mode == RideMode.treino;
+    final concluiu = rota || treino ? ride.laps >= 1 : ride.completed;
     final titulo = !ride.completed
         ? 'Pedal salvo'
         : rota
             ? (ride.laps >= 1 ? 'Rota concluída!' : 'Pedal encerrado')
-            : 'Pedal concluído!';
-    final subtitulo = [nomeRota ?? rideModeLabel(ride.mode), formatDateTime(ride.startedAt)].join(' · ');
+            : treino
+                ? (ride.laps >= 1 ? 'Treino concluído!' : 'Treino encerrado')
+                : 'Pedal concluído!';
+    final subtitulo = [rideName(ride, routeName: nomeRota), formatDateTime(ride.startedAt)].join(' · ');
     final p = perfil;
     final detalhes = <String>[];
     if (rota && p != null) {

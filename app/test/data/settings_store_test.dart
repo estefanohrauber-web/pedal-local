@@ -47,6 +47,27 @@ void main() {
     expect(s.margemVolta, 0.05);
   });
 
+  test('treinos: FTP, plano, intensidade e controle da bike', () async {
+    final store = SqliteSettingsStore(db);
+    final padrao = await store.load();
+    expect(padrao.ftp, isNull);
+    expect(padrao.planoId, isNull);
+    expect(padrao.intensidade, 1);
+    expect(padrao.controleBike, isTrue);
+    final inicio = DateTime(2026, 10, 8, 9);
+    await store.save(padrao.copyWith(ftp: 187, planoId: 'comecando', planoInicio: inicio, intensidade: 1.03, controleBike: false));
+    final s = await store.load();
+    expect(s.ftp, 187);
+    expect(s.planoId, 'comecando');
+    expect(s.planoInicio, inicio);
+    expect(s.intensidade, 1.03);
+    expect(s.controleBike, isFalse);
+    final semPlano = s.copyWith(semPlano: true);
+    expect(semPlano.planoId, isNull);
+    expect(semPlano.planoInicio, isNull);
+    expect(semPlano.ftp, 187);
+  });
+
   test('versão em memória', () async {
     final store = MemorySettingsStore();
     await store.save(const AppSettings(pesoKg: 90));

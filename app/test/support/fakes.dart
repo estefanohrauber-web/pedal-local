@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:pedal_local/bike/bike_control.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/bike/bike_source.dart';
 import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
+import 'package:pedal_local/domain/ftms_control.dart';
 
 class FakeBikeSource implements BikeSource {
   FakeBikeSource({this.name = 'Bike de teste'});
@@ -17,6 +19,9 @@ class FakeBikeSource implements BikeSource {
   final _readings = StreamController<BikeReading>.broadcast();
   final _connection = StreamController<BikeConnection>.broadcast();
   BikeConnection _state = BikeConnection.desconectada;
+
+  @override
+  BikeControl? control;
   int connectCalls = 0;
   int failNext = 0;
   Exception? failWith;
@@ -70,6 +75,41 @@ class FakeWakeLock implements WakeLock {
 
   @override
   Future<void> disable() async => enabled = false;
+}
+
+/// Controle de teste: guarda os comandos recebidos.
+class FakeBikeControl implements BikeControl {
+  FakeBikeControl([this.features = const FtmsFeatures(power: true)]);
+
+  @override
+  final FtmsFeatures features;
+
+  @override
+  FtmsRange? get resistanceRange => null;
+
+  final powers = <int>[];
+  final grades = <double>[];
+  int releases = 0;
+
+  @override
+  Future<bool> setPower(int watts) async {
+    if (!features.power) return false;
+    powers.add(watts);
+    return true;
+  }
+
+  @override
+  Future<bool> setResistance(double level) async => false;
+
+  @override
+  Future<bool> setGrade(double grade) async {
+    if (!features.simulation) return false;
+    grades.add(grade);
+    return true;
+  }
+
+  @override
+  Future<void> release() async => releases++;
 }
 
 /// Voz de teste: guarda o que foi falado.

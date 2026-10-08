@@ -24,7 +24,7 @@ class RideTile extends ConsumerWidget {
         ? null
         : ref.watch(routeByIdProvider(routeId)).when(data: (r) => r, loading: () => null, error: (e, s) => null);
     final cor = rota == null ? AppColors.destaque : routeColor(rota.colorIndex);
-    final base = rota?.name ?? rideModeLabel(ride.mode);
+    final base = rideName(ride, routeName: rota?.name);
     final titulo = ride.completed ? base : '$base · incompleto';
     final extras = [
       '${formatNumber(ride.avgPowerW)} W',
@@ -46,7 +46,14 @@ class RideTile extends ConsumerWidget {
                     padding: const EdgeInsets.all(7),
                     child: CustomPaint(painter: TrackShapePainter(track, cor)),
                   )
-                : Icon(ride.mode == RideMode.livre ? Icons.bar_chart_rounded : Icons.map_outlined, color: cor),
+                : Icon(
+                    switch (ride.mode) {
+                      RideMode.livre => Icons.bar_chart_rounded,
+                      RideMode.treino => Icons.timer_outlined,
+                      _ => Icons.map_outlined,
+                    },
+                    color: cor,
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(

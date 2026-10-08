@@ -1,3 +1,4 @@
+import 'bike_control.dart';
 import 'bike_reading.dart';
 
 enum BikeConnection { desconectada, conectando, conectada, caiu }
@@ -9,6 +10,9 @@ abstract class BikeSource {
   Stream<BikeReading> get readings;
   Stream<BikeConnection> get connection;
   BikeConnection get state;
+
+  /// Comandos que a bike aceita (null = só manda dados; a carga é no botão).
+  BikeControl? get control;
   Future<void> connect();
   Future<void> disconnect();
 

@@ -23,11 +23,14 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
   final _meta = TextEditingController();
   final _base = TextEditingController();
   final _fator = TextEditingController();
+  final _ftp = TextEditingController();
   AppSettings? _settings;
   PowerMode _modo = PowerMode.auto;
   double _carga = 4;
   double _margem = 3;
   bool _voz = true;
+  bool _controleBike = true;
+  double _intensidade = 1;
 
   @override
   void initState() {
@@ -45,13 +48,16 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
         _carga = s.cargaPadrao.toDouble();
         _margem = (s.margemVolta * 100).roundToDouble().clamp(0, 10);
         _voz = s.voz;
+        _ftp.text = s.ftp == null ? '' : s.ftp!.round().toString();
+        _controleBike = s.controleBike;
+        _intensidade = s.intensidade;
       });
     });
   }
 
   @override
   void dispose() {
-    for (final c in [_nome, _peso, _meta, _base, _fator]) {
+    for (final c in [_nome, _peso, _meta, _base, _fator, _ftp]) {
       c.dispose();
     }
     super.dispose();
@@ -71,6 +77,9 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
       cargaPadrao: _carga.round(),
       margemVolta: _margem / 100,
       voz: _voz,
+      ftp: _numero(_ftp)?.clamp(50, 600).roundToDouble(),
+      controleBike: _controleBike,
+      intensidade: _intensidade,
     );
     await ref.read(settingsStoreProvider).save(novo);
     ref.invalidate(settingsProvider);
@@ -161,6 +170,42 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
                     label: const Text('Ouvir um exemplo'),
                   ),
                 ),
+                const SizedBox(height: 24),
+                const SectionTitle('Treinos'),
+                TextField(
+                  controller: _ftp,
+                  keyboardType: numeroTeclado,
+                  decoration: InputDecoration(
+                    labelText: 'Seu FTP (W)',
+                    hintText: 'Vazio: ${formatNumber((_numero(_peso) ?? 75) * 2)} W, pelo peso',
+                  ),
+                ),
+                const _Ajuda(
+                  'A força que você aguenta por uma hora. As metas dos treinos saem dele. '
+                  'O teste de rampa, na aba Treinos, mede e preenche sozinho.',
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Deixar a bike ajustar a carga', style: AppText.corpoForte),
+                  subtitle: const Text(
+                    'Nos treinos, se a bike aceitar comando (modo ERG), ela segura a meta sozinha.',
+                    style: AppText.suave,
+                  ),
+                  value: _controleBike,
+                  onChanged: (v) => setState(() => _controleBike = v),
+                ),
+                if ((_intensidade - 1).abs() > 0.001)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Ajuste pelas suas respostas: ${_intensidade > 1 ? '+' : ''}${((_intensidade - 1) * 100).round()}% nas metas.',
+                          style: AppText.suave,
+                        ),
+                      ),
+                      TextButton(onPressed: () => setState(() => _intensidade = 1), child: const Text('Zerar')),
+                    ],
+                  ),
                 const SizedBox(height: 24),
                 const SectionTitle('Potência'),
                 SegmentedButton<PowerMode>(

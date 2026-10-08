@@ -12,6 +12,9 @@ import '../../features/pedal/preparar_pedal_screen.dart';
 import '../../features/pedal/ride_controller.dart';
 import '../../features/pedal_livre/pedal_livre_screen.dart';
 import '../../features/resumo/resumo_screen.dart';
+import '../../features/treinos/plano_screen.dart';
+import '../../features/treinos/treino_pedal_screen.dart';
+import '../../features/treinos/treino_screen.dart';
 import '../../features/treinos/treinos_screen.dart';
 import '../../features/voce/ajustes_screen.dart';
 import '../../features/voce/voce_screen.dart';
@@ -35,6 +38,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/criar-rota', builder: (c, s) => const CriarRotaScreen()),
       GoRoute(path: '/pedal-livre', builder: (c, s) => const PedalLivreScreen()),
       GoRoute(path: '/bike/dados', builder: (c, s) => const DadosBikeScreen()),
+      GoRoute(path: '/treino/:id', builder: (c, s) => TreinoScreen(workoutId: s.pathParameters['id']!)),
+      GoRoute(path: '/treino-pedal/:id', builder: (c, s) => TreinoPedalScreen(workoutId: s.pathParameters['id']!)),
+      GoRoute(path: '/plano/:id', builder: (c, s) => PlanoScreen(planId: s.pathParameters['id']!)),
       GoRoute(
         path: '/rota/:id/preparar',
         builder: (c, s) => PrepararPedalScreen(routeId: s.pathParameters['id']!),

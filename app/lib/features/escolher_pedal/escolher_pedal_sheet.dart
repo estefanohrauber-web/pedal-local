@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../bike/bike_controller.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/common.dart';
 
 Future<void> showEscolherPedal(BuildContext context) => showModalBottomSheet<void>(
       context: context,
@@ -52,8 +51,18 @@ class EscolherPedalSheet extends ConsumerWidget {
               texto: 'Só os dados da bike, sem mapa',
               selecionada: true,
             ),
-            const _Opcao(icon: Icons.flag_outlined, titulo: 'Contra o fantasma', texto: 'Bata o seu recorde numa rota', emBreve: true),
-            const _Opcao(icon: Icons.timer_outlined, titulo: 'Treino', texto: 'Intervalos e sessões guiadas', emBreve: true),
+            _Opcao(
+              icon: Icons.flag_outlined,
+              titulo: 'Contra o fantasma',
+              texto: 'Escolha a rota; antes de começar, escolha o fantasma',
+              onTap: () => _ir(context, '/explorar', trocarAba: true),
+            ),
+            _Opcao(
+              icon: Icons.timer_outlined,
+              titulo: 'Treino',
+              texto: 'Intervalos, teste de FTP e planos',
+              onTap: () => _ir(context, '/treinos', trocarAba: true),
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
@@ -91,68 +100,53 @@ class EscolherPedalSheet extends ConsumerWidget {
 }
 
 class _Opcao extends StatelessWidget {
-  const _Opcao({
-    required this.icon,
-    required this.titulo,
-    required this.texto,
-    this.selecionada = false,
-    this.emBreve = false,
-    this.onTap,
-  });
+  const _Opcao({required this.icon, required this.titulo, required this.texto, this.selecionada = false, this.onTap});
 
   final IconData icon;
   final String titulo;
   final String texto;
   final bool selecionada;
-  final bool emBreve;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Opacity(
-        opacity: emBreve ? 0.6 : 1,
-        child: Material(
-          color: selecionada ? const Color(0xFFF3FAF6) : AppColors.superficie,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(
-              color: selecionada ? AppColors.destaque : AppColors.borda,
-              width: selecionada ? 2.5 : 1.5,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 72),
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: selecionada ? AppColors.destaque : AppColors.neutro,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(icon, color: selecionada ? Colors.white : AppColors.texto),
+      child: Material(
+        color: selecionada ? const Color(0xFFF3FAF6) : AppColors.superficie,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: selecionada ? AppColors.destaque : AppColors.borda, width: selecionada ? 2.5 : 1.5),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 72),
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: selecionada ? AppColors.destaque : AppColors.neutro,
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                        Text(texto, style: AppText.suave),
-                      ],
-                    ),
+                  child: Icon(icon, color: selecionada ? Colors.white : AppColors.texto),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                      Text(texto, style: AppText.suave),
+                    ],
                   ),
-                  if (emBreve) const EmBreveTag(),
-                  if (onTap != null) const Icon(Icons.chevron_right, color: AppColors.textoSuave),
-                ],
-              ),
+                ),
+                if (onTap != null) const Icon(Icons.chevron_right, color: AppColors.textoSuave),
+              ],
             ),
           ),
         ),

@@ -12,7 +12,9 @@ import 'package:pedal_local/data/settings_store.dart';
 import 'package:pedal_local/domain/geo.dart';
 import 'package:pedal_local/domain/route_profile.dart';
 import 'package:pedal_local/domain/ride_narrator.dart';
+import 'package:pedal_local/domain/power.dart';
 import 'package:pedal_local/domain/ride_session.dart';
+import 'package:pedal_local/domain/workout.dart';
 import 'package:pedal_local/features/pedal/ghost_options.dart';
 import 'package:pedal_local/features/pedal/ride_controller.dart';
 
@@ -43,6 +45,21 @@ RouteRecord rotaComPontos(String id, List<ProfilePoint> pontos) => RouteRecord(
       gainM: 0,
       lossM: 0,
     );
+
+/// Treinos curtos para os testes andarem rápido.
+const treinoCurto = Workout(id: 'curto', name: 'Curto', summary: '', category: 'Intervalos', steps: [
+  WorkoutStep(10, 0.5),
+  WorkoutStep(10, 1.0, grade: 0.05, cue: 'Forte!'),
+]);
+const rampaCurta = Workout(id: 'rampa', name: 'Rampa', summary: '', category: 'Teste', rampTest: true, steps: [
+  WorkoutStep(10, 0.4),
+  WorkoutStep(60, 0.5),
+  WorkoutStep(60, 0.56),
+  WorkoutStep(60, 0.62),
+  WorkoutStep(30, 0.4),
+]);
+
+Workout? treinoDeTeste(String id) => {'curto': treinoCurto, 'rampa': rampaCurta}[id] ?? workoutById(id);
 
 /// Pedal anterior concluído na rota, a [vel] m/s constante.
 RideRecord pedalAnterior(String id, String rota, {required int segundos, required double vel}) => RideRecord(
@@ -86,6 +103,7 @@ void main() {
       routesStoreProvider.overrideWithValue(routes),
       wakeLockProvider.overrideWithValue(wake),
       voiceProvider.overrideWithValue(voz),
+      workoutLookupProvider.overrideWithValue(treinoDeTeste),
       clockProvider.overrideWithValue(() => agora),
       rideIdProvider.overrideWithValue(() => 'p1'),
       rideTickProvider.overrideWithValue(const Duration(hours: 1)),
@@ -379,6 +397,86 @@ void main() {
         await pedalar(null, 1);
       }
       expect(voz.spoken, isEmpty);
+    });
+  });
+
+  group('treino', () {
+    test('metas pelo FTP, voz, bike segurando a potência, subida do trecho e fim sozinho', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200));
+      final controle = FakeBikeControl();
+      bike.control = controle;
+      const alvo = RideTarget.treino('curto');
+      await ctrl(alvo).start();
+      expect(view(alvo).isWorkout, isTrue);
+      expect(view(alvo).ftp, 200);
+      expect(view(alvo).bikeAdjusts, isTrue);
+      await pedalar(alvo, 1);
+      expect(view(alvo).frame!.index, 0);
+      expect(view(alvo).frame!.targetWatts, 100);
+      expect(controle.powers.first, 100);
+      expect(voz.spoken, contains('10 segundos muito leve, 100 watts.'));
+      await pedalar(alvo, 10);
+      expect(view(alvo).frame!.index, 1);
+      expect(view(alvo).frame!.targetWatts, 200);
+      expect(controle.powers.last, 200);
+      expect(view(alvo).grade, 0.05);
+      expect(voz.spoken, contains('Forte! 10 segundos forte, 200 watts.'));
+      for (var i = 0; i < 30 && view(alvo).state != RideState.concluido; i++) {
+        await pedalar(alvo, 1);
+      }
+      expect(view(alvo).state, RideState.concluido);
+      await ctrl(alvo).finish();
+      final salvo = (await rides.byId('p1'))!;
+      expect(salvo.mode, RideMode.treino);
+      expect(salvo.workoutId, 'curto');
+      expect(salvo.workoutDone, isTrue);
+      expect(voz.spoken.last, startsWith('Treino concluído em '));
+      expect(controle.releases, greaterThanOrEqualTo(1));
+    });
+
+    test('teste de rampa: “não aguento mais” calcula, fala e guarda o FTP', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200));
+      const alvo = RideTarget.treino('rampa');
+      await ctrl(alvo).start();
+      await pedalar(alvo, 80, power: 150);
+      ctrl(alvo).endRamp();
+      expect(view(alvo).frame!.rampEnded, isTrue);
+      expect(voz.spoken.last, 'Teste encerrado. Seu FTP é de 113 watts. Agora, 5 minutos leves para soltar as pernas.');
+      await pedalar(alvo, 2, power: 80);
+      expect(view(alvo).frame!.index, rampaCurta.steps.length - 1);
+      await ctrl(alvo).finish();
+      expect((await container.read(settingsStoreProvider).load()).ftp, 113);
+      final salvo = (await rides.byId('p1'))!;
+      expect(salvo.ftp, 113);
+      expect(salvo.workoutDone, isTrue);
+    });
+
+    test('controle desligado nos Ajustes: não manda nada; sem teste, FTP de 2 W/kg', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(controleBike: false, pesoKg: 80));
+      final controle = FakeBikeControl();
+      bike.control = controle;
+      const alvo = RideTarget.treino('curto');
+      await ctrl(alvo).start();
+      await pedalar(alvo, 2);
+      expect(controle.powers, isEmpty);
+      expect(view(alvo).bikeAdjusts, isFalse);
+      expect(view(alvo).ftp, 160);
+    });
+
+    test('com potência estimada, sugere a carga que dá a meta a 85 rpm', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200, modoPotencia: PowerMode.estimada));
+      const alvo = RideTarget.treino('curto');
+      await ctrl(alvo).start();
+      await pedalar(alvo, 1);
+      expect(view(alvo).suggestedLevel, 2); // 100 W / 85 rpm = 1,18 → (1,18 − 0,6) / 0,25 ≈ 2
+      await pedalar(alvo, 10);
+      expect(view(alvo).suggestedLevel, 7); // 200 W
+    });
+
+    test('treino que não existe', () async {
+      const alvo = RideTarget.treino('nada');
+      await ctrl(alvo).start();
+      expect(view(alvo).notFound, isTrue);
     });
   });
 }

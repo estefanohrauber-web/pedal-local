@@ -24,6 +24,20 @@ class FlatTerrain implements Terrain {
   double lookahead(double distance, double span) => 0;
 }
 
+/// Treino: plano e sem fim, com a inclinação que o trecho do treino pedir.
+class WorkoutTerrain implements Terrain {
+  double grade = 0;
+
+  @override
+  double get distance => double.infinity;
+
+  @override
+  double gradeAt(double distance) => grade;
+
+  @override
+  double lookahead(double distance, double span) => 0;
+}
+
 enum RideState { pronto, pedalando, pausado, concluido }
 
 enum AlertKind { subida, descida }

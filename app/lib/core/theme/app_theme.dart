@@ -35,6 +35,19 @@ abstract final class AppColors {
 /// Cor da rota pelo índice guardado nela.
 Color routeColor(int index) => AppColors.rotas[index % AppColors.rotas.length];
 
+/// Cor de cada zona de esforço (1 a 7), do cinza ao roxo, como nos apps de treino.
+const zoneColors = [
+  Color(0xFF8A9690), // 1 recuperação
+  Color(0xFF2F6FE4), // 2 resistência
+  Color(0xFF1E9E5A), // 3 ritmo
+  Color(0xFFD9A400), // 4 limiar
+  Color(0xFFEA6A12), // 5 VO2 máx
+  Color(0xFFD62C2C), // 6 anaeróbico
+  Color(0xFF7B3FE4), // 7 sprint
+];
+
+Color zoneColor(int number) => zoneColors[(number - 1).clamp(0, zoneColors.length - 1)];
+
 /// Escala de calor do mapa e do gráfico do pedal: 0 = azul (menor) … 1 = vermelho (maior).
 const heatStops = [
   Color(0xFF2563EB), // azul

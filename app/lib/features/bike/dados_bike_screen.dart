@@ -112,7 +112,41 @@ class _DadosBikeScreenState extends ConsumerState<DadosBikeScreen> {
                 _Linha(rotulo: 'Nível do botão', faixa: _campos['nivel'], unidade: ''),
                 _Linha(rotulo: 'Velocidade', faixa: _campos['velocidade'], unidade: 'km/h', casas: 1),
                 _Linha(rotulo: 'Frequência cardíaca', faixa: _campos['fc'], unidade: 'bpm'),
+                const SizedBox(height: 12),
+                _Controle(fonte: fonte),
               ],
+      ),
+    );
+  }
+}
+
+/// O que a bike aceita receber do app (para os treinos ajustarem a carga sozinhos).
+class _Controle extends StatelessWidget {
+  const _Controle({required this.fonte});
+
+  final BikeSource fonte;
+
+  @override
+  Widget build(BuildContext context) {
+    final f = fonte.control?.features;
+    final aceita = [
+      if (f != null && f.power) 'segurar uma potência (modo ERG)',
+      if (f != null && f.resistance) 'mudar o nível',
+      if (f != null && f.simulation) 'simular subidas',
+    ];
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Controle de carga pelo app', style: AppText.corpoForte),
+          const SizedBox(height: 4),
+          Text(
+            aceita.isEmpty
+                ? 'Não aceita: a carga é só no botão da bike. Nos treinos, a tela e a voz avisam quando mudar.'
+                : 'Aceita: ${aceita.join(', ')}. Nos treinos, a bike ajusta a carga sozinha.',
+            style: AppText.suave,
+          ),
+        ],
       ),
     );
   }

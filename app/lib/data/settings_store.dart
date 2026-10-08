@@ -15,6 +15,11 @@ class AppSettings {
     this.nome,
     this.margemVolta = 0.03,
     this.voz = true,
+    this.ftp,
+    this.planoId,
+    this.planoInicio,
+    this.intensidade = 1,
+    this.controleBike = true,
   });
 
   final double pesoKg;
@@ -35,6 +40,19 @@ class AppSettings {
   /// Avisos falados durante o pedal.
   final bool voz;
 
+  /// FTP (W) do teste ou digitado; null = ainda não sabe (usa 2 W/kg).
+  final double? ftp;
+
+  /// Plano de treino em andamento e quando começou.
+  final String? planoId;
+  final DateTime? planoInicio;
+
+  /// Ajuste das metas dos treinos pela resposta “como foi?” (1 = como escrito).
+  final double intensidade;
+
+  /// Deixar a bike ajustar a carga sozinha nos treinos, quando ela aceita.
+  final bool controleBike;
+
   AppSettings copyWith({
     double? pesoKg,
     PowerMode? modoPotencia,
@@ -47,6 +65,12 @@ class AppSettings {
     String? nome,
     double? margemVolta,
     bool? voz,
+    double? ftp,
+    String? planoId,
+    DateTime? planoInicio,
+    bool semPlano = false,
+    double? intensidade,
+    bool? controleBike,
   }) =>
       AppSettings(
         pesoKg: pesoKg ?? this.pesoKg,
@@ -60,6 +84,11 @@ class AppSettings {
         nome: nome ?? this.nome,
         margemVolta: margemVolta ?? this.margemVolta,
         voz: voz ?? this.voz,
+        ftp: ftp ?? this.ftp,
+        planoId: semPlano ? null : (planoId ?? this.planoId),
+        planoInicio: semPlano ? null : (planoInicio ?? this.planoInicio),
+        intensidade: intensidade ?? this.intensidade,
+        controleBike: controleBike ?? this.controleBike,
       );
 
   Map<String, String> toMap() => {
@@ -74,6 +103,11 @@ class AppSettings {
         'nome': ?nome,
         'margemVolta': '$margemVolta',
         'voz': voz ? '1' : '0',
+        'ftp': ?ftp?.toString(),
+        'planoId': ?planoId,
+        'planoInicio': ?planoInicio?.millisecondsSinceEpoch.toString(),
+        'intensidade': '$intensidade',
+        'controleBike': controleBike ? '1' : '0',
       };
 
   factory AppSettings.fromMap(Map<String, String> m) {
@@ -91,6 +125,13 @@ class AppSettings {
       nome: m['nome'],
       margemVolta: dbl('margemVolta', d.margemVolta),
       voz: m['voz'] != '0',
+      ftp: double.tryParse(m['ftp'] ?? ''),
+      planoId: m['planoId'],
+      planoInicio: int.tryParse(m['planoInicio'] ?? '') == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(int.parse(m['planoInicio']!)),
+      intensidade: dbl('intensidade', d.intensidade),
+      controleBike: m['controleBike'] != '0',
     );
   }
 }

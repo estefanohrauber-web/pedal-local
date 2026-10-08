@@ -5,7 +5,7 @@ import '../../domain/ride_samples.dart';
 import '../../domain/route_variant.dart';
 import '../routes_store.dart';
 
-const _schemaVersion = 4;
+const _schemaVersion = 5;
 
 Future<void> _createRoutes(DatabaseExecutor db) => db.execute('''
   CREATE TABLE routes (
@@ -59,6 +59,15 @@ Future<void> _addRideLaps(DatabaseExecutor db) async {
   }
 }
 
+/// Versão 5: qual treino foi feito, como foi (resposta do fim) e o FTP medido no teste.
+Future<void> _addRideWorkout(DatabaseExecutor db) async {
+  final temPedais = await db.query('sqlite_master', where: "type = 'table' AND name = 'rides'");
+  if (temPedais.isEmpty) return;
+  for (final coluna in ['workout_id TEXT', 'feeling INTEGER', 'ftp REAL']) {
+    await db.execute('ALTER TABLE rides ADD COLUMN $coluna');
+  }
+}
+
 /// Abre (ou cria/atualiza) o banco do app. Nos testes, passe `databaseFactoryFfi` e `inMemoryDatabasePath`.
 Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async {
   final f = factory ?? databaseFactory;
@@ -87,7 +96,10 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
             loop INTEGER NOT NULL DEFAULT 0,
             reversed INTEGER NOT NULL DEFAULT 0,
             trimmed_m REAL NOT NULL DEFAULT 0,
-            track BLOB
+            track BLOB,
+            workout_id TEXT,
+            feeling INTEGER,
+            ftp REAL
           )''');
         await db.execute('CREATE INDEX rides_started ON rides(started_at DESC)');
         await _createRoutes(db);
@@ -99,6 +111,7 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
           await _addRouteColor(db);
         }
         if (oldVersion < 4) await _addRideLaps(db);
+        if (oldVersion < 5) await _addRideWorkout(db);
       },
     ),
   );

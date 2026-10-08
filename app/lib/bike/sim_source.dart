@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import '../domain/ftms_control.dart';
+import 'bike_control.dart';
 import 'bike_reading.dart';
 import 'bike_source.dart';
 
@@ -21,6 +23,10 @@ class SimSource implements BikeSource {
   double _power = 0;
 
   int get target => _target;
+
+  /// A bike simulada aceita potência alvo, como uma bike com modo ERG.
+  @override
+  late final BikeControl control = _SimControl(this);
 
   @override
   String get name => 'Bike simulada';
@@ -45,6 +51,8 @@ class SimSource implements BikeSource {
         : (65 + _power / 12 + (_random.nextDouble() - 0.5) * 4).clamp(55.0, 105.0).roundToDouble();
     return BikeReading(cadence: cadence, power: _power.round(), timestamp: _now());
   }
+
+  void setTarget(int watts) => _target = watts.clamp(0, 2000);
 
   void harder() => _target = math.min(400, _target + 25);
 
@@ -76,4 +84,31 @@ class SimSource implements BikeSource {
     await _readings.close();
     await _connection.close();
   }
+}
+
+class _SimControl implements BikeControl {
+  _SimControl(this._sim);
+
+  final SimSource _sim;
+
+  @override
+  FtmsFeatures get features => const FtmsFeatures(power: true);
+
+  @override
+  FtmsRange? get resistanceRange => null;
+
+  @override
+  Future<bool> setPower(int watts) async {
+    _sim.setTarget(watts);
+    return true;
+  }
+
+  @override
+  Future<bool> setResistance(double level) async => false;
+
+  @override
+  Future<bool> setGrade(double grade) async => false;
+
+  @override
+  Future<void> release() async {}
 }

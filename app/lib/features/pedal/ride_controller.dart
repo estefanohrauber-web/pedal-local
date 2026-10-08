@@ -4,6 +4,7 @@ import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../bike/bike_control.dart';
 import '../../bike/bike_controller.dart';
 import '../../bike/bike_reading.dart';
 import '../../bike/bike_source.dart';
@@ -19,6 +20,9 @@ import '../../domain/ride_narrator.dart';
 import '../../domain/ride_session.dart';
 import '../../domain/route_profile.dart';
 import '../../domain/route_variant.dart';
+import '../../domain/training.dart';
+import '../../domain/workout.dart';
+import '../../domain/workout_runner.dart';
 import 'ghost_options.dart';
 
 /// Relógio do pedal. `clock.now()` é o relógio real no app e o relógio simulado nos testes de tela.
@@ -28,15 +32,20 @@ final rideIdProvider = Provider<String Function()>(
 );
 final rideTickProvider = Provider<Duration>((ref) => const Duration(milliseconds: 250));
 
+/// Onde achar um treino pelo id (a biblioteca; nos testes, treinos curtos).
+final workoutLookupProvider = Provider<Workout? Function(String id)>((ref) => workoutById);
+
 const _historyLength = 300; // 5 minutos de amostras
 const _staleAfter = Duration(seconds: 3);
 const _saveEverySeconds = 15.0;
 
-/// O que pedalar: pedal livre (sem rota) ou uma rota no sentido e começo escolhidos,
-/// com ou sem fantasma.
+/// O que pedalar: pedal livre (sem rota), uma rota no sentido e começo escolhidos (com ou
+/// sem fantasma) ou um treino.
 @immutable
 class RideTarget {
-  const RideTarget({this.routeId, this.reversed = false, this.startIndex = 0, this.ghost});
+  const RideTarget({this.routeId, this.reversed = false, this.startIndex = 0, this.ghost, this.workoutId});
+
+  const RideTarget.treino(String id) : this(workoutId: id);
 
   static const livre = RideTarget();
 
@@ -49,16 +58,20 @@ class RideTarget {
   /// Correr contra o recorde ou o último pedal (null = sem fantasma).
   final GhostKind? ghost;
 
+  /// Treino da biblioteca (null = não é treino).
+  final String? workoutId;
+
   @override
   bool operator ==(Object other) =>
       other is RideTarget &&
       other.routeId == routeId &&
       other.reversed == reversed &&
       other.startIndex == startIndex &&
-      other.ghost == ghost;
+      other.ghost == ghost &&
+      other.workoutId == workoutId;
 
   @override
-  int get hashCode => Object.hash(routeId, reversed, startIndex, ghost);
+  int get hashCode => Object.hash(routeId, reversed, startIndex, ghost, workoutId);
 }
 
 /// Volta recém-completada, para a faixa “Volta N concluída em mm:ss”.
@@ -100,6 +113,11 @@ class RideView {
     this.ghostGapM,
     this.ghostPosition,
     this.voiceOn = false,
+    this.workout,
+    this.frame,
+    this.ftp = 0,
+    this.bikeAdjusts = false,
+    this.suggestedLevel,
   });
 
   final bool started;
@@ -139,6 +157,21 @@ class RideView {
   /// Avisos falados ligados.
   final bool voiceOn;
 
+  /// Treino em andamento e o instante dele (null = não é treino).
+  final Workout? workout;
+  final WorkoutFrame? frame;
+
+  /// FTP usado nas metas do treino.
+  final double ftp;
+
+  /// A bike está segurando a meta sozinha (modo ERG).
+  final bool bikeAdjusts;
+
+  /// Com a potência estimada: a carga que dá a meta a 85 rpm.
+  final int? suggestedLevel;
+
+  bool get isWorkout => workout != null;
+
   bool get hasGhost => ghostGapS != null;
   bool get isRoute => profile != null;
   bool get isLoop => lapLength != null;
@@ -159,6 +192,15 @@ class RideController extends Notifier<RideView> {
   List<ProfilePoint>? _track;
   LoopTerrain? _loop;
   Ghost? _ghost;
+  Workout? _workout;
+  WorkoutRunner? _runner;
+  WorkoutTerrain? _terrenoTreino;
+  WorkoutFrame? _frame;
+  BikeControl? _controle;
+  int? _alvoEnviado;
+  double _ftp = 0;
+  PowerCalibration _calibracao = const PowerCalibration(base: 0.6, factor: 0.25);
+  bool _treinoCompleto = false;
   RideNarrator? _narrador;
   Voice? _voz;
   bool _vozLigada = false;
@@ -221,12 +263,27 @@ class RideController extends Notifier<RideView> {
         }
       }
     }
+    final treinoId = target.workoutId;
+    if (treinoId != null) {
+      final treino = ref.read(workoutLookupProvider)(treinoId);
+      if (treino == null) {
+        state = const RideView(notFound: true);
+        return;
+      }
+      _workout = treino;
+      _ftp = settings.ftp ?? defaultFtp(settings.pesoKg);
+      _runner = WorkoutRunner(treino, ftp: _ftp, intensity: settings.intensidade);
+      _terrenoTreino = WorkoutTerrain();
+      final controle = ref.read(bikeControllerProvider).source?.control;
+      _controle = settings.controleBike && controle != null && controle.features.any ? controle : null;
+    }
+    _calibracao = PowerCalibration(base: settings.base, factor: settings.fator);
     _margem = settings.margemVolta;
     _vozLigada = settings.voz;
     _voz = ref.read(voiceProvider);
     _narrador = RideNarrator(routeLength: _loop == null ? _profile?.distance : null);
     final relogio = ref.read(clockProvider);
-    final Terrain terreno = _loop ?? _profile ?? const FlatTerrain();
+    final Terrain terreno = _loop ?? _profile ?? _terrenoTreino ?? const FlatTerrain();
     _session = RideSession(terrain: terreno, riderMassKg: settings.pesoKg)..start();
     _resolver = PowerResolver(
       mode: settings.modoPotencia,
@@ -300,26 +357,86 @@ class RideController extends Notifier<RideView> {
         novaVolta = _lapAlert = LapAlert(voltas, tempos.length >= voltas ? tempos[voltas - 1] : 0, now);
       }
     }
-    final ghost = _ghost;
-    _falar(_narrador?.update(
-      distance: snap.distance,
-      movingTime: snap.movingTime,
-      alert: alerts.isEmpty ? null : alerts.last,
-      lapDone: novaVolta?.number,
-      lapTime: novaVolta?.time,
-      ghostGapS: ghost?.gapSeconds(snap.distance, snap.movingTime),
-      ghostGapM: ghost?.gapMeters(snap.distance, snap.movingTime),
-    ));
     if (session.samples.length > _seenSamples) {
-      _history.addAll(session.samples.skip(_seenSamples).map((s) => s.power));
+      final novas = session.samples.skip(_seenSamples).map((s) => s.power).toList();
+      _history.addAll(novas);
+      for (final p in novas) {
+        _runner?.addSample(p);
+      }
       _seenSamples = session.samples.length;
       if (_history.length > _historyLength) _history.removeRange(0, _history.length - _historyLength);
+    }
+    final runner = _runner;
+    if (runner != null) {
+      _passoDoTreino(runner, session, snap);
+    } else {
+      final ghost = _ghost;
+      _falar(_narrador?.update(
+        distance: snap.distance,
+        movingTime: snap.movingTime,
+        alert: alerts.isEmpty ? null : alerts.last,
+        lapDone: novaVolta?.number,
+        lapTime: novaVolta?.time,
+        ghostGapS: ghost?.gapSeconds(snap.distance, snap.movingTime),
+        ghostGapM: ghost?.gapMeters(snap.distance, snap.movingTime),
+      ));
     }
     _sinceSave += dt;
     if (_sinceSave >= _saveEverySeconds) {
       _sinceSave = 0;
       _save(completed: false);
     }
+    _publish();
+  }
+
+  /// Potência dos últimos 3 s (a de agora oscila demais para dizer se está na meta).
+  double _potencia3s(RideSession session, double agora) {
+    final s = session.samples;
+    if (s.length < 3) return agora;
+    return (s[s.length - 1].power + s[s.length - 2].power + s[s.length - 3].power) / 3;
+  }
+
+  void _passoDoTreino(WorkoutRunner runner, RideSession session, RideSnapshot snap) {
+    final frame = runner.update(
+      snap.movingTime,
+      power: _potencia3s(session, snap.power),
+      cadence: snap.cadence,
+    );
+    _frame = frame;
+    _falar(List.of(runner.spoken));
+    if (runner.stepChanged != null) _terrenoTreino?.grade = frame.step.grade;
+    _mandarAlvo(frame, mudouPasso: runner.stepChanged != null);
+    if (frame.done && !_treinoCompleto) {
+      _treinoCompleto = true;
+      session.finish();
+    }
+  }
+
+  /// Manda a meta para a bike: potência (ERG) quando ela aceita; senão, a inclinação dos
+  /// trechos de subida. Numa rampa, atualiza a cada 5 W.
+  void _mandarAlvo(WorkoutFrame frame, {required bool mudouPasso}) {
+    final controle = _controle;
+    if (controle == null) return;
+    if (controle.features.power) {
+      final alvo = frame.targetWatts;
+      final ultimo = _alvoEnviado;
+      if (mudouPasso || ultimo == null || (alvo - ultimo).abs() >= 5) {
+        _alvoEnviado = alvo;
+        controle.setPower(alvo);
+      }
+    } else if (mudouPasso && controle.features.simulation) {
+      controle.setGrade(frame.step.grade);
+    }
+  }
+
+  /// Teste de rampa: “não aguento mais”.
+  void endRamp() {
+    final runner = _runner;
+    if (runner == null) return;
+    runner.endRamp();
+    _falar(List.of(runner.spoken));
+    final session = _session;
+    if (session != null) _passoDoTreino(runner, session, session.snapshot());
     _publish();
   }
 
@@ -367,21 +484,36 @@ class RideController extends Notifier<RideView> {
     final snap = session.snapshot();
     final perfil = _profile;
     final ghost = _ghost;
-    _falar([
-      _narrador!.finished(
-        completed: perfil != null && _loop == null && snap.distance >= perfil.distance - 0.5,
-        laps: _loop?.lapsAt(snap.distance) ?? 0,
-        movingTime: snap.movingTime,
-        ghostGapS: ghost?.gapSeconds(snap.distance, snap.movingTime),
-      ),
-    ]);
+    if (_workout != null) {
+      _falar([
+        _treinoCompleto
+            ? 'Treino concluído em ${spokenTime(snap.movingTime)}! Muito bem.'
+            : 'Treino encerrado: ${spokenTime(snap.movingTime)}.',
+      ]);
+    } else {
+      _falar([
+        _narrador!.finished(
+          completed: perfil != null && _loop == null && snap.distance >= perfil.distance - 0.5,
+          laps: _loop?.lapsAt(snap.distance) ?? 0,
+          movingTime: snap.movingTime,
+          ghostGapS: ghost?.gapSeconds(snap.distance, snap.movingTime),
+        ),
+      ]);
+    }
     session.finish();
     _stop();
     await _save(completed: true);
+    final novoFtp = _runner?.rampFtp;
+    if (novoFtp != null) {
+      final store = ref.read(settingsStoreProvider);
+      await store.save((await store.load()).copyWith(ftp: novoFtp));
+      if (ref.mounted) ref.invalidate(settingsProvider);
+    }
     if (ref.mounted) {
       ref
         ..invalidate(recentRidesProvider)
-        ..invalidate(rideStatsProvider);
+        ..invalidate(rideStatsProvider)
+        ..invalidate(doneWorkoutsProvider);
       _publish();
     }
     return _rideId!;
@@ -396,7 +528,11 @@ class RideController extends Notifier<RideView> {
     var pedal = RideRecord(
       id: id,
       routeId: routeId,
-      mode: _profile != null ? RideMode.rota : RideMode.livre,
+      mode: _workout != null
+          ? RideMode.treino
+          : _profile != null
+              ? RideMode.rota
+              : RideMode.livre,
       startedAt: started,
       movingTimeS: snap.movingTime,
       distanceM: snap.distance,
@@ -410,6 +546,8 @@ class RideController extends Notifier<RideView> {
       loop: _loop != null,
       reversed: target.reversed,
       track: _track,
+      workoutId: _workout?.id,
+      ftp: _runner?.rampFtp,
     );
     final loop = _loop;
     if (completed && loop != null) {
@@ -437,6 +575,7 @@ class RideController extends Notifier<RideView> {
   }
 
   int _voltasCompletas(double distancia) {
+    if (_workout != null) return _treinoCompleto || _runner?.rampFtp != null ? 1 : 0;
     final loop = _loop;
     if (loop != null) return loop.lapsAt(distancia);
     final perfil = _profile;
@@ -452,6 +591,8 @@ class RideController extends Notifier<RideView> {
     _connectionSub = null;
     _wakeLock?.disable();
     _wakeLock = null;
+    _controle?.release();
+    _controle = null;
   }
 
   void _publish() {
@@ -495,6 +636,13 @@ class RideController extends Notifier<RideView> {
       ghostGapM: ghost?.gapMeters(snap.distance, snap.movingTime),
       ghostPosition: ondeFantasma,
       voiceOn: _vozLigada,
+      workout: _workout,
+      frame: _frame,
+      ftp: _ftp,
+      bikeAdjusts: _controle?.features.power ?? false,
+      suggestedLevel: _frame == null || _resolver?.effectiveMode != PowerMode.estimada
+          ? null
+          : ((_frame!.targetWatts / 85 - _calibracao.base) / _calibracao.factor).round().clamp(1, 10),
     );
   }
 }
