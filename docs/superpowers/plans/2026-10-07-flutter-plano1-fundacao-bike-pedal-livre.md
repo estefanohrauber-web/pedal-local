@@ -4804,3 +4804,10 @@ Expected: push sem erro.
   - Botão central dentro de `Center` esticava a barra até a altura da tela → `Center(heightFactor: 1)`.
   - Controle de carga no pedal livre estourava 41 px → texto em `Expanded` + `FittedBox`, botão Pausar com 104 px mínimos; `MetricTile` encolhe o número em vez de quebrar linha.
 - Resultado: `flutter analyze` sem avisos, **70 testes passando**, APK de debug compilando.
+
+### Tarefa 11 — no celular (2026-10-08)
+
+- Instalado no SM-G780G; roteiro com a bike simulada completo (início, folha de escolha, conexão, pedal livre, mais forte, pausar/continuar, encerrar, resumo, histórico, ajustes).
+- Correções vindas do teste no aparelho: conferência real da permissão de Bluetooth (`hasPermissions`) e nova busca ao voltar ao app; faixa “Pedal pausado”; textos que quebravam linha (simulação, Strava, “Automática”); calibração exibida com vírgula; SnackBar flutuante.
+- Dados de teste apagados (`pm clear`), o que também zerou as permissões: o usuário concede a permissão de “dispositivos por perto” ao conectar a Winnek.
+- Pendente: roteiro com a Winnek SYNC (Step 3), feito pelo usuário.
