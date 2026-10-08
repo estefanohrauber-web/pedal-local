@@ -118,7 +118,9 @@ class _CriarRotaScreenState extends ConsumerState<CriarRotaScreen> {
     if (rota == null) return;
     final digitado = _nome.text.trim();
     final nome = digitado.isEmpty ? 'Rota de ${formatDate(DateTime.now())}' : digitado;
-    await ref.read(routesStoreProvider).upsert(rota.copyWith(name: nome));
+    final store = ref.read(routesStoreProvider);
+    final cor = nextRouteColor(await store.all());
+    await store.upsert(rota.copyWith(name: nome, colorIndex: cor));
     ref.invalidate(routesProvider);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Rota “$nome” salva')));

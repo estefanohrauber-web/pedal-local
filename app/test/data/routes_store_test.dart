@@ -81,4 +81,48 @@ void main() {
     await novo.close();
     await dir.delete(recursive: true);
   });
+
+  test('guarda a cor da rota', () async {
+    final store = SqliteRoutesStore(db);
+    await store.upsert(rota('a', DateTime(2026)).copyWith(colorIndex: 3));
+    expect((await store.byId('a'))!.colorIndex, 3);
+    expect(rota('b', DateTime(2026)).colorIndex, 0);
+  });
+
+  test('próxima cor: a menos usada, empate fica com a primeira da lista', () {
+    RouteRecord comCor(int i) => rota('r$i', DateTime(2026)).copyWith(colorIndex: i);
+    expect(nextRouteColor(const []), 0);
+    expect(nextRouteColor([comCor(0)]), 1);
+    expect(nextRouteColor([comCor(0), comCor(2)]), 1);
+    expect(nextRouteColor([for (var i = 0; i < routeColorCount; i++) comCor(i)]), 0);
+    expect(nextRouteColor([for (var i = 0; i < routeColorCount; i++) comCor(i), comCor(0), comCor(1)]), 2);
+  });
+
+  test('banco da versão 2: rotas antigas ganham cores diferentes, pela ordem de criação', () async {
+    final dir = await Directory.systemTemp.createTemp('pedal_v2');
+    final caminho = '${dir.path}/v2.db';
+    final antigo = await databaseFactoryFfi.openDatabase(caminho,
+        options: OpenDatabaseOptions(
+          version: 2,
+          onCreate: (d, v) async {
+            await d.execute('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+            await d.execute('''
+              CREATE TABLE routes (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at INTEGER NOT NULL,
+                waypoints TEXT NOT NULL, points TEXT NOT NULL,
+                distance_m REAL NOT NULL, gain_m REAL NOT NULL, loss_m REAL NOT NULL
+              )''');
+            for (final (id, dia) in [('terceira', 3), ('primeira', 1), ('segunda', 2)]) {
+              final linha = rota(id, DateTime(2026, 10, dia)).toRow()..remove('color');
+              await d.insert('routes', linha);
+            }
+          },
+        ));
+    await antigo.close();
+    final novo = await openAppDatabase(factory: databaseFactoryFfi, path: caminho);
+    final cores = {for (final r in await SqliteRoutesStore(novo).all()) r.id: r.colorIndex};
+    expect(cores, {'primeira': 0, 'segunda': 1, 'terceira': 2});
+    await novo.close();
+    await dir.delete(recursive: true);
+  });
 }

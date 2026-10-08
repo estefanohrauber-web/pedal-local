@@ -113,7 +113,7 @@ padrão do OpenStreetMap).
 | Tela (canvas) | Fase 1 |
 |---|---|
 | E1 Início | Status da bike; meta da semana (real); rota favorita (estrela, senão a mais pedalada) com “Pedalar”; cartão “Comunidade: em breve” no lugar de desafio e ranking |
-| E2 Explorar | Mapa com as suas rotas; lista “Minhas rotas”; busca filtra as rotas; botões “Criar rota” e “Gerar volta”; chips Subidas e Desafios marcados “em breve” |
+| E2 Explorar | Mapa com as suas rotas, cada uma na sua cor (guardada na rota; a nova pega a cor menos usada); tocar numa rota, no mapa ou na lista, a destaca por cima e apaga as outras; lista “Minhas rotas”; busca filtra as rotas; botões “Criar rota” e “Gerar volta”; chips Subidas e Desafios marcados “em breve” |
 | E8 Criar rota | Editor completo (abaixo), relevo ao vivo, gerador, salvar com nome |
 | E3 Escolher pedal | Seguir rota · Contra o fantasma (só se a rota tem recorde) · Pedal livre · Treino (“em breve”); status da bike; Começar |
 | E4 Pedalando | Mapa seguindo a posição, instrução de virar, fantasma, aviso de subida, velocidade, watts, rpm, inclinação, tempo, relevo com marcador, carga − / +, pausar, encerrar. Pedal livre: mesma tela sem mapa, com gráfico de potência no tempo |

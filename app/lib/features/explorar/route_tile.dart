@@ -10,12 +10,18 @@ import '../../data/providers.dart';
 import '../../data/routes_store.dart';
 
 class RouteTile extends ConsumerWidget {
-  const RouteTile({super.key, required this.route, this.canDelete = true});
+  const RouteTile({super.key, required this.route, this.canDelete = true, this.selected = false, this.onSelect});
 
   final RouteRecord route;
 
   /// No Início o cartão é só um atalho; apagar fica no Explorar.
   final bool canDelete;
+
+  /// Rota em destaque no mapa do Explorar (borda na cor dela).
+  final bool selected;
+
+  /// Tocar no cartão destaca (ou solta) a rota no mapa.
+  final VoidCallback? onSelect;
 
   Future<void> _apagar(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
@@ -37,7 +43,10 @@ class RouteTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connected = ref.watch(bikeControllerProvider.select((s) => s.connected));
+    final cor = routeColor(route.colorIndex);
     return AppCard(
+      onTap: onSelect,
+      borderColor: selected ? cor : null,
       padding: const EdgeInsets.fromLTRB(16, 12, 8, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -47,8 +56,8 @@ class RouteTile extends ConsumerWidget {
               Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(color: AppColors.destaqueSuave, borderRadius: BorderRadius.circular(14)),
-                child: const Icon(Icons.route, color: AppColors.destaqueTexto),
+                decoration: BoxDecoration(color: cor.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)),
+                child: Icon(Icons.route, color: cor),
               ),
               const SizedBox(width: 12),
               Expanded(

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_map.dart';
 import '../../core/widgets/common.dart';
@@ -11,15 +12,42 @@ import '../../data/providers.dart';
 import '../../data/routes_store.dart';
 import 'route_tile.dart';
 
-class ExplorarScreen extends ConsumerWidget {
+class ExplorarScreen extends ConsumerStatefulWidget {
   const ExplorarScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExplorarScreen> createState() => _ExplorarScreenState();
+}
+
+class _ExplorarScreenState extends ConsumerState<ExplorarScreen> {
+  final _scroll = ScrollController();
+
+  /// Rota em destaque no mapa (null = todas iguais).
+  String? _foco;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _focar(String? id) => setState(() => _foco = id);
+
+  /// Pelo cartão: alterna o destaque e sobe a lista para o mapa aparecer.
+  void _focarPeloCartao(String id) {
+    _focar(_foco == id ? null : id);
+    if (_scroll.hasClients && _scroll.offset > 0) {
+      _scroll.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final routes = ref.watch(routesProvider);
     return Scaffold(
       body: SafeArea(
         child: ListView(
+          controller: _scroll,
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
           children: [
             Row(
@@ -40,15 +68,18 @@ class ExplorarScreen extends ConsumerWidget {
                   ? const [_SemRotas()]
                   : [
                       SizedBox(
-                        height: 220,
+                        height: 240,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: _MapaDasRotas(rotas: lista),
+                          child: _MapaDasRotas(rotas: lista, foco: _foco, onFoco: _focar),
                         ),
                       ),
                       const SizedBox(height: 18),
                       const SectionTitle('Minhas rotas'),
-                      for (final r in lista) ...[RouteTile(route: r), const SizedBox(height: 10)],
+                      for (final r in lista) ...[
+                        RouteTile(route: r, selected: r.id == _foco, onSelect: () => _focarPeloCartao(r.id)),
+                        const SizedBox(height: 10),
+                      ],
                     ],
             ),
             const SizedBox(height: 10),
@@ -93,44 +124,205 @@ class _SemRotas extends StatelessWidget {
   }
 }
 
-class _MapaDasRotas extends ConsumerWidget {
-  const _MapaDasRotas({required this.rotas});
+/// Todas as rotas, cada uma na sua cor. Tocar numa linha (ou no cartão dela) põe a rota
+/// em destaque: por cima, mais grossa, e as outras apagadas.
+class _MapaDasRotas extends ConsumerStatefulWidget {
+  const _MapaDasRotas({required this.rotas, required this.foco, required this.onFoco});
 
   final List<RouteRecord> rotas;
+  final String? foco;
+  final ValueChanged<String?> onFoco;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final todos = [
-      for (final r in rotas)
+  ConsumerState<_MapaDasRotas> createState() => _MapaDasRotasState();
+}
+
+class _MapaDasRotasState extends ConsumerState<_MapaDasRotas> {
+  final _map = MapController();
+  final LayerHitNotifier<String> _toque = ValueNotifier(null);
+  bool _pronto = false;
+
+  @override
+  void dispose() {
+    _toque.dispose();
+    super.dispose();
+  }
+
+  RouteRecord? get _focada {
+    for (final r in widget.rotas) {
+      if (r.id == widget.foco) return r;
+    }
+    return null;
+  }
+
+  List<LatLng> _pontosVisiveis() {
+    final focada = _focada;
+    return [
+      for (final r in focada == null ? widget.rotas : [focada])
         for (final p in r.points) LatLng(p.lat, p.lon),
     ];
-    return FlutterMap(
-      options: MapOptions(
-        initialCenter: todos.isEmpty ? toLatLng(defaultMapCenter) : todos.first,
-        initialZoom: 14,
-        initialCameraFit: todos.length < 2
-            ? null
-            : CameraFit.bounds(
-                bounds: LatLngBounds.fromPoints(todos),
-                padding: const EdgeInsets.all(28),
-                maxZoom: 17,
-              ),
-        interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-      ),
+  }
+
+  CameraFit? _enquadramento() {
+    final pts = _pontosVisiveis();
+    if (pts.length < 2) return null;
+    return CameraFit.bounds(
+      bounds: LatLngBounds.fromPoints(pts),
+      padding: const EdgeInsets.fromLTRB(28, 56, 28, 28),
+      maxZoom: 17,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _MapaDasRotas old) {
+    super.didUpdateWidget(old);
+    final mudou = old.foco != widget.foco || old.rotas.length != widget.rotas.length;
+    final fit = _enquadramento();
+    if (mudou && _pronto && fit != null) _map.fitCamera(fit);
+  }
+
+  /// Toque numa linha: destaca a de cima; tocando de novo onde rotas se cruzam, passa para a de baixo.
+  void _tocouLinha() {
+    final ids = _toque.value?.hitValues ?? const <String>[];
+    if (ids.isEmpty) return;
+    final atual = ids.indexOf(widget.foco ?? '');
+    widget.onFoco(atual < 0 ? ids.first : ids[(atual + 1) % ids.length]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final focada = _focada;
+    final pts = _pontosVisiveis();
+    // Maiores embaixo, para as curtas não sumirem; a destacada sempre por cima.
+    final ordem = [...widget.rotas]..sort((a, b) => b.distanceM.compareTo(a.distanceM));
+    if (focada != null) {
+      ordem
+        ..remove(focada)
+        ..add(focada);
+    }
+    return Stack(
       children: [
-        ...baseMapLayers(ref),
-        PolylineLayer(
-          polylines: [
-            for (final r in rotas)
-              Polyline(
-                points: [for (final p in r.points) LatLng(p.lat, p.lon)],
-                strokeWidth: 5,
-                color: AppColors.destaque,
+        FlutterMap(
+          mapController: _map,
+          options: MapOptions(
+            initialCenter: pts.isEmpty ? toLatLng(defaultMapCenter) : pts.first,
+            initialZoom: 14,
+            initialCameraFit: _enquadramento(),
+            interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+            onMapReady: () => _pronto = true,
+            onTap: (_, _) => widget.onFoco(null),
+          ),
+          children: [
+            ...baseMapLayers(ref),
+            GestureDetector(
+              behavior: HitTestBehavior.deferToChild,
+              onTap: _tocouLinha,
+              child: PolylineLayer<String>(
+                hitNotifier: _toque,
+                polylines: [
+                  for (final r in ordem) _linha(r, destaque: r == focada, apagada: focada != null && r != focada),
+                ],
               ),
+            ),
+            if (focada != null && focada.points.isNotEmpty)
+              CircleLayer(circles: [
+                CircleMarker(
+                  point: LatLng(focada.points.first.lat, focada.points.first.lon),
+                  radius: 7,
+                  color: routeColor(focada.colorIndex),
+                  borderColor: Colors.white,
+                  borderStrokeWidth: 2.5,
+                ),
+              ]),
+            mapAttribution,
           ],
         ),
-        mapAttribution,
+        Positioned(
+          left: 10,
+          top: 10,
+          right: 10,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: focada != null
+                ? _EtiquetaDestaque(rota: focada, onFechar: () => widget.onFoco(null))
+                : widget.rotas.length > 1
+                    ? const _Dica('Toque numa rota para destacar')
+                    : const SizedBox.shrink(),
+          ),
+        ),
       ],
+    );
+  }
+
+  Polyline<String> _linha(RouteRecord r, {required bool destaque, required bool apagada}) {
+    final cor = routeColor(r.colorIndex);
+    return Polyline<String>(
+      points: [for (final p in r.points) LatLng(p.lat, p.lon)],
+      hitValue: r.id,
+      strokeWidth: destaque ? 6 : (apagada ? 3 : 4),
+      color: apagada ? cor.withValues(alpha: 0.5) : cor,
+      borderStrokeWidth: apagada ? 0 : (destaque ? 2 : 1.5),
+      borderColor: Colors.white,
+    );
+  }
+}
+
+/// Nome da rota em destaque, com ✕ para voltar a ver todas.
+class _EtiquetaDestaque extends StatelessWidget {
+  const _EtiquetaDestaque({required this.rota, required this.onFechar});
+
+  final RouteRecord rota;
+  final VoidCallback onFechar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.superficie,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(999),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(color: routeColor(rota.colorIndex), shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                '${rota.name} · ${formatKm(rota.distanceM)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.corpoForte,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Mostrar todas',
+              visualDensity: VisualDensity.compact,
+              onPressed: onFechar,
+              icon: const Icon(Icons.close, size: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Dica extends StatelessWidget {
+  const _Dica(this.texto);
+
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: const Color(0xE6FFFFFF), borderRadius: BorderRadius.circular(999)),
+      child: Text(texto, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textoSuave)),
     );
   }
 }

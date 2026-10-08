@@ -1,5 +1,6 @@
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +8,7 @@ import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/core/links.dart';
+import 'package:pedal_local/core/theme/app_theme.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
 import 'package:pedal_local/data/providers.dart';
@@ -86,8 +88,9 @@ void main() {
     expect(find.text('Pedalar esta rota'), findsOneWidget);
   });
 
-  testWidgets('criar rota: tocar pontos, calcular e salvar', (tester) async {
+  testWidgets('criar rota: tocar pontos, calcular e salvar com a próxima cor livre', (tester) async {
     final routes = MemoryRoutesStore();
+    await routes.upsert(rotaDeTeste('antiga', 'Antiga', 6)); // cor 0
     await abrirApp(tester, routes: routes);
     await tester.tap(find.text('Explorar').last);
     await tester.pumpAndSettle();
@@ -110,8 +113,42 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Rua de casa');
     await tester.tap(find.text('Salvar rota'));
     await tester.pumpAndSettle();
-    expect((await routes.all()).single.name, 'Rua de casa');
+    final nova = (await routes.all()).firstWhere((r) => r.id != 'antiga');
+    expect(nova.name, 'Rua de casa');
+    expect(nova.colorIndex, 1);
     expect(find.text('Rua de casa'), findsOneWidget);
+  });
+
+  testWidgets('Explorar: cada rota com sua cor; tocar no cartão destaca a rota no mapa', (tester) async {
+    final routes = MemoryRoutesStore();
+    await routes.upsert(rotaDeTeste('r1', 'Volta do bairro', 6)); // cor 0
+    await routes.upsert(rotaDeTeste('r2', 'Ladeira', 8).copyWith(colorIndex: 1)); // passa por cima da r1
+    await abrirApp(tester, routes: routes);
+    await tester.tap(find.text('Explorar').last);
+    await tester.pumpAndSettle();
+
+    List<Polyline<String>> linhas() =>
+        tester.widget<PolylineLayer<String>>(find.byWidgetPredicate((w) => w is PolylineLayer<String>)).polylines;
+    Polyline<String> linha(String id) => linhas().firstWhere((p) => p.hitValue == id);
+
+    expect(linha('r1').color, AppColors.rotas[0]);
+    expect(linha('r2').color, AppColors.rotas[1]);
+    expect(linha('r1').borderStrokeWidth, greaterThan(0));
+    expect(find.byTooltip('Mostrar todas'), findsNothing);
+
+    await tester.ensureVisible(find.text('Ladeira'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ladeira'));
+    await tester.pumpAndSettle();
+    expect(linhas().last.hitValue, 'r2'); // destacada fica por cima
+    expect(linha('r2').strokeWidth, greaterThan(linha('r1').strokeWidth));
+    expect(linha('r1').color.a, lessThan(1));
+    expect(find.byTooltip('Mostrar todas'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Mostrar todas'));
+    await tester.pumpAndSettle();
+    expect(linha('r1').color, AppColors.rotas[0]);
+    expect(find.byTooltip('Mostrar todas'), findsNothing);
   });
 
   testWidgets('altitude fora do ar: avisa e deixa tentar de novo', (tester) async {

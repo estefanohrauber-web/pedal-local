@@ -5,6 +5,22 @@ import 'package:sqflite/sqflite.dart';
 import '../domain/geo.dart';
 import '../domain/route_profile.dart';
 
+/// Quantas cores de rota existem (a paleta fica em AppColors.rotas).
+const routeColorCount = 6;
+
+/// Cor para uma rota nova: a menos usada entre as existentes; no empate, a primeira da paleta.
+int nextRouteColor(Iterable<RouteRecord> existentes) {
+  final uso = List.filled(routeColorCount, 0);
+  for (final r in existentes) {
+    uso[r.colorIndex % routeColorCount]++;
+  }
+  var melhor = 0;
+  for (var i = 1; i < routeColorCount; i++) {
+    if (uso[i] < uso[melhor]) melhor = i;
+  }
+  return melhor;
+}
+
 class RouteRecord {
   const RouteRecord({
     required this.id,
@@ -15,6 +31,7 @@ class RouteRecord {
     required this.distanceM,
     required this.gainM,
     required this.lossM,
+    this.colorIndex = 0,
   });
 
   final String id;
@@ -26,7 +43,10 @@ class RouteRecord {
   final double gainM;
   final double lossM;
 
-  RouteRecord copyWith({String? name}) => RouteRecord(
+  /// Cor da rota no mapa e na lista (índice da paleta); fica fixa depois de salva.
+  final int colorIndex;
+
+  RouteRecord copyWith({String? name, int? colorIndex}) => RouteRecord(
         id: id,
         name: name ?? this.name,
         createdAt: createdAt,
@@ -35,6 +55,7 @@ class RouteRecord {
         distanceM: distanceM,
         gainM: gainM,
         lossM: lossM,
+        colorIndex: colorIndex ?? this.colorIndex,
       );
 
   Map<String, Object?> toRow() => {
@@ -50,6 +71,7 @@ class RouteRecord {
         'distance_m': distanceM,
         'gain_m': gainM,
         'loss_m': lossM,
+        'color': colorIndex,
       };
 
   factory RouteRecord.fromRow(Map<String, Object?> r) {
@@ -69,6 +91,7 @@ class RouteRecord {
       distanceM: n(r['distance_m']),
       gainM: n(r['gain_m']),
       lossM: n(r['loss_m']),
+      colorIndex: (r['color'] as int?) ?? 0,
     );
   }
 }

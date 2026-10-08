@@ -1,7 +1,9 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
-const _schemaVersion = 2;
+import '../routes_store.dart';
+
+const _schemaVersion = 3;
 
 Future<void> _createRoutes(DatabaseExecutor db) => db.execute('''
   CREATE TABLE routes (
@@ -12,8 +14,18 @@ Future<void> _createRoutes(DatabaseExecutor db) => db.execute('''
     points TEXT NOT NULL,
     distance_m REAL NOT NULL,
     gain_m REAL NOT NULL,
-    loss_m REAL NOT NULL
+    loss_m REAL NOT NULL,
+    color INTEGER NOT NULL DEFAULT 0
   )''');
+
+/// Versão 3: cor de cada rota. As que já existiam ganham cores seguidas, pela ordem de criação.
+Future<void> _addRouteColor(DatabaseExecutor db) async {
+  await db.execute('ALTER TABLE routes ADD COLUMN color INTEGER NOT NULL DEFAULT 0');
+  final rows = await db.query('routes', columns: ['id'], orderBy: 'created_at');
+  for (var i = 0; i < rows.length; i++) {
+    await db.update('routes', {'color': i % routeColorCount}, where: 'id = ?', whereArgs: [rows[i]['id']]);
+  }
+}
 
 /// Abre (ou cria/atualiza) o banco do app. Nos testes, passe `databaseFactoryFfi` e `inMemoryDatabasePath`.
 Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async {
@@ -44,7 +56,11 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
         await _createRoutes(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) await _createRoutes(db);
+        if (oldVersion < 2) {
+          await _createRoutes(db);
+        } else if (oldVersion < 3) {
+          await _addRouteColor(db);
+        }
       },
     ),
   );

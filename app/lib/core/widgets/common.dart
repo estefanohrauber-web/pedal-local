@@ -3,17 +3,34 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 class AppCard extends StatelessWidget {
-  const AppCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap, this.color});
+  const AppCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.onTap,
+    this.color,
+    this.borderColor,
+  });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
   final Color? color;
 
+  /// Borda grossa nesta cor (cartão escolhido); sem ela, a borda fina do tema.
+  final Color? borderColor;
+
   @override
   Widget build(BuildContext context) {
+    final borda = borderColor;
     return Card(
       color: color,
+      shape: borda == null
+          ? null
+          : RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: borda, width: 2),
+            ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
     );

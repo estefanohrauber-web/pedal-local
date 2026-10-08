@@ -16,7 +16,21 @@ abstract final class AppColors {
   static const avisoTexto = Color(0xFF8A3C00);
   static const escuro = Color(0xFF14201A);
   static const neutro = Color(0xFFF1F4F2);
+
+  /// Uma cor por rota (mesma ordem de routeColorCount). Escuras o bastante para não
+  /// sumir no verde das matas, no azul dos rios e no laranja das estradas do mapa.
+  static const rotas = [
+    Color(0xFF138A52), // verde
+    Color(0xFF1E5BD8), // azul
+    Color(0xFFC2187A), // magenta
+    Color(0xFF7B3FE4), // roxo
+    Color(0xFFD35400), // laranja queimado
+    Color(0xFF00838F), // azul-petróleo
+  ];
 }
+
+/// Cor da rota pelo índice guardado nela.
+Color routeColor(int index) => AppColors.rotas[index % AppColors.rotas.length];
 
 abstract final class AppText {
   static const titulo = TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.texto);
