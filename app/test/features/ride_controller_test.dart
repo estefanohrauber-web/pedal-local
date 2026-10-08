@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/bike/bike_source.dart';
+import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/data/providers.dart';
 import 'package:pedal_local/data/rides_store.dart';
@@ -10,7 +11,9 @@ import 'package:pedal_local/data/routes_store.dart';
 import 'package:pedal_local/data/settings_store.dart';
 import 'package:pedal_local/domain/geo.dart';
 import 'package:pedal_local/domain/route_profile.dart';
+import 'package:pedal_local/domain/ride_narrator.dart';
 import 'package:pedal_local/domain/ride_session.dart';
+import 'package:pedal_local/features/pedal/ghost_options.dart';
 import 'package:pedal_local/features/pedal/ride_controller.dart';
 
 import '../support/fakes.dart';
@@ -41,9 +44,30 @@ RouteRecord rotaComPontos(String id, List<ProfilePoint> pontos) => RouteRecord(
       lossM: 0,
     );
 
+/// Pedal anterior concluído na rota, a [vel] m/s constante.
+RideRecord pedalAnterior(String id, String rota, {required int segundos, required double vel}) => RideRecord(
+      id: id,
+      routeId: rota,
+      mode: RideMode.rota,
+      startedAt: DateTime(2026, 10, 1, 18),
+      movingTimeS: segundos.toDouble(),
+      distanceM: segundos * vel,
+      avgPowerW: 150,
+      avgSpeedKmh: vel * 3.6,
+      gainM: 0,
+      kcal: 1,
+      completed: true,
+      laps: 1,
+      samples: [
+        for (var t = 1; t <= segundos; t++)
+          RideSample(t: t.toDouble(), distance: t * vel, speedKmh: vel * 3.6, power: 150, cadence: 80),
+      ],
+    );
+
 void main() {
   late FakeBikeSource bike;
   late FakeWakeLock wake;
+  late FakeVoice voz;
   late MemoryRidesStore rides;
   late MemoryRoutesStore routes;
   late ProviderContainer container;
@@ -52,6 +76,7 @@ void main() {
   setUp(() async {
     bike = FakeBikeSource();
     wake = FakeWakeLock();
+    voz = FakeVoice();
     rides = MemoryRidesStore();
     routes = MemoryRoutesStore();
     agora = DateTime(2026, 10, 8, 20);
@@ -60,6 +85,7 @@ void main() {
       ridesStoreProvider.overrideWithValue(rides),
       routesStoreProvider.overrideWithValue(routes),
       wakeLockProvider.overrideWithValue(wake),
+      voiceProvider.overrideWithValue(voz),
       clockProvider.overrideWithValue(() => agora),
       rideIdProvider.overrideWithValue(() => 'p1'),
       rideTickProvider.overrideWithValue(const Duration(hours: 1)),
@@ -282,6 +308,77 @@ void main() {
       expect(salvo.laps, 1);
       expect(salvo.trimmedM, 0);
       expectNear(salvo.distanceM, andado, 0.01);
+    });
+  });
+
+  group('fantasma', () {
+    test('corre contra o recorde: vantagem em segundos e metros e o fantasma no mapa', () async {
+      await routes.upsert(rotaDeTeste('r', List.filled(51, 760))); // 1 km plano
+      await rides.upsert(pedalAnterior('antigo', 'r', segundos: 200, vel: 5));
+      const alvo = RideTarget(routeId: 'r', ghost: GhostKind.recorde);
+      await ctrl(alvo).start();
+      expect(view(alvo).hasGhost, isTrue);
+      expect(view(alvo).ghostGapS, 0);
+      await pedalar(alvo, 30, power: 300);
+      final v = view(alvo);
+      expectNear(v.ghostGapS!, v.distance / 5 - v.movingTime, 0.01);
+      expectNear(v.ghostGapM!, v.movingTime * 5 - v.distance, 0.01);
+      expect(v.ghostPosition, isNotNull);
+      expect(v.ghostPosition, isNot(v.position));
+    });
+
+    test('sem pedal anterior no sentido escolhido, não tem fantasma', () async {
+      await routes.upsert(rotaDeTeste('r', List.filled(51, 760)));
+      await rides.upsert(pedalAnterior('antigo', 'r', segundos: 200, vel: 5));
+      const alvo = RideTarget(routeId: 'r', reversed: true, ghost: GhostKind.recorde);
+      await ctrl(alvo).start();
+      await pedalar(alvo, 2);
+      expect(view(alvo).hasGhost, isFalse);
+      expect(view(alvo).ghostPosition, isNull);
+    });
+  });
+
+  group('voz', () {
+    test('fala cada quilômetro e, no fim, o resumo do pedal', () async {
+      await ctrl(null).start();
+      expect(view(null).voiceOn, isTrue);
+      for (var i = 0; i < 300 && view(null).distance < 1010; i++) {
+        await pedalar(null, 1);
+      }
+      expect(voz.spoken.where((f) => f.startsWith('1 quilômetro, em ')).length, 1);
+      await ctrl(null).finish();
+      expect(voz.spoken.last, startsWith('Pedal encerrado: '));
+    });
+
+    test('avisa a subida, a queda da bike e a chegada da rota', () async {
+      await routes.upsert(rotaDeTeste('r', [for (var i = 0; i < 31; i++) i < 15 ? 760.0 : 760.0 + (i - 15) * 2]));
+      await ctrl('r').start();
+      for (var i = 0; i < 120 && view('r').distance < 250; i++) {
+        await pedalar('r', 1);
+      }
+      expect(voz.spoken, contains(startsWith('Subida de 10 por cento chegando')));
+      bike.emitConnection(BikeConnection.caiu);
+      await settle();
+      expect(voz.spoken.last, RideNarrator.bikeDropped);
+      bike.emitConnection(BikeConnection.conectada);
+      await settle();
+      for (var i = 0; i < 200 && view('r').state != RideState.concluido; i++) {
+        await pedalar('r', 1, power: 300);
+      }
+      await ctrl('r').finish();
+      expect(voz.spoken.last, startsWith('Rota concluída em '));
+    });
+
+    test('desligar a voz para de falar e vale para os próximos pedais', () async {
+      await ctrl(null).start();
+      await ctrl(null).toggleVoice();
+      expect(view(null).voiceOn, isFalse);
+      expect(voz.stops, 1);
+      expect((await container.read(settingsStoreProvider).load()).voz, isFalse);
+      for (var i = 0; i < 300 && view(null).distance < 1010; i++) {
+        await pedalar(null, 1);
+      }
+      expect(voz.spoken, isEmpty);
     });
   });
 }

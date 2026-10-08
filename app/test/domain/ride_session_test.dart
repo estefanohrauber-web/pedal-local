@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/domain/ride_session.dart';
+import 'package:pedal_local/domain/route_profile.dart';
+
+import '../support/geo_helpers.dart';
 
 double _zero(double _) => 0;
 
@@ -75,6 +78,15 @@ void main() {
     final alerts = pedal(ride, 400);
     expect(alerts.map((a) => a.kind), [AlertKind.subida, AlertKind.subida]);
     expect(alerts.first.grade, 0.06);
+  });
+
+  test('aviso de subida diz a inclinação da subida, não a média com o plano', () {
+    // 300 m planos e depois 10 % de subida.
+    final perfil = RouteProfile(northProfile([for (var i = 0; i < 41; i++) i <= 15 ? 760.0 : 760.0 + (i - 15) * 2]));
+    final ride = nova(terrain: perfil)..setInputs(powerW: 200, cadence: 85);
+    final alerts = pedal(ride, 60);
+    expect(alerts.first.kind, AlertKind.subida);
+    expect(alerts.first.grade, closeTo(0.10, 0.005));
   });
 
   test('aviso de descida', () {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
+import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
 import 'package:pedal_local/data/providers.dart';
@@ -27,6 +28,7 @@ Future<ProviderContainer> abrirApp(WidgetTester tester, MemoryRidesStore rides) 
       ridesStoreProvider.overrideWithValue(rides),
       routesStoreProvider.overrideWithValue(MemoryRoutesStore()),
       wakeLockProvider.overrideWithValue(FakeWakeLock()),
+      voiceProvider.overrideWithValue(FakeVoice()),
       mapTilesEnabledProvider.overrideWithValue(false),
       locationServiceProvider.overrideWithValue(const FixedLocationService(null)),
     ],

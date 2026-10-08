@@ -6,6 +6,7 @@ import '../../features/bike/dados_bike_screen.dart';
 import '../../features/criar_rota/criar_rota_screen.dart';
 import '../../features/explorar/explorar_screen.dart';
 import '../../features/inicio/inicio_screen.dart';
+import '../../features/pedal/ghost_options.dart';
 import '../../features/pedal/pedal_rota_screen.dart';
 import '../../features/pedal/preparar_pedal_screen.dart';
 import '../../features/pedal/ride_controller.dart';
@@ -45,12 +46,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routeId: s.pathParameters['id'],
             reversed: s.uri.queryParameters['sentido'] == 'inverso',
             startIndex: int.tryParse(s.uri.queryParameters['inicio'] ?? '') ?? 0,
+            ghost: GhostKind.values.asNameMap()[s.uri.queryParameters['fantasma']],
           ),
         ),
       ),
       GoRoute(
         path: '/resumo/:id',
-        builder: (c, s) => ResumoScreen(rideId: s.pathParameters['id']!, novo: s.uri.queryParameters['novo'] == '1'),
+        builder: (c, s) => ResumoScreen(
+          rideId: s.pathParameters['id']!,
+          novo: s.uri.queryParameters['novo'] == '1',
+          ghostGap: double.tryParse(s.uri.queryParameters['fantasma'] ?? ''),
+        ),
       ),
     ],
   );

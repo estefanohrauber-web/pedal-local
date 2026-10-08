@@ -153,8 +153,8 @@ abstract class RidesStore {
   Future<List<RideRecord>> recent({int limit = 50});
   Future<void> delete(String id);
 
-  /// Pedais de uma rota, mais novo primeiro, sem as amostras.
-  Future<List<RideRecord>> forRoute(String routeId);
+  /// Pedais de uma rota, mais novo primeiro; as amostras só com [withSamples] (para o fantasma).
+  Future<List<RideRecord>> forRoute(String routeId, {bool withSamples = false});
 
   /// Só os números de todos os pedais (para os totais).
   Future<List<RideStat>> stats();
@@ -205,9 +205,12 @@ class SqliteRidesStore implements RidesStore {
   }
 
   @override
-  Future<List<RideRecord>> forRoute(String routeId) async {
+  Future<List<RideRecord>> forRoute(String routeId, {bool withSamples = false}) async {
     final rows = await _db.query('rides',
-        columns: _listColumns, where: 'route_id = ?', whereArgs: [routeId], orderBy: 'started_at DESC');
+        columns: withSamples ? null : _listColumns,
+        where: 'route_id = ?',
+        whereArgs: [routeId],
+        orderBy: 'started_at DESC');
     return rows.map(RideRecord.fromRow).toList();
   }
 }
@@ -231,7 +234,7 @@ class MemoryRidesStore implements RidesStore {
   Future<void> delete(String id) async => _rides.remove(id);
 
   @override
-  Future<List<RideRecord>> forRoute(String routeId) async =>
+  Future<List<RideRecord>> forRoute(String routeId, {bool withSamples = false}) async =>
       (await recent(limit: 1 << 30)).where((r) => r.routeId == routeId).toList();
 
   @override

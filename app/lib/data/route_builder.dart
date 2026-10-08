@@ -34,8 +34,10 @@ class RouteBuilder {
   final DateTime Function() _now;
   final String Function() _newId;
 
-  Future<BuiltRoute> build(List<GeoPoint> waypoints) async {
-    final linha = await routing.route(waypoints);
+  Future<BuiltRoute> build(List<GeoPoint> waypoints) async => fromLine(waypoints, await routing.route(waypoints));
+
+  /// Rota a partir de um caminho já traçado: reamostra e busca o relevo.
+  Future<BuiltRoute> fromLine(List<GeoPoint> waypoints, List<GeoPoint> linha) async {
     final amostras = resample(linha, sampleStepM);
     List<double> alts;
     var flat = false;

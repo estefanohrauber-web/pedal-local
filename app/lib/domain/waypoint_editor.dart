@@ -60,6 +60,14 @@ class WaypointEditor {
     _pontos.addAll(_pontos.reversed.skip(1).toList());
   }
 
+  /// Troca todos os pontos de uma vez (por uma volta gerada, por exemplo).
+  void replaceAll(List<GeoPoint> pontos) {
+    _guarda();
+    _pontos
+      ..clear()
+      ..addAll(pontos);
+  }
+
   bool undo() {
     if (_historico.isEmpty) return false;
     _pontos

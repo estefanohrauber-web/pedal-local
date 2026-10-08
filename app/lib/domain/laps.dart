@@ -152,6 +152,9 @@ class LapSlice {
   final bool complete;
 }
 
+/// Distância que ainda conta como o fim da volta (arredondamentos ao gravar o pedal).
+const lapToleranceM = 0.5;
+
 /// Separa o pedal em voltas. Com [lapLength] infinito (ida, pedal livre), um trecho só.
 List<LapSlice> lapSlices(List<RideSample> samples, double lapLength) {
   if (samples.isEmpty) return const [];
@@ -160,7 +163,7 @@ List<LapSlice> lapSlices(List<RideSample> samples, double lapLength) {
     return [LapSlice(index: 0, start: 0, length: total, samples: samples, complete: true)];
   }
   final fatias = <LapSlice>[];
-  for (var i = 0; i * lapLength < total - 1e-6; i++) {
+  for (var i = 0; i * lapLength < total - lapToleranceM; i++) {
     final ini = i * lapLength;
     final fim = ini + lapLength;
     fatias.add(LapSlice(
@@ -168,7 +171,7 @@ List<LapSlice> lapSlices(List<RideSample> samples, double lapLength) {
       start: ini,
       length: lapLength,
       samples: [for (final s in samples) if (s.distance > ini + 1e-9 && s.distance <= fim + 1e-9) s],
-      complete: total >= fim - 1e-6,
+      complete: total >= fim - lapToleranceM,
     ));
   }
   return fatias;

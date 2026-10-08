@@ -6,6 +6,7 @@ import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/core/router/app_router.dart';
+import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
 import 'package:pedal_local/data/providers.dart';
@@ -74,6 +75,7 @@ Future<ProviderContainer> _abrir(
       ridesStoreProvider.overrideWithValue(rides ?? MemoryRidesStore()),
       routesStoreProvider.overrideWithValue(routes ?? MemoryRoutesStore()),
       wakeLockProvider.overrideWithValue(FakeWakeLock()),
+      voiceProvider.overrideWithValue(FakeVoice()),
       mapTilesEnabledProvider.overrideWithValue(false),
       locationServiceProvider.overrideWithValue(const FixedLocationService(null)),
     ],
@@ -123,6 +125,32 @@ void main() {
     await tester.tap(find.text('Salvar'));
     await tester.pumpAndSettle();
     expect((await container.read(settingsStoreProvider).load()).nome, 'Bia');
+  });
+
+  testWidgets('Ajustes: voz com exemplo e desligar', (tester) async {
+    final container = await _abrir(tester);
+    await tester.tap(find.text('Você').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Ajustes'));
+    await tester.pumpAndSettle();
+    Future<void> mostrar(String texto) async {
+      await tester.scrollUntilVisible(find.text(texto), 100, scrollable: _listaVertical);
+      await tester.ensureVisible(find.text(texto));
+      await tester.pumpAndSettle();
+    }
+
+    await mostrar('Avisos falados no pedal');
+    await tester.tap(find.text('Avisos falados no pedal'));
+    await tester.pump();
+    await mostrar('Ouvir um exemplo');
+    await tester.tap(find.text('Ouvir um exemplo'));
+    await tester.pump();
+    final voz = container.read(voiceProvider) as FakeVoice;
+    expect(voz.spoken, ['Subida de 6 por cento chegando. Aumente a carga.']);
+    await tester.scrollUntilVisible(find.text('Salvar'), 300, scrollable: _listaVertical);
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+    expect((await container.read(settingsStoreProvider).load()).voz, isFalse);
   });
 
   testWidgets('Preparar volta fechada: sentido e começo tocando no mapa', (tester) async {

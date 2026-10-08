@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/bike/bike_source.dart';
+import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 
 class FakeBikeSource implements BikeSource {
@@ -69,6 +70,18 @@ class FakeWakeLock implements WakeLock {
 
   @override
   Future<void> disable() async => enabled = false;
+}
+
+/// Voz de teste: guarda o que foi falado.
+class FakeVoice implements Voice {
+  final spoken = <String>[];
+  int stops = 0;
+
+  @override
+  Future<void> speak(String text) async => spoken.add(text);
+
+  @override
+  Future<void> stop() async => stops++;
 }
 
 /// Deixa timers de zero segundos e eventos de stream acontecerem.

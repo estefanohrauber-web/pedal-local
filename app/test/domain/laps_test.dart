@@ -89,6 +89,12 @@ void main() {
       expect(fatias.first.complete, isTrue);
     });
 
+    test('a volta que termina um fio antes do fim (arredondamento ao gravar) conta como completa', () {
+      final fatias = lapSlices(amostras(10), 100.0001);
+      expect(fatias.length, 1);
+      expect(fatias.single.complete, isTrue);
+    });
+
     test('ida ou pedal livre: um trecho só', () {
       final fatias = lapSlices(amostras(7), double.infinity);
       expect(fatias.length, 1);

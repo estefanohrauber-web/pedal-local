@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bike/sim_source.dart';
+import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 
 /// Faixa de aviso no topo do pedal (queda da bike, subida chegando, pausa).
@@ -32,6 +33,87 @@ class AvisoFaixa extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Texto da diferença para o fantasma: [gapS] segundos à frente (negativo = atrás).
+String textoFantasma(double gapS) {
+  if (gapS.abs() < 1) return 'Lado a lado com o fantasma';
+  return '${formatTime(gapS.abs())} ${gapS > 0 ? 'à frente do' : 'atrás do'} fantasma';
+}
+
+/// Pílula por cima do mapa: quanto você está à frente ou atrás do fantasma.
+class FantasmaChip extends StatelessWidget {
+  const FantasmaChip({super.key, required this.gapS});
+
+  final double gapS;
+
+  @override
+  Widget build(BuildContext context) {
+    final cor = gapS.abs() < 1
+        ? Colors.white
+        : gapS > 0
+            ? const Color(0xFF7CE0A6)
+            : const Color(0xFFFFB27A);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.escuro.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const FantasmaPonto(tamanho: 14),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              textoFantasma(gapS),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: cor, fontWeight: FontWeight.w800, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// O fantasma no mapa: bolinha roxa meio transparente.
+class FantasmaPonto extends StatelessWidget {
+  const FantasmaPonto({super.key, this.tamanho = 22});
+
+  final double tamanho;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: tamanho,
+      height: tamanho,
+      decoration: BoxDecoration(
+        color: AppColors.fantasma.withValues(alpha: 0.75),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: tamanho > 16 ? 3 : 2),
+      ),
+    );
+  }
+}
+
+/// Liga e desliga os avisos falados durante o pedal.
+class BotaoVoz extends StatelessWidget {
+  const BotaoVoz({super.key, required this.ligada, required this.onTap});
+
+  final bool ligada;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: ligada ? 'Desligar a voz' : 'Ligar a voz',
+      onPressed: onTap,
+      icon: Icon(ligada ? Icons.volume_up : Icons.volume_off, color: ligada ? AppColors.destaque : AppColors.textoSuave),
     );
   }
 }

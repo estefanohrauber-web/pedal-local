@@ -59,6 +59,7 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
                 Row(
                   children: [
                     const Expanded(child: Text('Pedal livre', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800))),
+                    if (v.started) BotaoVoz(ligada: v.voiceOn, onTap: ctrl.toggleVoice),
                     OutlinedButton(onPressed: _encerrar, child: const Text('Encerrar')),
                   ],
                 ),

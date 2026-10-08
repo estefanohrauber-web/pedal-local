@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
 import '../domain/stats.dart';
+import 'loop_generator.dart';
 import 'rides_store.dart';
 import 'route_builder.dart';
 import 'routes_store.dart';
@@ -36,6 +37,11 @@ final ridesForRouteProvider = FutureProvider.autoDispose.family<List<RideRecord>
   (ref, routeId) => ref.watch(ridesStoreProvider).forRoute(routeId),
 );
 
+/// Pedais de uma rota com as amostras, para correr contra o fantasma.
+final ghostRidesProvider = FutureProvider.autoDispose.family<List<RideRecord>, String>(
+  (ref, routeId) => ref.watch(ridesStoreProvider).forRoute(routeId, withSamples: true),
+);
+
 final rideByIdProvider = FutureProvider.family<RideRecord?, String>(
   (ref, id) => ref.watch(ridesStoreProvider).byId(id),
 );
@@ -60,6 +66,9 @@ final routeBuilderProvider = Provider<RouteBuilder>((ref) {
   final pacer = ref.watch(valhallaPacerProvider);
   return RouteBuilder(routing: RoutingService(client, pacer), elevation: ElevationService(client, pacer));
 });
+
+/// Gerador de voltas automáticas (usa o mesmo traçado e relevo das rotas).
+final loopGeneratorProvider = Provider<LoopGenerator>((ref) => LoopGenerator(ref.watch(routeBuilderProvider)));
 
 /// Busca de endereços (Photon).
 final geocodingServiceProvider = Provider<GeocodingService>((ref) => GeocodingService(ref.watch(httpClientProvider)));

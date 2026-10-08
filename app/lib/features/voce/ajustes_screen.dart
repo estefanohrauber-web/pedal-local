@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/voice.dart';
 import '../../core/widgets/common.dart';
 import '../../data/providers.dart';
 import '../../data/settings_store.dart';
@@ -26,6 +27,7 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
   PowerMode _modo = PowerMode.auto;
   double _carga = 4;
   double _margem = 3;
+  bool _voz = true;
 
   @override
   void initState() {
@@ -42,6 +44,7 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
         _modo = s.modoPotencia;
         _carga = s.cargaPadrao.toDouble();
         _margem = (s.margemVolta * 100).roundToDouble().clamp(0, 10);
+        _voz = s.voz;
       });
     });
   }
@@ -67,6 +70,7 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
       modoPotencia: _modo,
       cargaPadrao: _carga.round(),
       margemVolta: _margem / 100,
+      voz: _voz,
     );
     await ref.read(settingsStoreProvider).save(novo);
     ref.invalidate(settingsProvider);
@@ -135,6 +139,27 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
                 const _Ajuda(
                   'Numa volta fechada, se você encerrar logo depois de completar a volta, o que passou até essa '
                   'porcentagem é descartado e a volta fica certinha. Numa volta de 3 km, 3% são 90 m.',
+                ),
+                const SizedBox(height: 24),
+                const SectionTitle('Voz'),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Avisos falados no pedal', style: AppText.corpoForte),
+                  value: _voz,
+                  onChanged: (v) => setState(() => _voz = v),
+                ),
+                const _Ajuda(
+                  'O celular fala as subidas e descidas que vêm pela frente, cada quilômetro, as voltas, '
+                  'os 200 metros finais e como você está contra o fantasma. A música abaixa enquanto ele fala. '
+                  'Dá para ligar e desligar também no pedal, no botão do alto-falante.',
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => ref.read(voiceProvider).speak('Subida de 6 por cento chegando. Aumente a carga.'),
+                    icon: const Icon(Icons.record_voice_over_outlined),
+                    label: const Text('Ouvir um exemplo'),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 const SectionTitle('Potência'),

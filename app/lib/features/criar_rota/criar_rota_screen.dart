@@ -12,6 +12,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_map.dart';
 import '../../core/widgets/elevation_chart.dart';
 import '../../data/providers.dart';
+import '../../data/route_builder.dart';
 import '../../data/routes_store.dart';
 import '../../data/services/geocoding_service.dart';
 import '../../data/services/routing_service.dart';
@@ -19,6 +20,7 @@ import '../../domain/geo.dart';
 import '../../domain/route_profile.dart';
 import '../../domain/waypoint_editor.dart';
 import '../pedal/ride_widgets.dart';
+import 'gerar_volta_sheet.dart';
 
 /// Espera depois da última mudança antes de traçar de novo (o serviço aceita 1 pedido por segundo).
 const recalcDelay = Duration(milliseconds: 800);
@@ -126,24 +128,7 @@ class _CriarRotaScreenState extends ConsumerState<CriarRotaScreen> {
         _plana = built.flat;
         _desatualizada = false;
       });
-      final pts = [
-        for (final p in built.route.points) LatLng(p.lat, p.lon),
-        for (final p in _editor.points) toLatLng(p),
-      ];
-      if (!_enquadrou && pts.length >= 2) {
-        _enquadrou = true;
-        // Depois do quadro: o painel de baixo cresce com os números da rota e o mapa encolhe.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          _map.fitCamera(
-            CameraFit.bounds(
-              bounds: LatLngBounds.fromPoints(pts),
-              padding: const EdgeInsets.fromLTRB(40, 96, 40, 84),
-              maxZoom: 17,
-            ),
-          );
-        });
-      }
+      if (!_enquadrou) _enquadrar();
     } on RouteException catch (e) {
       if (mounted && versao == _versao) setState(() => _erro = e.message);
     } catch (e) {
@@ -151,6 +136,59 @@ class _CriarRotaScreenState extends ConsumerState<CriarRotaScreen> {
     } finally {
       if (mounted && versao == _versao) setState(() => _calculando = false);
     }
+  }
+
+  /// Mostra a rota inteira. Depois do quadro: o painel de baixo cresce com os números da
+  /// rota e o mapa encolhe.
+  void _enquadrar() {
+    final pts = [
+      for (final p in _rota?.points ?? const <ProfilePoint>[]) LatLng(p.lat, p.lon),
+      for (final p in _editor.points) toLatLng(p),
+    ];
+    if (pts.length < 2) return;
+    _enquadrou = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_mapaPronto) return;
+      _map.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds.fromPoints(pts),
+          padding: const EdgeInsets.fromLTRB(40, 96, 40, 84),
+          maxZoom: 17,
+        ),
+      );
+    });
+  }
+
+  /// Volta automática: sai do primeiro ponto marcado ou do centro do mapa.
+  Future<void> _gerarVolta() async {
+    FocusScope.of(context).unfocus();
+    final pontos = _editor.points;
+    final saida = pontos.isNotEmpty ? pontos.first : (_mapaPronto ? toGeo(_map.camera.center) : null);
+    if (saida == null) return;
+    final escolhida = await showModalBottomSheet<BuiltRoute>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => GerarVoltaSheet(
+        saida: saida,
+        doPrimeiroPonto: pontos.isNotEmpty,
+        trocaPontos: pontos.length >= 2,
+      ),
+    );
+    if (escolhida == null || !mounted) return;
+    _espera?.cancel();
+    _versao++; // descarta um traçado que ainda esteja a caminho
+    setState(() {
+      _editor.replaceAll(escolhida.route.waypoints);
+      _rota = escolhida.route;
+      _perfil = RouteProfile(escolhida.route.points);
+      _plana = escolhida.flat;
+      _desatualizada = false;
+      _calculando = false;
+      _erro = null;
+      _achado = null;
+    });
+    _enquadrar();
   }
 
   Future<void> _salvar() async {
@@ -261,7 +299,7 @@ class _CriarRotaScreenState extends ConsumerState<CriarRotaScreen> {
 
   String get _dica {
     final n = _editor.points.length;
-    if (n == 0) return 'Toque no mapa para marcar o início, ou busque um endereço.';
+    if (n == 0) return 'Toque no mapa para marcar o início, busque um endereço ou gere uma volta.';
     if (n == 1) return 'Agora toque nos próximos pontos do caminho.';
     return 'Arraste um ponto para mudar o caminho; segure o dedo nele para apagar.';
   }
@@ -381,6 +419,11 @@ class _CriarRotaScreenState extends ConsumerState<CriarRotaScreen> {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
+                              _Ferramenta(
+                                icone: Icons.auto_awesome,
+                                rotulo: 'Gerar volta',
+                                onTap: _calculando ? null : _gerarVolta,
+                              ),
                               _Ferramenta(
                                 icone: Icons.undo,
                                 dica: 'Desfazer',

@@ -12,6 +12,7 @@ import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/core/links.dart';
 import 'package:pedal_local/core/theme/app_theme.dart';
+import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
 import 'package:pedal_local/data/providers.dart';
@@ -25,6 +26,7 @@ import 'package:pedal_local/data/services/request_pacer.dart';
 import 'package:pedal_local/data/services/routing_service.dart';
 import 'package:pedal_local/data/settings_store.dart';
 import 'package:pedal_local/domain/geo.dart';
+import 'package:pedal_local/domain/ride_session.dart';
 
 import '../support/fake_valhalla.dart';
 import '../support/fakes.dart';
@@ -46,6 +48,26 @@ RouteRecord rotaDeTeste(String id, String nome, int pontos) {
 
 final _semEspera = RequestPacer(gap: Duration.zero);
 
+/// Pedal antigo na rua curta (rotaDeTeste r1, 120 m): 120 m em 60 s.
+RideRecord _recordeAntigo() => RideRecord(
+      id: 'antigo',
+      routeId: 'r1',
+      mode: RideMode.rota,
+      startedAt: DateTime(2026, 10, 1, 18),
+      movingTimeS: 60,
+      distanceM: 120,
+      avgPowerW: 80,
+      avgSpeedKmh: 7.2,
+      gainM: 0,
+      kcal: 5,
+      completed: true,
+      laps: 1,
+      samples: [
+        for (var t = 1; t <= 60; t++)
+          RideSample(t: t.toDouble(), distance: t * 2.0, speedKmh: 7.2, power: 80, cadence: 60),
+      ],
+    );
+
 Future<ProviderContainer> abrirApp(
   WidgetTester tester, {
   required MemoryRoutesStore routes,
@@ -65,6 +87,7 @@ Future<ProviderContainer> abrirApp(
       ridesStoreProvider.overrideWithValue(rides ?? MemoryRidesStore()),
       routesStoreProvider.overrideWithValue(routes),
       wakeLockProvider.overrideWithValue(FakeWakeLock()),
+      voiceProvider.overrideWithValue(FakeVoice()),
       mapTilesEnabledProvider.overrideWithValue(false),
       locationServiceProvider.overrideWithValue(const FixedLocationService(GeoPoint(-23.5, -46.6))),
       openLinkProvider.overrideWithValue((uri) async => links?.add(uri)),
@@ -325,5 +348,93 @@ void main() {
     expect(find.text('Último pedal'), findsOneWidget);
     // Cartão da rota no topo + pedal no histórico, ambos com o nome da rota.
     expect(find.text('Rua curta'), findsNWidgets(2));
+  });
+
+  testWidgets('pedalar contra o fantasma do recorde e ver quem ganhou', (tester) async {
+    final routes = MemoryRoutesStore();
+    final rides = MemoryRidesStore();
+    await routes.upsert(rotaDeTeste('r1', 'Rua curta', 7)); // 120 m
+    await rides.upsert(_recordeAntigo());
+    final container = await abrirApp(tester, routes: routes, rides: rides);
+    final bike = FakeBikeSource(name: 'FS-TESTE');
+    await container.read(bikeControllerProvider.notifier).useSource(bike);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Explorar').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pedalar esta rota'));
+    await tester.pumpAndSettle();
+    expect(find.text('Correr contra o fantasma'), findsOneWidget);
+    final chip = tester.widget<ChoiceChip>(find.byKey(const Key('fantasma-recorde')));
+    expect(chip.selected, isTrue);
+    expect(find.text('Seu recorde · 1:00'), findsOneWidget);
+    await tester.tap(find.text('Começar pedal'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Lado a lado com o fantasma'), findsOneWidget);
+
+    for (var i = 0; i < 120 && find.text('Rota concluída!').evaluate().isEmpty; i++) {
+      bike.emitReading(BikeReading(cadence: 85, power: 250, timestamp: clock.now()));
+      await tester.pump(const Duration(milliseconds: 500));
+      if (i == 8) {
+        expect(find.textContaining('à frente do fantasma'), findsOneWidget);
+        expect(find.byKey(const Key('fantasma-no-mapa')), findsOneWidget);
+      }
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('Rota concluída!'), findsOneWidget);
+    expect(find.text('Você venceu o fantasma!'), findsOneWidget);
+  });
+
+  testWidgets('sem fantasma escolhido, o pedal não mostra o fantasma', (tester) async {
+    final routes = MemoryRoutesStore();
+    final rides = MemoryRidesStore();
+    await routes.upsert(rotaDeTeste('r1', 'Rua curta', 7));
+    await rides.upsert(_recordeAntigo());
+    final container = await abrirApp(tester, routes: routes, rides: rides);
+    await container.read(bikeControllerProvider.notifier).useSource(FakeBikeSource());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Explorar').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pedalar esta rota'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sem fantasma'));
+    await tester.pump();
+    await tester.tap(find.text('Começar pedal'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('fantasma'), findsNothing);
+
+    // A voz liga e desliga no pedal.
+    await tester.tap(find.byTooltip('Desligar a voz'));
+    await tester.pump();
+    expect(find.byTooltip('Ligar a voz'), findsOneWidget);
+  });
+
+  testWidgets('gerar volta: escolhe a distância, toca numa volta e salva', (tester) async {
+    final routes = MemoryRoutesStore();
+    await abrirApp(tester, routes: routes, servicos: fakeValhallaStraight());
+    await abrirCriarRota(tester);
+    await tester.tap(find.text('Gerar volta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Saindo do centro do mapa. Para sair de outro lugar, feche e marque o ponto de partida.'), findsOneWidget);
+    await tester.tap(find.text('3 km'));
+    await tester.pump();
+    await tester.tap(find.text('Gerar voltas'));
+    await tester.pumpAndSettle();
+    expect(find.text('Toque numa volta para usar'), findsOneWidget);
+    expect(find.byKey(const Key('volta-2')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('volta-0')));
+    await tester.pumpAndSettle();
+
+    // A volta vira os pontos do editor: dá para salvar direto, sem traçar de novo.
+    expect(find.text('Salvar rota'), findsOneWidget);
+    expect(find.byKey(const Key('ponto-3')), findsOneWidget);
+    expect(find.byKey(const Key('ponto-4')), findsNothing); // o fim repete o começo
+    await tester.tap(find.text('Salvar rota'));
+    await tester.pumpAndSettle();
+    final salva = (await routes.all()).single;
+    expect((salva.distanceM - 3000).abs(), lessThanOrEqualTo(300));
+    expect(salva.waypoints.first, salva.waypoints.last);
   });
 }

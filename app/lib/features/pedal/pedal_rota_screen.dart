@@ -44,7 +44,8 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
     setState(() => _encerrando = true);
     final id = await ref.read(rideProvider(widget.target).notifier).finish();
     if (!mounted) return;
-    context.go('/resumo/$id?novo=1');
+    final gap = ref.read(rideProvider(widget.target)).ghostGapS;
+    context.go('/resumo/$id?novo=1${gap == null ? '' : '&fantasma=${gap.toStringAsFixed(1)}'}');
   }
 
   Future<void> _encerrar() async {
@@ -114,13 +115,14 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
                             v.isLoop
                                 ? 'Volta ${v.lap} · ${formatKm(v.lapDistance)} de ${formatKm(v.lapLength!)}'
                                 : v.total.isFinite
-                                    ? '${formatKm(v.distance)} de ${formatKm(v.total)}'
-                                    : '',
+                                ? '${formatKm(v.distance)} de ${formatKm(v.total)}'
+                                : '',
                             style: AppText.suave,
                           ),
                         ],
                       ),
                     ),
+                    if (v.started) BotaoVoz(ligada: v.voiceOn, onTap: ctrl.toggleVoice),
                     OutlinedButton(onPressed: _encerrar, child: const Text('Encerrar')),
                   ],
                 ),
@@ -132,41 +134,67 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
                     borderRadius: BorderRadius.circular(20),
                     child: perfil == null
                         ? const Center(child: CircularProgressIndicator())
-                        : FlutterMap(
-                            mapController: _map,
-                            options: MapOptions(
-                              initialCenter: toLatLng(perfil.positionAt(0)),
-                              initialZoom: 16,
-                              onMapReady: () => _mapaPronto = true,
-                              interactionOptions: const InteractionOptions(
-                                flags: InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
-                              ),
-                            ),
+                        : Stack(
                             children: [
-                              ...baseMapLayers(ref),
-                              PolylineLayer(polylines: [
-                                Polyline(
-                                  points: [for (final p in perfil.points) toLatLng(p)],
-                                  strokeWidth: 7,
-                                  color: AppColors.destaque.withValues(alpha: 0.3),
-                                ),
-                                Polyline(
-                                  points: [for (final p in perfil.traveled(v.lapDistance)) toLatLng(p)],
-                                  strokeWidth: 7,
-                                  color: AppColors.destaque,
-                                ),
-                              ]),
-                              if (v.position != null)
-                                CircleLayer(circles: [
-                                  CircleMarker(
-                                    point: LatLng(v.position!.lat, v.position!.lon),
-                                    radius: 10,
-                                    color: AppColors.posicao,
-                                    borderColor: Colors.white,
-                                    borderStrokeWidth: 3,
+                              FlutterMap(
+                                mapController: _map,
+                                options: MapOptions(
+                                  initialCenter: toLatLng(perfil.positionAt(0)),
+                                  initialZoom: 16,
+                                  onMapReady: () => _mapaPronto = true,
+                                  interactionOptions: const InteractionOptions(
+                                    flags: InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
                                   ),
-                                ]),
-                              mapAttribution,
+                                ),
+                                children: [
+                                  ...baseMapLayers(ref),
+                                  PolylineLayer(
+                                    polylines: [
+                                      Polyline(
+                                        points: [for (final p in perfil.points) toLatLng(p)],
+                                        strokeWidth: 7,
+                                        color: AppColors.destaque.withValues(alpha: 0.3),
+                                      ),
+                                      Polyline(
+                                        points: [for (final p in perfil.traveled(v.lapDistance)) toLatLng(p)],
+                                        strokeWidth: 7,
+                                        color: AppColors.destaque,
+                                      ),
+                                    ],
+                                  ),
+                                  if (v.ghostPosition != null)
+                                    MarkerLayer(
+                                      markers: [
+                                        Marker(
+                                          point: toLatLng(v.ghostPosition!),
+                                          width: 26,
+                                          height: 26,
+                                          child: const FantasmaPonto(key: Key('fantasma-no-mapa')),
+                                        ),
+                                      ],
+                                    ),
+                                  if (v.position != null)
+                                    CircleLayer(
+                                      circles: [
+                                        CircleMarker(
+                                          point: LatLng(v.position!.lat, v.position!.lon),
+                                          radius: 10,
+                                          color: AppColors.posicao,
+                                          borderColor: Colors.white,
+                                          borderStrokeWidth: 3,
+                                        ),
+                                      ],
+                                    ),
+                                  mapAttribution,
+                                ],
+                              ),
+                              if (v.ghostGapS != null)
+                                Positioned(
+                                  top: 10,
+                                  left: 10,
+                                  right: 10,
+                                  child: Center(child: FantasmaChip(gapS: v.ghostGapS!)),
+                                ),
                             ],
                           ),
                   ),
@@ -219,15 +247,24 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                       child: Row(
                         children: [
-                          Expanded(child: MetricTile(value: formatNumber(v.power), label: 'watts')),
-                          Expanded(child: MetricTile(value: formatNumber(v.cadence), label: 'rpm')),
-                          Expanded(child: MetricTile(value: formatTime(v.movingTime), label: 'tempo')),
+                          Expanded(
+                            child: MetricTile(value: formatNumber(v.power), label: 'watts'),
+                          ),
+                          Expanded(
+                            child: MetricTile(value: formatNumber(v.cadence), label: 'rpm'),
+                          ),
+                          Expanded(
+                            child: MetricTile(value: formatTime(v.movingTime), label: 'tempo'),
+                          ),
                         ],
                       ),
                     ),
                     if (perfil != null) ...[
                       const SizedBox(height: 10),
-                      SizedBox(height: 70, child: ElevationChart(profile: perfil, marker: v.lapDistance)),
+                      SizedBox(
+                        height: 70,
+                        child: ElevationChart(profile: perfil, marker: v.lapDistance),
+                      ),
                     ],
                     const SizedBox(height: 10),
                     if (source is SimSource) SimControls(source: source),

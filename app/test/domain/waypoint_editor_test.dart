@@ -71,4 +71,14 @@ void main() {
     expect(WaypointEditor([a, b, c, a]).handles, [a, b, c]);
     expect(WaypointEditor([a, b, c]).handles, [a, b, c]);
   });
+
+  test('trocar todos os pontos por uma volta gerada, com desfazer', () {
+    final e = WaypointEditor([a, b]);
+    e.replaceAll([a, c, d, a]);
+    expect(e.points, [a, c, d, a]);
+    expect(e.isClosed, isTrue);
+    expect(e.handles, [a, c, d]);
+    expect(e.undo(), isTrue);
+    expect(e.points, [a, b]);
+  });
 }

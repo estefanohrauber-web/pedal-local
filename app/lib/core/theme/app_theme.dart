@@ -17,6 +17,9 @@ abstract final class AppColors {
   static const escuro = Color(0xFF14201A);
   static const neutro = Color(0xFFF1F4F2);
 
+  /// O fantasma (o seu pedal anterior) no mapa do pedal.
+  static const fantasma = Color(0xFF6D28D9);
+
   /// Uma cor por rota (mesma ordem de routeColorCount). Escuras o bastante para não
   /// sumir no verde das matas, no azul dos rios e no laranja das estradas do mapa.
   static const rotas = [

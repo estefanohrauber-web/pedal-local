@@ -88,6 +88,10 @@ const alertLookaheadM = 200.0;
 const climbAlertGrade = 0.04;
 const descentAlertGrade = -0.03;
 
+/// O aviso diz a inclinação do trecho de 100 m mais íngreme logo à frente (não a média dos
+/// 200 m, que no começo da subida ainda mistura o plano).
+const steepestSpanM = 100.0;
+
 /// Sessão de pedal. Estados: pronto → pedalando ⇄ pausado → concluido.
 class RideSession {
   RideSession({required this.terrain, required this.riderMassKg});
@@ -201,12 +205,22 @@ class RideSession {
     if (g > descentAlertGrade / 2) _armDescent = true;
     if (_armClimb && g >= climbAlertGrade) {
       _armClimb = false;
-      return RideAlert(AlertKind.subida, g);
+      return RideAlert(AlertKind.subida, _steepest(g, 1));
     }
     if (_armDescent && g <= descentAlertGrade) {
       _armDescent = false;
-      return RideAlert(AlertKind.descida, g);
+      return RideAlert(AlertKind.descida, _steepest(g, -1));
     }
     return null;
+  }
+
+  /// O trecho de [steepestSpanM] mais íngreme nos próximos 300 m ([sinal] 1 = subida, −1 = descida).
+  double _steepest(double media, int sinal) {
+    var pior = media;
+    for (var k = 0.0; k <= alertLookaheadM + 1e-9; k += 20) {
+      final g = terrain.lookahead(_distance + k, steepestSpanM);
+      if (g * sinal > pior * sinal) pior = g;
+    }
+    return pior;
   }
 }

@@ -7,15 +7,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bike/bike_controller.dart';
 import '../../bike/bike_reading.dart';
 import '../../bike/bike_source.dart';
+import '../../core/voice.dart';
 import '../../core/wake_lock.dart';
 import '../../data/providers.dart';
 import '../../data/rides_store.dart';
 import '../../domain/geo.dart';
+import '../../domain/ghost.dart';
 import '../../domain/laps.dart';
 import '../../domain/power.dart';
+import '../../domain/ride_narrator.dart';
 import '../../domain/ride_session.dart';
 import '../../domain/route_profile.dart';
 import '../../domain/route_variant.dart';
+import 'ghost_options.dart';
 
 /// Relógio do pedal. `clock.now()` é o relógio real no app e o relógio simulado nos testes de tela.
 final clockProvider = Provider<DateTime Function()>((ref) => () => clock.now());
@@ -28,10 +32,11 @@ const _historyLength = 300; // 5 minutos de amostras
 const _staleAfter = Duration(seconds: 3);
 const _saveEverySeconds = 15.0;
 
-/// O que pedalar: pedal livre (sem rota) ou uma rota no sentido e começo escolhidos.
+/// O que pedalar: pedal livre (sem rota) ou uma rota no sentido e começo escolhidos,
+/// com ou sem fantasma.
 @immutable
 class RideTarget {
-  const RideTarget({this.routeId, this.reversed = false, this.startIndex = 0});
+  const RideTarget({this.routeId, this.reversed = false, this.startIndex = 0, this.ghost});
 
   static const livre = RideTarget();
 
@@ -41,12 +46,19 @@ class RideTarget {
   /// Índice dos pontos originais onde a volta começa (só vale para volta fechada).
   final int startIndex;
 
-  @override
-  bool operator ==(Object other) =>
-      other is RideTarget && other.routeId == routeId && other.reversed == reversed && other.startIndex == startIndex;
+  /// Correr contra o recorde ou o último pedal (null = sem fantasma).
+  final GhostKind? ghost;
 
   @override
-  int get hashCode => Object.hash(routeId, reversed, startIndex);
+  bool operator ==(Object other) =>
+      other is RideTarget &&
+      other.routeId == routeId &&
+      other.reversed == reversed &&
+      other.startIndex == startIndex &&
+      other.ghost == ghost;
+
+  @override
+  int get hashCode => Object.hash(routeId, reversed, startIndex, ghost);
 }
 
 /// Volta recém-completada, para a faixa “Volta N concluída em mm:ss”.
@@ -84,6 +96,10 @@ class RideView {
     this.lapLength,
     this.lapsDone = 0,
     this.lapAlert,
+    this.ghostGapS,
+    this.ghostGapM,
+    this.ghostPosition,
+    this.voiceOn = false,
   });
 
   final bool started;
@@ -113,6 +129,17 @@ class RideView {
   final int lapsDone;
   final LapAlert? lapAlert;
 
+  /// Segundos à frente do fantasma (negativo = atrás). Null = sem fantasma.
+  final double? ghostGapS;
+
+  /// Metros que o fantasma está à frente (negativo = atrás).
+  final double? ghostGapM;
+  final GeoPoint? ghostPosition;
+
+  /// Avisos falados ligados.
+  final bool voiceOn;
+
+  bool get hasGhost => ghostGapS != null;
   bool get isRoute => profile != null;
   bool get isLoop => lapLength != null;
 
@@ -131,6 +158,10 @@ class RideController extends Notifier<RideView> {
   String? get routeId => target.routeId;
   List<ProfilePoint>? _track;
   LoopTerrain? _loop;
+  Ghost? _ghost;
+  RideNarrator? _narrador;
+  Voice? _voz;
+  bool _vozLigada = false;
   double _margem = 0.03;
   int _lapsSeen = 0;
   LapAlert? _lapAlert;
@@ -180,8 +211,20 @@ class RideController extends Notifier<RideView> {
       _profile = RouteProfile(pontos);
       if (isLoop(route.points)) _loop = LoopTerrain(_profile!);
       _routeName = route.name;
+      final tipo = target.ghost;
+      if (tipo != null) {
+        final pedais = await ref.read(ridesStoreProvider).forRoute(id, withSamples: true);
+        if (!ref.mounted) return;
+        final opcoes = ghostOptions(pedais, reversed: target.reversed, lapLength: _loop?.lapLength);
+        for (final o in opcoes) {
+          if (o.kind == tipo) _ghost = o.ghost;
+        }
+      }
     }
     _margem = settings.margemVolta;
+    _vozLigada = settings.voz;
+    _voz = ref.read(voiceProvider);
+    _narrador = RideNarrator(routeLength: _loop == null ? _profile?.distance : null);
     final relogio = ref.read(clockProvider);
     final Terrain terreno = _loop ?? _profile ?? const FlatTerrain();
     _session = RideSession(terrain: terreno, riderMassKg: settings.pesoKg)..start();
@@ -223,6 +266,7 @@ class RideController extends Notifier<RideView> {
         ..pause()
         ..setInputs(powerW: 0, cadence: 0);
       _pausedByBike = true;
+      _falar([RideNarrator.bikeDropped]);
       _publish();
     } else if (c == BikeConnection.conectada && _pausedByBike) {
       _pausedByBike = false;
@@ -245,15 +289,27 @@ class RideController extends Notifier<RideView> {
       _alert = alerts.last;
       _alertAt = now;
     }
+    final snap = session.snapshot();
     final loop = _loop;
+    LapAlert? novaVolta;
     if (loop != null) {
-      final voltas = loop.lapsAt(session.snapshot().distance);
+      final voltas = loop.lapsAt(snap.distance);
       if (voltas > _lapsSeen) {
         _lapsSeen = voltas;
         final tempos = lapTimes(session.samples, loop.lapLength);
-        _lapAlert = LapAlert(voltas, tempos.length >= voltas ? tempos[voltas - 1] : 0, now);
+        novaVolta = _lapAlert = LapAlert(voltas, tempos.length >= voltas ? tempos[voltas - 1] : 0, now);
       }
     }
+    final ghost = _ghost;
+    _falar(_narrador?.update(
+      distance: snap.distance,
+      movingTime: snap.movingTime,
+      alert: alerts.isEmpty ? null : alerts.last,
+      lapDone: novaVolta?.number,
+      lapTime: novaVolta?.time,
+      ghostGapS: ghost?.gapSeconds(snap.distance, snap.movingTime),
+      ghostGapM: ghost?.gapMeters(snap.distance, snap.movingTime),
+    ));
     if (session.samples.length > _seenSamples) {
       _history.addAll(session.samples.skip(_seenSamples).map((s) => s.power));
       _seenSamples = session.samples.length;
@@ -265,6 +321,25 @@ class RideController extends Notifier<RideView> {
       _save(completed: false);
     }
     _publish();
+  }
+
+  void _falar(List<String>? frases) {
+    final voz = _voz;
+    if (!_vozLigada || voz == null || frases == null) return;
+    for (final f in frases) {
+      voz.speak(f);
+    }
+  }
+
+  /// Liga ou desliga a voz (e guarda a escolha para os próximos pedais).
+  Future<void> toggleVoice() async {
+    _vozLigada = !_vozLigada;
+    if (!_vozLigada) _voz?.stop();
+    _publish();
+    final store = ref.read(settingsStoreProvider);
+    final atual = await store.load();
+    await store.save(atual.copyWith(voz: _vozLigada));
+    if (ref.mounted) ref.invalidate(settingsProvider);
   }
 
   void changeLevel(int delta) {
@@ -289,6 +364,17 @@ class RideController extends Notifier<RideView> {
     final session = _session!;
     if (_finished) return _rideId!;
     _finished = true;
+    final snap = session.snapshot();
+    final perfil = _profile;
+    final ghost = _ghost;
+    _falar([
+      _narrador!.finished(
+        completed: perfil != null && _loop == null && snap.distance >= perfil.distance - 0.5,
+        laps: _loop?.lapsAt(snap.distance) ?? 0,
+        movingTime: snap.movingTime,
+        ghostGapS: ghost?.gapSeconds(snap.distance, snap.movingTime),
+      ),
+    ]);
     session.finish();
     _stop();
     await _save(completed: true);
@@ -373,6 +459,14 @@ class RideController extends Notifier<RideView> {
     if (session == null) return;
     final snap = session.snapshot();
     final voltas = _loop?.lapsAt(snap.distance) ?? 0;
+    final ghost = _ghost;
+    final perfil = _profile;
+    GeoPoint? ondeFantasma;
+    if (ghost != null && perfil != null) {
+      final d = ghost.distanceAt(snap.movingTime);
+      final volta = _loop?.lapLength;
+      ondeFantasma = perfil.positionAt(volta == null || volta <= 0 ? d : d - (d / volta + 1e-9).floor() * volta);
+    }
     state = RideView(
       started: true,
       state: snap.state,
@@ -397,6 +491,10 @@ class RideController extends Notifier<RideView> {
       lapLength: _loop?.lapLength,
       lapsDone: voltas,
       lapAlert: _lapAlert,
+      ghostGapS: ghost?.gapSeconds(snap.distance, snap.movingTime),
+      ghostGapM: ghost?.gapMeters(snap.distance, snap.movingTime),
+      ghostPosition: ondeFantasma,
+      voiceOn: _vozLigada,
     );
   }
 }

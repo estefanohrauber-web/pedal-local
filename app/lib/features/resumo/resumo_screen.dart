@@ -19,11 +19,13 @@ import '../../domain/route_variant.dart';
 import 'metric_chart.dart';
 
 /// Resumo e análise de um pedal. [novo] = acabou de pedalar (mostra “Concluir”).
+/// [ghostGap] = segundos à frente do fantasma no fim (só logo depois de pedalar contra ele).
 class ResumoScreen extends ConsumerWidget {
-  const ResumoScreen({super.key, required this.rideId, this.novo = false});
+  const ResumoScreen({super.key, required this.rideId, this.novo = false, this.ghostGap});
 
   final String rideId;
   final bool novo;
+  final double? ghostGap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,7 +36,7 @@ class ResumoScreen extends ConsumerWidget {
         child: ride.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, s) => Center(child: Text('Não consegui abrir o pedal: $e')),
-          data: (r) => r == null ? const Center(child: Text('Pedal não encontrado.')) : _Conteudo(ride: r, novo: novo),
+          data: (r) => r == null ? const Center(child: Text('Pedal não encontrado.')) : _Conteudo(ride: r, novo: novo, ghostGap: ghostGap),
         ),
       ),
     );
@@ -42,10 +44,11 @@ class ResumoScreen extends ConsumerWidget {
 }
 
 class _Conteudo extends ConsumerStatefulWidget {
-  const _Conteudo({required this.ride, required this.novo});
+  const _Conteudo({required this.ride, required this.novo, this.ghostGap});
 
   final RideRecord ride;
   final bool novo;
+  final double? ghostGap;
 
   @override
   ConsumerState<_Conteudo> createState() => _ConteudoState();
@@ -112,6 +115,10 @@ class _ConteudoState extends ConsumerState<_Conteudo> {
       children: [
         _Cabecalho(ride: ride, nomeRota: rota?.name, perfil: perfil),
         const SizedBox(height: 14),
+        if (widget.ghostGap != null) ...[
+          _ResultadoFantasma(gapS: widget.ghostGap!),
+          const SizedBox(height: 14),
+        ],
         if (fatia != null && fatia.samples.length > 1)
           _Analise(
             ride: ride,
@@ -179,6 +186,39 @@ class _ConteudoState extends ConsumerState<_Conteudo> {
   List<double> _recorte(List<double> todos, LapSlice fatia) {
     final ini = ride.samples.indexOf(fatia.samples.first);
     return todos.sublist(ini, ini + fatia.samples.length);
+  }
+}
+
+class _ResultadoFantasma extends StatelessWidget {
+  const _ResultadoFantasma({required this.gapS});
+
+  final double gapS;
+
+  @override
+  Widget build(BuildContext context) {
+    final (titulo, texto) = gapS.abs() < 1
+        ? ('Empate com o fantasma!', 'Vocês chegaram juntos.')
+        : gapS > 0
+            ? ('Você venceu o fantasma!', '${formatTime(gapS)} na frente dele.')
+            : ('O fantasma ganhou desta vez', 'Ele ficou ${formatTime(-gapS)} na frente. Na próxima você pega!');
+    return AppCard(
+      borderColor: AppColors.fantasma,
+      child: Row(
+        children: [
+          const Icon(Icons.flag_circle, color: AppColors.fantasma, size: 32),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(titulo, style: AppText.corpoForte),
+                Text(texto, style: AppText.suave),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

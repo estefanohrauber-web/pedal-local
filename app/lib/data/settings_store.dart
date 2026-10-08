@@ -14,6 +14,7 @@ class AppSettings {
     this.ultimaBikeNome,
     this.nome,
     this.margemVolta = 0.03,
+    this.voz = true,
   });
 
   final double pesoKg;
@@ -31,6 +32,9 @@ class AppSettings {
   /// Quanto pode passar da volta (fração dela) e ainda fechar a volta ao encerrar.
   final double margemVolta;
 
+  /// Avisos falados durante o pedal.
+  final bool voz;
+
   AppSettings copyWith({
     double? pesoKg,
     PowerMode? modoPotencia,
@@ -42,6 +46,7 @@ class AppSettings {
     String? ultimaBikeNome,
     String? nome,
     double? margemVolta,
+    bool? voz,
   }) =>
       AppSettings(
         pesoKg: pesoKg ?? this.pesoKg,
@@ -54,6 +59,7 @@ class AppSettings {
         ultimaBikeNome: ultimaBikeNome ?? this.ultimaBikeNome,
         nome: nome ?? this.nome,
         margemVolta: margemVolta ?? this.margemVolta,
+        voz: voz ?? this.voz,
       );
 
   Map<String, String> toMap() => {
@@ -67,6 +73,7 @@ class AppSettings {
         'ultimaBikeNome': ?ultimaBikeNome,
         'nome': ?nome,
         'margemVolta': '$margemVolta',
+        'voz': voz ? '1' : '0',
       };
 
   factory AppSettings.fromMap(Map<String, String> m) {
@@ -83,6 +90,7 @@ class AppSettings {
       ultimaBikeNome: m['ultimaBikeNome'],
       nome: m['nome'],
       margemVolta: dbl('margemVolta', d.margemVolta),
+      voz: m['voz'] != '0',
     );
   }
 }
