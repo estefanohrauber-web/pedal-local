@@ -78,6 +78,8 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
                     acao: 'Reconectar',
                     onAcao: () => ref.read(bikeControllerProvider.notifier).reconnectNow(),
                   )
+                else if (v.state == RideState.pausado)
+                  const _Faixa(texto: 'Pedal pausado. Toque em Continuar para seguir.')
                 else if (v.estimating)
                   const _Faixa(texto: 'A bike não manda potência: estimando pela carga.'),
                 AppCard(
@@ -142,9 +144,21 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
                 if (source is SimSource) ...[
                   Row(
                     children: [
-                      Expanded(child: OutlinedButton(onPressed: source.easier, child: const Text('Simular: mais fraco'))),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: source.easier,
+                          icon: const Icon(Icons.science_outlined, size: 18),
+                          label: const Text('Mais fraco', maxLines: 1),
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      Expanded(child: OutlinedButton(onPressed: source.harder, child: const Text('Simular: mais forte'))),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: source.harder,
+                          icon: const Icon(Icons.science_outlined, size: 18),
+                          label: const Text('Mais forte', maxLines: 1),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),

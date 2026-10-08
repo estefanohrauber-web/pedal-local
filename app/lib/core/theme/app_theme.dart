@@ -76,6 +76,7 @@ ThemeData buildAppTheme({TextTheme? textTheme}) {
       scrolledUnderElevation: 0,
       centerTitle: false,
     ),
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.superficie,

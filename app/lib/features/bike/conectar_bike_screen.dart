@@ -16,30 +16,40 @@ class ConectarBikeScreen extends ConsumerStatefulWidget {
   ConsumerState<ConectarBikeScreen> createState() => _ConectarBikeScreenState();
 }
 
-class _ConectarBikeScreenState extends ConsumerState<ConectarBikeScreen> {
+class _ConectarBikeScreenState extends ConsumerState<ConectarBikeScreen> with WidgetsBindingObserver {
   StreamSubscription<List<FoundDevice>>? _sub;
   List<FoundDevice> _devices = const [];
   bool _scanning = false;
   bool _showAll = false;
   String? _problem;
+  BleProblem? _bleProblem;
   String? _connectingId;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scan();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _sub?.cancel();
     super.dispose();
+  }
+
+  /// Ao voltar da caixa de permissão (ou das configurações do Bluetooth), tenta de novo.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _bleProblem != null && !_scanning) _scan();
   }
 
   Future<void> _scan() async {
     await _sub?.cancel();
     setState(() {
       _problem = null;
+      _bleProblem = null;
       _devices = const [];
       _scanning = true;
     });
@@ -48,6 +58,7 @@ class _ConectarBikeScreenState extends ConsumerState<ConectarBikeScreen> {
     if (!mounted) return;
     if (problem != null) {
       setState(() {
+        _bleProblem = problem;
         _problem = bleProblemText(problem);
         _scanning = false;
       });

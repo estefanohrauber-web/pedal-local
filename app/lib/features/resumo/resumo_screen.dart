@@ -100,7 +100,7 @@ class _Conteudo extends StatelessWidget {
         Row(
           children: [
             const Expanded(
-              child: OutlinedButton(onPressed: null, child: Text('Enviar ao Strava · em breve')),
+              child: OutlinedButton(onPressed: null, child: Text('Strava · em breve', maxLines: 1)),
             ),
             const SizedBox(width: 10),
             Expanded(

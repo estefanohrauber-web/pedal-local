@@ -33,8 +33,8 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
         _settings = s;
         _peso.text = s.pesoKg.round().toString();
         _meta.text = s.metaSemanalKm.round().toString();
-        _base.text = s.base.toString();
-        _fator.text = s.fator.toString();
+        _base.text = s.base.toString().replaceAll('.', ',');
+        _fator.text = s.fator.toString().replaceAll('.', ',');
         _modo = s.modoPotencia;
         _carga = s.cargaPadrao.toDouble();
       });
@@ -93,6 +93,7 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
                 const SizedBox(height: 24),
                 const SectionTitle('Potência'),
                 SegmentedButton<PowerMode>(
+                  showSelectedIcon: false,
                   segments: const [
                     ButtonSegment(value: PowerMode.auto, label: Text('Automática')),
                     ButtonSegment(value: PowerMode.bike, label: Text('Da bike')),

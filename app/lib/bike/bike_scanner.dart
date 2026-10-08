@@ -39,8 +39,11 @@ class BikeScanner {
     try {
       await UniversalBle.requestPermissions();
     } catch (_) {
-      return BleProblem.semPermissao;
+      // Negada ou já havia um pedido aberto: a conferência abaixo decide.
     }
+    // No Android, o pedido pode voltar antes de a pessoa responder à caixa de permissão;
+    // por isso conferimos o estado real em vez de confiar no retorno do pedido.
+    if (!await UniversalBle.hasPermissions()) return BleProblem.semPermissao;
     final state = await UniversalBle.getBluetoothAvailabilityState();
     return switch (state) {
       AvailabilityState.poweredOff => BleProblem.desligado,
