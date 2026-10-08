@@ -300,6 +300,7 @@ class _Analise extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: ChoiceChip(
+                      showCheckmark: false,
                       label: Text(opcao.label),
                       selected: opcao == metrica,
                       onSelected: (_) => onMetrica(opcao),
@@ -397,8 +398,10 @@ class _MapaPintado extends ConsumerWidget {
           ...heatPolylines(pontos, [valores.first, ...valores], lo, hi, largura: 6),
         ]),
         CircleLayer(circles: [
+          // Chegada só aparece se ficar longe do começo (na volta fechada, os dois coincidem).
+          if (const Distance().as(LengthUnit.Meter, pontos.first, pontos.last) > 30)
+            CircleMarker(point: pontos.last, radius: 7, color: AppColors.escuro, borderColor: Colors.white, borderStrokeWidth: 2.5),
           CircleMarker(point: pontos.first, radius: 7, color: AppColors.destaque, borderColor: Colors.white, borderStrokeWidth: 2.5),
-          CircleMarker(point: pontos.last, radius: 7, color: AppColors.escuro, borderColor: Colors.white, borderStrokeWidth: 2.5),
           if (m != null)
             CircleMarker(point: em(m), radius: 9, color: Colors.white, borderColor: AppColors.texto, borderStrokeWidth: 3),
         ]),
@@ -452,6 +455,7 @@ class _Voltas extends StatelessWidget {
       children: [
         for (final f in fatias)
           ChoiceChip(
+            showCheckmark: false,
             label: Text(
               'Volta ${f.index + 1}'
               '${f.index < tempos.length ? ' · ${formatTime(tempos[f.index])}' : ''}'

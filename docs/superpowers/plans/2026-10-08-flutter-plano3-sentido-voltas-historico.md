@@ -28,3 +28,22 @@ Executado direto com TDD (sem plano com código antes), a pedido do usuário.
   1 volta; caminho gravado; amostras intactas). As telas não foram vistas no aparelho porque o celular
   estava bloqueado.
 - Resultado: `flutter analyze` sem avisos, **173 testes passando**.
+
+## Editor de rotas (continuação, 2026-10-08)
+
+- [x] `domain/waypoint_editor.dart`: pontos com desfazer; arrastar guarda um passo só; volta fechada
+      mexe começo e fim juntos; ida e volta; apagar.
+- [x] `data/services/geocoding_service.dart`: busca no Photon (komoot), perto do centro do mapa.
+- [x] Criar rota: traça sozinho 0,8 s depois da última mudança (sem botão “Calcular”); arrastar ponto,
+      segurar para apagar (com “Desfazer” no aviso), ida e volta, busca com “Adicionar ponto aqui”;
+      painel de baixo limitado a meia tela com rolagem.
+- Notas:
+  - O mapa reage a 18 px de movimento e o arrasto comum só a 36 px: no celular o mapa ganhava o gesto.
+    O ponto usa `ImmediateMultiDragGestureRecognizer` (+ toque longo e toque) para pegar o gesto.
+  - Enquadrar a rota só depois do quadro: o painel cresce com os números e o mapa encolhe.
+  - Enquadrar rota + pontos, com folga para a busca (em cima) e as ferramentas (embaixo).
+  - No celular: busca (“Herval” → Herval d'Oeste primeiro) e traçado automático conferidos; o arrasto
+    corrigido foi visto só nos testes (o usuário estava usando o celular).
+  - Um toque às cegas depois de reinstalar caiu na pergunta de Bluetooth e permitiu; revogado e limpo
+    na hora (ver memória “no blind taps”).
+- Resultado: `flutter analyze` sem avisos, **186 testes passando**.

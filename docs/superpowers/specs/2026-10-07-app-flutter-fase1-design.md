@@ -148,6 +148,7 @@ abstract class BikeSource {
 
 - Estado: lista de pontos (waypoints) + pilha de desfazer (cópias da lista).
 - Gestos: tocar no mapa adiciona no fim; arrastar move; toque longo apaga (com desfazer).
+  A rota é traçada sozinha 0,8 s depois da última mudança (sem botão “Calcular”).
 - A rota inteira vai num pedido só ao Valhalla (cada par de pontos vizinhos vira uma
   "perna"). Os servidores da FOSSGIS aceitam 1 pedido por segundo, então pedir
   trecho por trecho deixaria o editor lento.

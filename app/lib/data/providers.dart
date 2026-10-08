@@ -7,6 +7,7 @@ import 'rides_store.dart';
 import 'route_builder.dart';
 import 'routes_store.dart';
 import 'services/elevation_service.dart';
+import 'services/geocoding_service.dart';
 import 'services/location_service.dart';
 import 'services/request_pacer.dart';
 import 'services/routing_service.dart';
@@ -59,5 +60,8 @@ final routeBuilderProvider = Provider<RouteBuilder>((ref) {
   final pacer = ref.watch(valhallaPacerProvider);
   return RouteBuilder(routing: RoutingService(client, pacer), elevation: ElevationService(client, pacer));
 });
+
+/// Busca de endereços (Photon).
+final geocodingServiceProvider = Provider<GeocodingService>((ref) => GeocodingService(ref.watch(httpClientProvider)));
 
 final locationServiceProvider = Provider<LocationService>((ref) => const GeolocatorLocationService());

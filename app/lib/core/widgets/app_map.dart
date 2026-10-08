@@ -99,6 +99,8 @@ class MapCredits extends ConsumerWidget {
             const SizedBox(height: 6),
             const Text('Rotas e altitude: Valhalla, nos servidores da FOSSGIS.', style: _corpo),
             const SizedBox(height: 6),
+            const Text('Busca de endereços: Photon, da komoot.', style: _corpo),
+            const SizedBox(height: 6),
             const Text(
               'Viu uma rua errada ou faltando? O mapa é aberto e qualquer pessoa pode corrigir.',
               style: AppText.suave,

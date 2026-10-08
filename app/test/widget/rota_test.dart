@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
@@ -16,6 +19,7 @@ import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/route_builder.dart';
 import 'package:pedal_local/data/routes_store.dart';
 import 'package:pedal_local/data/services/elevation_service.dart';
+import 'package:pedal_local/data/services/geocoding_service.dart';
 import 'package:pedal_local/data/services/location_service.dart';
 import 'package:pedal_local/data/services/request_pacer.dart';
 import 'package:pedal_local/data/services/routing_service.dart';
@@ -48,6 +52,7 @@ Future<ProviderContainer> abrirApp(
   MemoryRidesStore? rides,
   http.Client? servicos,
   List<Uri>? links,
+  GeocodingService? busca,
 }) async {
   tester.view.physicalSize = const Size(1080, 2070);
   tester.view.devicePixelRatio = 3;
@@ -63,6 +68,9 @@ Future<ProviderContainer> abrirApp(
       mapTilesEnabledProvider.overrideWithValue(false),
       locationServiceProvider.overrideWithValue(const FixedLocationService(GeoPoint(-23.5, -46.6))),
       openLinkProvider.overrideWithValue((uri) async => links?.add(uri)),
+      geocodingServiceProvider.overrideWithValue(
+        busca ?? GeocodingService(MockClient((req) async => http.Response('{"features": []}', 200))),
+      ),
       routeBuilderProvider.overrideWithValue(
         RouteBuilder(routing: RoutingService(client, _semEspera), elevation: ElevationService(client, _semEspera)),
       ),
@@ -88,35 +96,112 @@ void main() {
     expect(find.text('Pedalar esta rota'), findsOneWidget);
   });
 
-  testWidgets('criar rota: tocar pontos, calcular e salvar com a próxima cor livre', (tester) async {
-    final routes = MemoryRoutesStore();
-    await routes.upsert(rotaDeTeste('antiga', 'Antiga', 6)); // cor 0
-    await abrirApp(tester, routes: routes);
+  Future<Rect> abrirCriarRota(WidgetTester tester) async {
     await tester.tap(find.text('Explorar').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Criar rota'));
     await tester.pumpAndSettle();
-    expect(find.text('Toque no mapa para marcar o início.'), findsOneWidget);
+    return tester.getRect(find.byKey(const Key('mapa-criar-rota')));
+  }
 
-    final mapa = tester.getRect(find.byKey(const Key('mapa-criar-rota')));
-    await tester.tapAt(mapa.center.translate(-60, 0));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.tapAt(mapa.center.translate(60, -60));
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.textContaining('2 pontos'), findsOneWidget);
-
-    await tester.tap(find.text('Calcular rota'));
+  /// Toca no mapa (o mapa espera o tempo do toque duplo) e espera o traçado automático.
+  Future<void> tocarNoMapa(WidgetTester tester, List<Offset> pontos) async {
+    for (final p in pontos) {
+      await tester.tapAt(p);
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('criar rota: tocar pontos, traça sozinho e salva com a próxima cor livre', (tester) async {
+    final routes = MemoryRoutesStore();
+    await routes.upsert(rotaDeTeste('antiga', 'Antiga', 6)); // cor 0
+    await abrirApp(tester, routes: routes);
+    final mapa = await abrirCriarRota(tester);
+    expect(find.textContaining('Toque no mapa para marcar o início'), findsOneWidget);
+
+    await tocarNoMapa(tester, [mapa.center.translate(-60, 0), mapa.center.translate(60, -60)]);
     expect(find.text('Salvar rota'), findsOneWidget);
     expect(find.textContaining('0,10 km'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), 'Rua de casa');
+    await tester.enterText(find.widgetWithText(TextField, 'Nome da rota'), 'Rua de casa');
     await tester.tap(find.text('Salvar rota'));
     await tester.pumpAndSettle();
     final nova = (await routes.all()).firstWhere((r) => r.id != 'antiga');
     expect(nova.name, 'Rua de casa');
     expect(nova.colorIndex, 1);
+    expect(nova.waypoints.length, 2);
     expect(find.text('Rua de casa'), findsOneWidget);
+  });
+
+  testWidgets('criar rota: ida e volta, arrastar um ponto e segurar para apagar', (tester) async {
+    final routes = MemoryRoutesStore();
+    await abrirApp(tester, routes: routes);
+    final mapa = await abrirCriarRota(tester);
+    await tocarNoMapa(tester, [
+      mapa.center.translate(-60, 0),
+      mapa.center.translate(60, -60),
+      mapa.center.translate(60, 40),
+    ]);
+    expect(find.byKey(const Key('ponto-2')), findsOneWidget);
+
+    // arrastar o ponto do meio
+    final antes = tester.getCenter(find.byKey(const Key('ponto-1')));
+    await tester.drag(find.byKey(const Key('ponto-1')), const Offset(-40, 30));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    final depois = tester.getCenter(find.byKey(const Key('ponto-1')));
+    expect((depois - antes).dx, lessThan(-20));
+    expect((depois - antes).dy, greaterThan(15));
+
+    // segurar apaga, e o aviso deixa desfazer
+    await tester.longPress(find.byKey(const Key('ponto-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ponto apagado'), findsOneWidget);
+    expect(find.byKey(const Key('ponto-2')), findsNothing);
+    await tester.tap(find.text('Desfazer').last);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('ponto-2')), findsOneWidget);
+
+    // ida e volta: volta pelos mesmos pontos até o começo
+    await tester.ensureVisible(find.text('Ida e volta'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ida e volta'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salvar rota'));
+    await tester.pumpAndSettle();
+    expect((await routes.all()).single.waypoints.length, 5);
+  });
+
+  testWidgets('criar rota: busca um endereço e adiciona o ponto ali', (tester) async {
+    final busca = GeocodingService(MockClient((req) async => http.Response(
+          jsonEncode({
+            'features': [
+              {
+                'geometry': {
+                  'coordinates': [-46.6, -23.5],
+                },
+                'properties': {'name': 'Praça da Sé', 'city': 'São Paulo'},
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        )));
+    await abrirApp(tester, routes: MemoryRoutesStore(), busca: busca);
+    await abrirCriarRota(tester);
+    await tester.enterText(find.byKey(const Key('busca-endereco')), 'praça');
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Praça da Sé'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('ponto-0')), findsNothing);
+    await tester.tap(find.text('Adicionar ponto aqui'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('ponto-0')), findsOneWidget);
+    expect(find.text('Adicionar ponto aqui'), findsNothing);
   });
 
   testWidgets('Explorar: cada rota com sua cor; tocar no cartão destaca a rota no mapa', (tester) async {
@@ -164,12 +249,7 @@ void main() {
     await tester.tap(find.text('Criar rota'));
     await tester.pumpAndSettle();
     final mapa = tester.getRect(find.byKey(const Key('mapa-criar-rota')));
-    await tester.tapAt(mapa.center.translate(-60, 0));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.tapAt(mapa.center.translate(60, -60));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Calcular rota'));
-    await tester.pumpAndSettle();
+    await tocarNoMapa(tester, [mapa.center.translate(-60, 0), mapa.center.translate(60, -60)]);
     expect(find.textContaining('subidas e descidas'), findsOneWidget);
 
     altitudeNoAr = true;
