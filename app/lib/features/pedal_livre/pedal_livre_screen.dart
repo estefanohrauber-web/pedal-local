@@ -9,7 +9,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/power_chart.dart';
 import '../../domain/ride_session.dart';
-import 'free_ride_controller.dart';
+import '../pedal/ride_controller.dart';
+import '../pedal/ride_widgets.dart';
 
 class PedalLivreScreen extends ConsumerStatefulWidget {
   const PedalLivreScreen({super.key});
@@ -24,35 +25,25 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(freeRideProvider.notifier).start());
+    Future.microtask(() => ref.read(rideProvider(null).notifier).start());
   }
 
   Future<void> _encerrar() async {
     if (_encerrando) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Encerrar o pedal?'),
-        content: const Text('O pedal vai ser salvo no seu histórico.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Continuar pedalando')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Encerrar')),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
+    final ok = await confirmarEncerrar(context);
+    if (!ok || !mounted) return;
     setState(() => _encerrando = true);
-    final id = await ref.read(freeRideProvider.notifier).finish();
+    final id = await ref.read(rideProvider(null).notifier).finish();
     if (!mounted) return;
     context.go('/resumo/$id');
   }
 
   @override
   Widget build(BuildContext context) {
-    final v = ref.watch(freeRideProvider);
+    final v = ref.watch(rideProvider(null));
     final bike = ref.watch(bikeControllerProvider);
     final source = bike.source;
-    final ctrl = ref.read(freeRideProvider.notifier);
+    final ctrl = ref.read(rideProvider(null).notifier);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -73,15 +64,15 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (v.pausedByBike)
-                  _Faixa(
+                  AvisoFaixa(
                     texto: bike.message ?? 'A bike desconectou. Tentando reconectar…',
                     acao: 'Reconectar',
                     onAcao: () => ref.read(bikeControllerProvider.notifier).reconnectNow(),
                   )
                 else if (v.state == RideState.pausado)
-                  const _Faixa(texto: 'Pedal pausado. Toque em Continuar para seguir.')
+                  const AvisoFaixa(texto: 'Pedal pausado. Toque em Continuar para seguir.')
                 else if (v.estimating)
-                  const _Faixa(texto: 'A bike não manda potência: estimando pela carga.'),
+                  const AvisoFaixa(texto: 'A bike não manda potência: estimando pela carga.'),
                 AppCard(
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   child: Column(
@@ -141,71 +132,13 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (source is SimSource) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: source.easier,
-                          icon: const Icon(Icons.science_outlined, size: 18),
-                          label: const Text('Mais fraco', maxLines: 1),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: source.harder,
-                          icon: const Icon(Icons.science_outlined, size: 18),
-                          label: const Text('Mais forte', maxLines: 1),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AppColors.borda),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            IconButton.filledTonal(
-                              tooltip: 'Diminuir carga',
-                              onPressed: () => ctrl.changeLevel(-1),
-                              icon: const Icon(Icons.remove),
-                            ),
-                            Expanded(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text('Carga ${v.level}', style: AppText.corpoForte),
-                              ),
-                            ),
-                            IconButton.filledTonal(
-                              tooltip: 'Aumentar carga',
-                              onPressed: () => ctrl.changeLevel(1),
-                              icon: const Icon(Icons.add),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.escuro,
-                        minimumSize: const Size(104, 60),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      onPressed: v.started ? ctrl.togglePause : null,
-                      child: Text(v.state == RideState.pausado ? 'Continuar' : 'Pausar'),
-                    ),
-                  ],
+                if (source is SimSource) SimControls(source: source),
+                RideControls(
+                  level: v.level,
+                  paused: v.state == RideState.pausado,
+                  enabled: v.started,
+                  onLevel: ctrl.changeLevel,
+                  onPause: ctrl.togglePause,
                 ),
               ],
             ),
@@ -216,29 +149,18 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
   }
 }
 
-class _Faixa extends StatelessWidget {
-  const _Faixa({required this.texto, this.acao, this.onAcao});
-
-  final String texto;
-  final String? acao;
-  final VoidCallback? onAcao;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-        decoration: BoxDecoration(color: AppColors.avisoFundo, borderRadius: BorderRadius.circular(16)),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(texto, style: const TextStyle(color: AppColors.avisoTexto, fontWeight: FontWeight.w700)),
-            ),
-            if (acao != null) TextButton(onPressed: onAcao, child: Text(acao!)),
-          ],
-        ),
-      ),
-    );
-  }
+/// Pergunta se a pessoa quer mesmo encerrar o pedal.
+Future<bool> confirmarEncerrar(BuildContext context) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (c) => AlertDialog(
+      title: const Text('Encerrar o pedal?'),
+      content: const Text('O pedal vai ser salvo no seu histórico.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Continuar pedalando')),
+        FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Encerrar')),
+      ],
+    ),
+  );
+  return ok == true;
 }
