@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,10 +10,13 @@ import '../../bike/bike_source.dart';
 import '../../core/wake_lock.dart';
 import '../../data/providers.dart';
 import '../../data/rides_store.dart';
+import '../../domain/geo.dart';
 import '../../domain/power.dart';
 import '../../domain/ride_session.dart';
+import '../../domain/route_profile.dart';
 
-final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+/// Relógio do pedal. `clock.now()` é o relógio real no app e o relógio simulado nos testes de tela.
+final clockProvider = Provider<DateTime Function()>((ref) => () => clock.now());
 final rideIdProvider = Provider<String Function()>(
   (ref) => () => 'p${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}',
 );
@@ -22,41 +26,65 @@ const _historyLength = 300; // 5 minutos de amostras
 const _staleAfter = Duration(seconds: 3);
 const _saveEverySeconds = 15.0;
 
-class FreeRideView {
-  const FreeRideView({
+class RideView {
+  const RideView({
     this.started = false,
+    this.notFound = false,
     this.state = RideState.pronto,
     this.speedKmh = 0,
     this.power = 0,
     this.cadence = 0,
     this.heartRate,
     this.distance = 0,
+    this.total = double.infinity,
+    this.grade = 0,
     this.movingTime = 0,
     this.kcal = 0,
     this.level = 4,
     this.estimating = false,
     this.pausedByBike = false,
     this.powerHistory = const [],
+    this.routeName,
+    this.position,
+    this.alert,
+    this.alertAt,
+    this.profile,
   });
 
   final bool started;
+  final bool notFound;
   final RideState state;
   final double speedKmh;
   final double power;
   final double cadence;
   final double? heartRate;
   final double distance;
+  final double total;
+  final double grade;
   final double movingTime;
   final double kcal;
   final int level;
   final bool estimating;
   final bool pausedByBike;
   final List<double> powerHistory;
+  final String? routeName;
+  final GeoPoint? position;
+  final RideAlert? alert;
+  final DateTime? alertAt;
+  final RouteProfile? profile;
+
+  bool get isRoute => profile != null;
 }
 
-class FreeRideController extends Notifier<FreeRideView> {
+/// Pedal livre (`routeId == null`) ou pedal numa rota salva.
+class RideController extends Notifier<RideView> {
+  RideController(this.routeId);
+
+  final String? routeId;
   RideSession? _session;
   PowerResolver? _resolver;
+  RouteProfile? _profile;
+  String? _routeName;
   WakeLock? _wakeLock;
   Timer? _ticker;
   StreamSubscription<BikeReading>? _readingSub;
@@ -65,30 +93,46 @@ class FreeRideController extends Notifier<FreeRideView> {
   DateTime? _lastTick;
   DateTime? _lastReading;
   String? _rideId;
+  RideAlert? _alert;
+  DateTime? _alertAt;
   double _sinceSave = 0;
   int _level = 4;
   int _seenSamples = 0;
   bool _pausedByBike = false;
+  bool _starting = false;
+  bool _finished = false;
   final List<double> _history = [];
 
   @override
-  FreeRideView build() {
+  RideView build() {
     ref.onDispose(_stop);
-    return const FreeRideView();
+    return const RideView();
   }
 
   Future<void> start() async {
-    if (_session != null) return;
+    if (_session != null || _starting) return;
+    _starting = true;
     final settings = await ref.read(settingsStoreProvider).load();
-    if (!ref.mounted || _session != null) return;
-    final clock = ref.read(clockProvider);
-    _session = RideSession(terrain: const FlatTerrain(), riderMassKg: settings.pesoKg)..start();
+    if (!ref.mounted) return;
+    final id = routeId;
+    if (id != null) {
+      final route = await ref.read(routesStoreProvider).byId(id);
+      if (!ref.mounted) return;
+      if (route == null) {
+        state = const RideView(notFound: true);
+        return;
+      }
+      _profile = RouteProfile(route.points);
+      _routeName = route.name;
+    }
+    final relogio = ref.read(clockProvider);
+    _session = RideSession(terrain: _profile ?? const FlatTerrain(), riderMassKg: settings.pesoKg)..start();
     _resolver = PowerResolver(
       mode: settings.modoPotencia,
       calibration: PowerCalibration(base: settings.base, factor: settings.fator),
     );
     _level = settings.cargaPadrao;
-    _startedAt = clock();
+    _startedAt = relogio();
     _lastTick = _startedAt;
     _rideId = ref.read(rideIdProvider)();
     final source = ref.read(bikeControllerProvider).source;
@@ -138,7 +182,11 @@ class FreeRideController extends Notifier<FreeRideView> {
     _lastTick = now;
     final last = _lastReading;
     if (last == null || now.difference(last) > _staleAfter) session.setInputs(powerW: 0, cadence: 0);
-    session.advance(dt);
+    final alerts = session.advance(dt);
+    if (alerts.isNotEmpty) {
+      _alert = alerts.last;
+      _alertAt = now;
+    }
     if (session.samples.length > _seenSamples) {
       _history.addAll(session.samples.skip(_seenSamples).map((s) => s.power));
       _seenSamples = session.samples.length;
@@ -169,9 +217,11 @@ class FreeRideController extends Notifier<FreeRideView> {
     _publish();
   }
 
-  /// Encerra, salva como concluído e devolve o id do pedal.
+  /// Encerra, salva como concluído e devolve o id do pedal. Chamar de novo só devolve o id.
   Future<String> finish() async {
     final session = _session!;
+    if (_finished) return _rideId!;
+    _finished = true;
     session.finish();
     _stop();
     await _save(completed: true);
@@ -190,7 +240,8 @@ class FreeRideController extends Notifier<FreeRideView> {
     final snap = session.snapshot();
     await ref.read(ridesStoreProvider).upsert(RideRecord(
           id: id,
-          mode: RideMode.livre,
+          routeId: routeId,
+          mode: _profile != null ? RideMode.rota : RideMode.livre,
           startedAt: started,
           movingTimeS: snap.movingTime,
           distanceM: snap.distance,
@@ -218,7 +269,7 @@ class FreeRideController extends Notifier<FreeRideView> {
     final session = _session;
     if (session == null) return;
     final snap = session.snapshot();
-    state = FreeRideView(
+    state = RideView(
       started: true,
       state: snap.state,
       speedKmh: snap.speedKmh,
@@ -226,14 +277,21 @@ class FreeRideController extends Notifier<FreeRideView> {
       cadence: snap.cadence,
       heartRate: snap.heartRate,
       distance: snap.distance,
+      total: snap.total,
+      grade: snap.grade,
       movingTime: snap.movingTime,
       kcal: snap.kcal,
       level: _level,
       estimating: _resolver?.effectiveMode == PowerMode.estimada,
       pausedByBike: _pausedByBike,
       powerHistory: List.unmodifiable(_history),
+      routeName: _routeName,
+      position: _profile?.positionAt(snap.distance),
+      alert: _alert,
+      alertAt: _alertAt,
+      profile: _profile,
     );
   }
 }
 
-final freeRideProvider = NotifierProvider.autoDispose<FreeRideController, FreeRideView>(FreeRideController.new);
+final rideProvider = NotifierProvider.autoDispose.family<RideController, RideView, String?>(RideController.new);
