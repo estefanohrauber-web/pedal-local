@@ -3928,3 +3928,12 @@ cd /c/dev/pedal-local/app && flutter build apk --debug && /c/dev/android-sdk/pla
 4. Explorar mostra o mapa com a rota e o cartão com “Pedalar”.
 5. Conectar a bike simulada → Pedalar a rota → bolinha anda, linha percorrida fica verde forte, inclinação muda, aviso de subida aparece nas subidas → ao chegar ao fim, “Rota concluída!”.
 6. Limpar os dados de teste (`pm clear com.pedallocal.app`) para o usuário começar do zero.
+
+---
+
+## Notas da execução (2026-10-08)
+
+- `StrokePattern.dashed` não pode ser `const` (o construtor confere o tamanho da lista): usado sem `const`.
+- O `SimpleAttributionWidget` do flutter_map estourava 128 px em tela estreita: trocado por `MapAttribution` próprio e compacto (“© OpenStreetMap”).
+- Linha de resultado do Criar rota estourava 28 px: subida/descida em `Expanded` alinhado à direita.
+- Resultado: `flutter analyze` sem avisos, **107 testes passando**.

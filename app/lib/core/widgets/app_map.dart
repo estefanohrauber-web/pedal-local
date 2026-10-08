@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../domain/geo.dart';
+import '../theme/app_theme.dart';
 
 /// Desligado nos testes de tela (sem internet); ligado no app.
 final mapTilesEnabledProvider = Provider<bool>((ref) => true);
@@ -25,5 +26,27 @@ List<Widget> baseMapLayers(WidgetRef ref) => [
         ),
     ];
 
-/// Crédito exigido pela licença do OpenStreetMap.
-const mapAttribution = SimpleAttributionWidget(source: Text('© OpenStreetMap'));
+/// Crédito exigido pela licença do OpenStreetMap, compacto para caber em qualquer mapa.
+class MapAttribution extends StatelessWidget {
+  const MapAttribution({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: Container(
+        margin: const EdgeInsets.all(4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(color: const Color(0xCCFFFFFF), borderRadius: BorderRadius.circular(6)),
+        child: const Text(
+          '© OpenStreetMap',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 10, color: AppColors.textoSuave),
+        ),
+      ),
+    );
+  }
+}
+
+const mapAttribution = MapAttribution();

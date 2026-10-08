@@ -29,13 +29,27 @@ class ResumoScreen extends ConsumerWidget {
   }
 }
 
-class _Conteudo extends StatelessWidget {
+class _Conteudo extends ConsumerWidget {
   const _Conteudo({required this.ride});
 
   final RideRecord ride;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final routeId = ride.routeId;
+    final nomeRota = routeId == null
+        ? null
+        : ref.watch(routeByIdProvider(routeId)).when(
+              data: (r) => r?.name,
+              loading: () => null,
+              error: (e, s) => null,
+            );
+    final titulo = !ride.completed
+        ? 'Pedal salvo'
+        : ride.mode == RideMode.rota
+            ? 'Rota concluída!'
+            : 'Pedal concluído!';
+    final subtitulo = [nomeRota ?? rideModeLabel(ride.mode), formatDateTime(ride.startedAt)].join(' · ');
     final potencias = ride.samples.map((s) => s.power).toList();
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -53,8 +67,8 @@ class _Conteudo extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(ride.completed ? 'Pedal concluído!' : 'Pedal salvo', style: AppText.titulo.copyWith(fontSize: 24)),
-                  Text('${rideModeLabel(ride.mode)} · ${formatDateTime(ride.startedAt)}', style: AppText.subtitulo),
+                  Text(titulo, style: AppText.titulo.copyWith(fontSize: 24)),
+                  Text(subtitulo, style: AppText.subtitulo, maxLines: 2, overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),

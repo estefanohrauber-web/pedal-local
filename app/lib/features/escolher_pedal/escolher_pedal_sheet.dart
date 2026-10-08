@@ -18,6 +18,16 @@ Future<void> showEscolherPedal(BuildContext context) => showModalBottomSheet<voi
 class EscolherPedalSheet extends ConsumerWidget {
   const EscolherPedalSheet({super.key});
 
+  void _ir(BuildContext context, String destino, {bool trocarAba = false}) {
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    if (trocarAba) {
+      router.go(destino);
+    } else {
+      router.push(destino);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bike = ref.watch(bikeControllerProvider);
@@ -30,8 +40,18 @@ class EscolherPedalSheet extends ConsumerWidget {
           children: [
             const Text('Como vai ser hoje?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
-            const _Opcao(icon: Icons.bar_chart_rounded, titulo: 'Pedal livre', texto: 'Só os dados da bike, sem mapa', selecionada: true),
-            const _Opcao(icon: Icons.map_outlined, titulo: 'Seguir uma rota', texto: 'Chega na próxima etapa', emBreve: true),
+            _Opcao(
+              icon: Icons.route,
+              titulo: 'Seguir uma rota',
+              texto: 'Escolha a rota na aba Explorar',
+              onTap: () => _ir(context, '/explorar', trocarAba: true),
+            ),
+            const _Opcao(
+              icon: Icons.bar_chart_rounded,
+              titulo: 'Pedal livre',
+              texto: 'Só os dados da bike, sem mapa',
+              selecionada: true,
+            ),
             const _Opcao(icon: Icons.flag_outlined, titulo: 'Contra o fantasma', texto: 'Bata o seu recorde numa rota', emBreve: true),
             const _Opcao(icon: Icons.timer_outlined, titulo: 'Treino', texto: 'Intervalos e sessões guiadas', emBreve: true),
             const SizedBox(height: 8),
@@ -60,12 +80,8 @@ class EscolherPedalSheet extends ConsumerWidget {
             const SizedBox(height: 12),
             FilledButton.icon(
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(bike.connected ? 'Começar' : 'Conectar a bike'),
-              onPressed: () {
-                final router = GoRouter.of(context);
-                Navigator.of(context).pop();
-                router.push(bike.connected ? '/pedal-livre' : '/bike');
-              },
+              label: Text(bike.connected ? 'Começar pedal livre' : 'Conectar a bike'),
+              onPressed: () => _ir(context, bike.connected ? '/pedal-livre' : '/bike'),
             ),
           ],
         ),
@@ -81,6 +97,7 @@ class _Opcao extends StatelessWidget {
     required this.texto,
     this.selecionada = false,
     this.emBreve = false,
+    this.onTap,
   });
 
   final IconData icon;
@@ -88,6 +105,7 @@ class _Opcao extends StatelessWidget {
   final String texto;
   final bool selecionada;
   final bool emBreve;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -95,40 +113,47 @@ class _Opcao extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Opacity(
         opacity: emBreve ? 0.6 : 1,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 72),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: selecionada ? const Color(0xFFF3FAF6) : AppColors.superficie,
+        child: Material(
+          color: selecionada ? const Color(0xFFF3FAF6) : AppColors.superficie,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
+            side: BorderSide(
               color: selecionada ? AppColors.destaque : AppColors.borda,
               width: selecionada ? 2.5 : 1.5,
             ),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: selecionada ? AppColors.destaque : AppColors.neutro,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: selecionada ? Colors.white : AppColors.texto),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 72),
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: selecionada ? AppColors.destaque : AppColors.neutro,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icon, color: selecionada ? Colors.white : AppColors.texto),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                        Text(texto, style: AppText.suave),
+                      ],
+                    ),
+                  ),
+                  if (emBreve) const EmBreveTag(),
+                  if (onTap != null) const Icon(Icons.chevron_right, color: AppColors.textoSuave),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                    Text(texto, style: AppText.suave),
-                  ],
-                ),
-              ),
-              if (emBreve) const EmBreveTag(),
-            ],
+            ),
           ),
         ),
       ),

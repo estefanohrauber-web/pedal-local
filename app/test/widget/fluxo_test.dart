@@ -4,8 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/core/wake_lock.dart';
+import 'package:pedal_local/core/widgets/app_map.dart';
 import 'package:pedal_local/data/providers.dart';
 import 'package:pedal_local/data/rides_store.dart';
+import 'package:pedal_local/data/routes_store.dart';
+import 'package:pedal_local/data/services/location_service.dart';
 import 'package:pedal_local/data/settings_store.dart';
 
 import '../support/fakes.dart';
@@ -22,7 +25,10 @@ Future<ProviderContainer> abrirApp(WidgetTester tester, MemoryRidesStore rides) 
     overrides: [
       settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
       ridesStoreProvider.overrideWithValue(rides),
+      routesStoreProvider.overrideWithValue(MemoryRoutesStore()),
       wakeLockProvider.overrideWithValue(FakeWakeLock()),
+      mapTilesEnabledProvider.overrideWithValue(false),
+      locationServiceProvider.overrideWithValue(const FixedLocationService(null)),
     ],
     child: const PedalLocalApp(),
   ));
@@ -63,6 +69,7 @@ void main() {
     await tester.tap(find.text('Pausar'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Continuar'), findsOneWidget);
+    expect(find.textContaining('Pedal pausado'), findsOneWidget);
 
     await tester.tap(find.text('Encerrar'));
     await tester.pump(const Duration(milliseconds: 300));
