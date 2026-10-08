@@ -20,9 +20,9 @@ import 'ride_widgets.dart';
 const _alertaVisivel = Duration(seconds: 8);
 
 class PedalRotaScreen extends ConsumerStatefulWidget {
-  const PedalRotaScreen({super.key, required this.routeId});
+  const PedalRotaScreen({super.key, required this.target});
 
-  final String routeId;
+  final RideTarget target;
 
   @override
   ConsumerState<PedalRotaScreen> createState() => _PedalRotaScreenState();
@@ -36,15 +36,15 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(rideProvider(widget.routeId).notifier).start());
+    Future.microtask(() => ref.read(rideProvider(widget.target).notifier).start());
   }
 
   Future<void> _finalizar() async {
     if (_encerrando) return;
     setState(() => _encerrando = true);
-    final id = await ref.read(rideProvider(widget.routeId).notifier).finish();
+    final id = await ref.read(rideProvider(widget.target).notifier).finish();
     if (!mounted) return;
-    context.go('/resumo/$id');
+    context.go('/resumo/$id?novo=1');
   }
 
   Future<void> _encerrar() async {
@@ -54,7 +54,7 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = rideProvider(widget.routeId);
+    final provider = rideProvider(widget.target);
     final v = ref.watch(provider);
     ref.listen(provider, (anterior, proximo) {
       if (proximo.state == RideState.concluido && anterior?.state != RideState.concluido) _finalizar();
@@ -74,6 +74,10 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
     final ctrl = ref.read(provider.notifier);
     final perfil = v.profile;
     String? textoAlerta;
+    final volta = v.lapAlert;
+    final textoVolta = volta != null && clock.now().difference(volta.at) < _alertaVisivel
+        ? 'Volta ${volta.number} concluída em ${formatTime(volta.time)}! Seguindo para a volta ${volta.number + 1}.'
+        : null;
     final alerta = v.alert;
     final quando = v.alertAt;
     if (alerta != null && quando != null && clock.now().difference(quando) < _alertaVisivel) {
@@ -107,7 +111,11 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
                             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                           ),
                           Text(
-                            v.total.isFinite ? '${formatKm(v.distance)} de ${formatKm(v.total)}' : '',
+                            v.isLoop
+                                ? 'Volta ${v.lap} · ${formatKm(v.lapDistance)} de ${formatKm(v.lapLength!)}'
+                                : v.total.isFinite
+                                    ? '${formatKm(v.distance)} de ${formatKm(v.total)}'
+                                    : '',
                             style: AppText.suave,
                           ),
                         ],
@@ -143,7 +151,7 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
                                   color: AppColors.destaque.withValues(alpha: 0.3),
                                 ),
                                 Polyline(
-                                  points: [for (final p in perfil.traveled(v.distance)) toLatLng(p)],
+                                  points: [for (final p in perfil.traveled(v.lapDistance)) toLatLng(p)],
                                   strokeWidth: 7,
                                   color: AppColors.destaque,
                                 ),
@@ -175,6 +183,8 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
                         acao: 'Reconectar',
                         onAcao: () => ref.read(bikeControllerProvider.notifier).reconnectNow(),
                       )
+                    else if (textoVolta != null)
+                      AvisoFaixa(icone: Icons.flag, texto: textoVolta)
                     else if (textoAlerta != null)
                       AvisoFaixa(icone: Icons.terrain, texto: textoAlerta)
                     else if (v.state == RideState.pausado)
@@ -217,7 +227,7 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
                     ),
                     if (perfil != null) ...[
                       const SizedBox(height: 10),
-                      SizedBox(height: 70, child: ElevationChart(profile: perfil, marker: v.distance)),
+                      SizedBox(height: 70, child: ElevationChart(profile: perfil, marker: v.lapDistance)),
                     ],
                     const SizedBox(height: 10),
                     if (source is SimSource) SimControls(source: source),

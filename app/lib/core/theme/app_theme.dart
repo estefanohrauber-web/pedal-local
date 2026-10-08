@@ -32,6 +32,21 @@ abstract final class AppColors {
 /// Cor da rota pelo índice guardado nela.
 Color routeColor(int index) => AppColors.rotas[index % AppColors.rotas.length];
 
+/// Escala de calor do mapa e do gráfico do pedal: 0 = azul (menor) … 1 = vermelho (maior).
+const heatStops = [
+  Color(0xFF2563EB), // azul
+  Color(0xFF06B6D4), // ciano
+  Color(0xFF22C55E), // verde
+  Color(0xFFEAB308), // amarelo
+  Color(0xFFDC2626), // vermelho
+];
+
+Color heatColor(double t) {
+  final x = t.clamp(0.0, 1.0) * (heatStops.length - 1);
+  final i = x.floor().clamp(0, heatStops.length - 2);
+  return Color.lerp(heatStops[i], heatStops[i + 1], x - i)!;
+}
+
 abstract final class AppText {
   static const titulo = TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.texto);
   static const subtitulo = TextStyle(fontSize: 15, color: AppColors.textoSuave);

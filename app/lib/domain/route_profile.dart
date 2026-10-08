@@ -89,6 +89,17 @@ class RouteProfile implements Terrain {
 
   GeoPoint positionAt(double d) => points.isEmpty ? const GeoPoint(0, 0) : pointAt(points, cum, d);
 
+  /// Metros subidos do começo até [d], somando as inclinações positivas como o pedal soma.
+  double climbedUpTo(double d) {
+    final x = _clamp(d, 0, distance);
+    var total = 0.0;
+    for (var i = 0; i < _grades.length && cum[i] < x; i++) {
+      final g = _grades[i];
+      if (g > 0) total += g * (math.min(cum[i + 1], x) - cum[i]);
+    }
+    return total;
+  }
+
   /// Pontos já percorridos até [d], terminando na posição atual (para pintar a linha feita).
   List<GeoPoint> traveled(double d) {
     if (points.length < 2) return List.of(points);

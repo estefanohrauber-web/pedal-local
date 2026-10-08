@@ -89,6 +89,7 @@ class FtmsSource implements BikeSource {
       power: d.power,
       speedKmh: d.speedKmh,
       heartRate: d.heartRate,
+      resistance: d.resistance,
       timestamp: DateTime.now(),
     ));
   }

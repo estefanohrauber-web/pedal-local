@@ -9,6 +9,7 @@ import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/routes_store.dart';
 import 'package:pedal_local/data/settings_store.dart';
 import 'package:pedal_local/domain/geo.dart';
+import 'package:pedal_local/domain/route_profile.dart';
 import 'package:pedal_local/domain/ride_session.dart';
 import 'package:pedal_local/features/pedal/ride_controller.dart';
 
@@ -28,6 +29,17 @@ RouteRecord rotaDeTeste(String id, List<double> alts) {
     lossM: 0,
   );
 }
+
+RouteRecord rotaComPontos(String id, List<ProfilePoint> pontos) => RouteRecord(
+      id: id,
+      name: 'Volta de teste',
+      createdAt: DateTime(2026, 10, 8),
+      waypoints: [pontos.first.geo, pontos.last.geo],
+      points: pontos,
+      distanceM: RouteProfile(pontos).distance,
+      gainM: 0,
+      lossM: 0,
+    );
 
 void main() {
   late FakeBikeSource bike;
@@ -57,14 +69,17 @@ void main() {
     await container.read(bikeControllerProvider.notifier).useSource(bike);
   });
 
-  RideController ctrl(String? rota) {
-    container.listen(rideProvider(rota), (anterior, proximo) {});
-    return container.read(rideProvider(rota).notifier);
+  /// Aceita o id da rota (ou null = pedal livre) ou um RideTarget completo.
+  RideTarget alvo(Object? rota) => rota is RideTarget ? rota : RideTarget(routeId: rota as String?);
+
+  RideController ctrl(Object? rota) {
+    container.listen(rideProvider(alvo(rota)), (anterior, proximo) {});
+    return container.read(rideProvider(alvo(rota)).notifier);
   }
 
-  RideView view(String? rota) => container.read(rideProvider(rota));
+  RideView view(Object? rota) => container.read(rideProvider(alvo(rota)));
 
-  Future<void> pedalar(String? rota, int segundos, {int? power = 150, double cadence = 80}) async {
+  Future<void> pedalar(Object? rota, int segundos, {int? power = 150, double cadence = 80}) async {
     for (var i = 0; i < segundos * 4; i++) {
       agora = agora.add(const Duration(milliseconds: 250));
       bike.emitReading(BikeReading(cadence: cadence, power: power, timestamp: agora));
@@ -182,6 +197,91 @@ void main() {
       final p = view('r').position!;
       expect(p, isA<GeoPoint>());
       expectNear(p.lat, -23.5, 1e-9);
+    });
+  });
+
+  group('sentido e começo', () {
+    test('sentido invertido começa no fim e anda para o outro lado', () async {
+      await routes.upsert(rotaDeTeste('r', List.filled(6, 760)));
+      const inverso = RideTarget(routeId: 'r', reversed: true);
+      await ctrl(inverso).start();
+      final inicio = view(inverso).position!;
+      expectNear(inicio.lat, northLine(6, 20).last.lat, 1e-9);
+      await pedalar(inverso, 5);
+      expect(view(inverso).position!.lat, lessThan(inicio.lat));
+      await ctrl(inverso).finish();
+      final salvo = (await rides.byId('p1'))!;
+      expect(salvo.reversed, isTrue);
+      expect(salvo.track!.first.lat, closeTo(inicio.lat, 1e-9));
+    });
+
+    test('ida até o fim conta 1 volta; encerrar no meio conta 0', () async {
+      await routes.upsert(rotaDeTeste('r', List.filled(6, 760)));
+      await ctrl('r').start();
+      await pedalar('r', 3);
+      await ctrl('r').finish();
+      expect((await rides.byId('p1'))!.laps, 0);
+    });
+
+    test('começo escolhido na volta fechada', () async {
+      final volta = squareLoop(100);
+      await routes.upsert(rotaComPontos('v', volta));
+      const daqui = RideTarget(routeId: 'v', startIndex: 7);
+      await ctrl(daqui).start();
+      expect(view(daqui).position, volta[7].geo);
+      expect(view(daqui).isLoop, isTrue);
+    });
+  });
+
+  group('voltas', () {
+    Future<double> pedalarAteVolta(Object rota, int voltas) async {
+      for (var s = 0; s < 600 && view(rota).lapsDone < voltas; s++) {
+        await pedalar(rota, 1);
+      }
+      return view(rota).distance;
+    }
+
+    test('a volta fechada não termina: segue para a próxima e avisa cada volta', () async {
+      await routes.upsert(rotaComPontos('v', squareLoop(100)));
+      await ctrl('v').start();
+      expect(view('v').lap, 1);
+      await pedalarAteVolta('v', 1);
+      expect(view('v').state, RideState.pedalando);
+      expect(view('v').lap, 2);
+      expect(view('v').lapAlert?.number, 1);
+      expect(view('v').lapAlert!.time, greaterThan(0));
+      expect(view('v').lapDistance, lessThan(view('v').lapLength!));
+    });
+
+    test('encerrar logo depois de fechar a volta descarta o que passou (dentro da margem)', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(margemVolta: 0.1));
+      await routes.upsert(rotaComPontos('v', squareLoop(100)));
+      await ctrl('v').start();
+      await pedalarAteVolta('v', 1);
+      await pedalar('v', 1);
+      final volta = view('v').lapLength!;
+      expect(view('v').distance, greaterThan(volta));
+      await ctrl('v').finish();
+      final salvo = (await rides.byId('p1'))!;
+      expect(salvo.laps, 1);
+      expect(salvo.loop, isTrue);
+      expectNear(salvo.distanceM, volta, 0.01);
+      expect(salvo.trimmedM, greaterThan(0));
+      expectNear(salvo.samples.last.distance, volta, 0.01);
+    });
+
+    test('passou da margem: guarda tudo', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(margemVolta: 0.01));
+      await routes.upsert(rotaComPontos('v', squareLoop(100)));
+      await ctrl('v').start();
+      await pedalarAteVolta('v', 1);
+      await pedalar('v', 5);
+      final andado = view('v').distance;
+      await ctrl('v').finish();
+      final salvo = (await rides.byId('p1'))!;
+      expect(salvo.laps, 1);
+      expect(salvo.trimmedM, 0);
+      expectNear(salvo.distanceM, andado, 0.01);
     });
   });
 }

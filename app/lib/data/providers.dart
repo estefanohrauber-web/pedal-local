@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
+import '../domain/stats.dart';
 import 'rides_store.dart';
 import 'route_builder.dart';
 import 'routes_store.dart';
@@ -25,6 +26,14 @@ final routesStoreProvider = Provider<RoutesStore>((ref) => SqliteRoutesStore(ref
 final settingsProvider = FutureProvider<AppSettings>((ref) => ref.watch(settingsStoreProvider).load());
 
 final recentRidesProvider = FutureProvider<List<RideRecord>>((ref) => ref.watch(ridesStoreProvider).recent());
+
+/// Números de todos os pedais (totais e semana da aba Você).
+final rideStatsProvider = FutureProvider<List<RideStat>>((ref) => ref.watch(ridesStoreProvider).stats());
+
+/// Pedais de uma rota (comparação no resumo). Lido de novo a cada abertura.
+final ridesForRouteProvider = FutureProvider.autoDispose.family<List<RideRecord>, String>(
+  (ref, routeId) => ref.watch(ridesStoreProvider).forRoute(routeId),
+);
 
 final rideByIdProvider = FutureProvider.family<RideRecord?, String>(
   (ref, id) => ref.watch(ridesStoreProvider).byId(id),

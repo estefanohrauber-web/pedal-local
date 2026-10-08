@@ -53,6 +53,6 @@ void main() {
     await tester.tap(find.text('Você').last);
     await tester.pumpAndSettle();
     expect(find.text('Histórico'), findsOneWidget);
-    expect(find.textContaining('8,40 km'), findsOneWidget);
+    expect(find.textContaining('8,40 km'), findsWidgets); // total da semana e o cartão
   });
 }

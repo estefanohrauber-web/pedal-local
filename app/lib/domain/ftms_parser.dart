@@ -5,12 +5,15 @@ const ftmsServiceUuid = '00001826-0000-1000-8000-00805f9b34fb';
 const indoorBikeDataUuid = '00002ad2-0000-1000-8000-00805f9b34fb';
 
 class IndoorBikeData {
-  const IndoorBikeData({this.speedKmh, this.cadence, this.power, this.heartRate});
+  const IndoorBikeData({this.speedKmh, this.cadence, this.power, this.heartRate, this.resistance});
 
   final double? speedKmh;
   final double? cadence;
   final int? power;
   final int? heartRate;
+
+  /// Nível de resistência que o painel informa (sem unidade; cada marca usa uma escala).
+  final int? resistance;
 
   @override
   bool operator ==(Object other) =>
@@ -18,13 +21,14 @@ class IndoorBikeData {
       other.speedKmh == speedKmh &&
       other.cadence == cadence &&
       other.power == power &&
-      other.heartRate == heartRate;
+      other.heartRate == heartRate &&
+      other.resistance == resistance;
 
   @override
-  int get hashCode => Object.hash(speedKmh, cadence, power, heartRate);
+  int get hashCode => Object.hash(speedKmh, cadence, power, heartRate, resistance);
 
   @override
-  String toString() => 'IndoorBikeData(speed: $speedKmh, cadence: $cadence, power: $power, hr: $heartRate)';
+  String toString() => 'IndoorBikeData(speed: $speedKmh, cadence: $cadence, power: $power, hr: $heartRate, resistance: $resistance)';
 }
 
 /// Decodifica Indoor Bike Data (0x2AD2). Os campos vêm na ordem da especificação e cada
@@ -39,6 +43,7 @@ IndoorBikeData parseIndoorBikeData(Uint8List bytes) {
   double? cadence;
   int? power;
   int? heartRate;
+  int? resistance;
 
   // (presente, tamanho em bytes, leitura — null = só pular)
   final fields = <(bool, int, void Function(int)?)>[
@@ -47,7 +52,7 @@ IndoorBikeData parseIndoorBikeData(Uint8List bytes) {
     (has(2), 2, (at) => cadence = view.getUint16(at, Endian.little) / 2),
     (has(3), 2, null), // cadência média
     (has(4), 3, null), // distância total
-    (has(5), 2, null), // nível de resistência
+    (has(5), 2, (at) => resistance = view.getInt16(at, Endian.little)),
     (has(6), 2, (at) => power = view.getInt16(at, Endian.little)),
     (has(7), 2, null), // potência média
     (has(8), 5, null), // energia: total, por hora, por minuto
@@ -61,5 +66,5 @@ IndoorBikeData parseIndoorBikeData(Uint8List bytes) {
     read?.call(offset);
     offset += size;
   }
-  return IndoorBikeData(speedKmh: speed, cadence: cadence, power: power, heartRate: heartRate);
+  return IndoorBikeData(speedKmh: speed, cadence: cadence, power: power, heartRate: heartRate, resistance: resistance);
 }

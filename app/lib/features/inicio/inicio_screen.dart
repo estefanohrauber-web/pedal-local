@@ -18,6 +18,7 @@ class InicioScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bike = ref.watch(bikeControllerProvider);
     final rides = ref.watch(recentRidesProvider);
+    final nome = ref.watch(settingsProvider).when(data: (s) => s.nome?.trim() ?? '', loading: () => '', error: (e, s) => '');
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -25,13 +26,18 @@ class InicioScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Olá!', style: AppText.subtitulo),
-                      SizedBox(height: 2),
-                      Text('Bora pedalar?', style: AppText.titulo),
+                      Text(
+                        nome.isEmpty ? 'Olá!' : 'Olá, $nome!',
+                        style: AppText.subtitulo,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      const Text('Bora pedalar?', style: AppText.titulo),
                     ],
                   ),
                 ),

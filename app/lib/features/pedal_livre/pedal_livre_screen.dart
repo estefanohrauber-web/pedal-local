@@ -25,7 +25,7 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(rideProvider(null).notifier).start());
+    Future.microtask(() => ref.read(rideProvider(RideTarget.livre).notifier).start());
   }
 
   Future<void> _encerrar() async {
@@ -33,17 +33,17 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
     final ok = await confirmarEncerrar(context);
     if (!ok || !mounted) return;
     setState(() => _encerrando = true);
-    final id = await ref.read(rideProvider(null).notifier).finish();
+    final id = await ref.read(rideProvider(RideTarget.livre).notifier).finish();
     if (!mounted) return;
-    context.go('/resumo/$id');
+    context.go('/resumo/$id?novo=1');
   }
 
   @override
   Widget build(BuildContext context) {
-    final v = ref.watch(rideProvider(null));
+    final v = ref.watch(rideProvider(RideTarget.livre));
     final bike = ref.watch(bikeControllerProvider);
     final source = bike.source;
-    final ctrl = ref.read(rideProvider(null).notifier);
+    final ctrl = ref.read(rideProvider(RideTarget.livre).notifier);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {

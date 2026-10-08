@@ -206,6 +206,15 @@ void main() {
     await tester.tap(find.text('Explorar').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Pedalar esta rota'));
+    await tester.pumpAndSettle();
+    // Preparar: é uma ida; dá para inverter e voltar ao sentido original antes de começar.
+    expect(find.text('Ida (de um ponto a outro)'), findsOneWidget);
+    await tester.tap(find.text('Inverter sentido'));
+    await tester.pump();
+    expect(find.textContaining('Sentido invertido'), findsOneWidget);
+    await tester.tap(find.textContaining('Sentido invertido'));
+    await tester.pump();
+    await tester.tap(find.text('Começar pedal'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Rua curta'), findsOneWidget);
@@ -220,7 +229,17 @@ void main() {
     expect(pedal.mode, RideMode.rota);
     expect(pedal.routeId, 'r1');
     expect(pedal.completed, isTrue);
+    expect(pedal.laps, 1);
+    expect(find.byKey(const Key('mapa-pedal')), findsOneWidget);
+    expect(find.text('Velocidade'), findsOneWidget);
 
+    // O cartão de comparação carrega depois e empurra o fim da tela: rola, espera e rola de novo.
+    final lista = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+    for (var i = 0; i < 2; i++) {
+      await tester.scrollUntilVisible(find.text('Apagar este pedal'), 300, scrollable: lista);
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('Primeira vez nesta rota neste sentido.'), findsOneWidget);
     await tester.tap(find.text('Concluir'));
     await tester.pumpAndSettle();
     expect(find.text('Último pedal'), findsOneWidget);

@@ -1,9 +1,11 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
+import '../../domain/ride_samples.dart';
+import '../../domain/route_variant.dart';
 import '../routes_store.dart';
 
-const _schemaVersion = 3;
+const _schemaVersion = 4;
 
 Future<void> _createRoutes(DatabaseExecutor db) => db.execute('''
   CREATE TABLE routes (
@@ -24,6 +26,36 @@ Future<void> _addRouteColor(DatabaseExecutor db) async {
   final rows = await db.query('routes', columns: ['id'], orderBy: 'created_at');
   for (var i = 0; i < rows.length; i++) {
     await db.update('routes', {'color': i % routeColorCount}, where: 'id = ?', whereArgs: [rows[i]['id']]);
+  }
+}
+
+/// Versão 4: voltas, sentido, corte da margem e o caminho pedalado. Pedais antigos de rota
+/// recebem o caminho da rota (sentido original) e 1 volta se foram até o fim.
+Future<void> _addRideLaps(DatabaseExecutor db) async {
+  final temPedais = await db.query('sqlite_master', where: "type = 'table' AND name = 'rides'");
+  if (temPedais.isEmpty) return;
+  for (final coluna in [
+    'laps INTEGER NOT NULL DEFAULT 0',
+    'loop INTEGER NOT NULL DEFAULT 0',
+    'reversed INTEGER NOT NULL DEFAULT 0',
+    'trimmed_m REAL NOT NULL DEFAULT 0',
+    'track BLOB',
+  ]) {
+    await db.execute('ALTER TABLE rides ADD COLUMN $coluna');
+  }
+  final pedais = await db.query('rides',
+      columns: ['id', 'route_id', 'distance_m', 'completed'], where: 'route_id IS NOT NULL');
+  for (final pedal in pedais) {
+    final rotas = await db.query('routes', where: 'id = ?', whereArgs: [pedal['route_id']], limit: 1);
+    if (rotas.isEmpty) continue;
+    final rota = RouteRecord.fromRow(rotas.first);
+    final foiAteOFim = pedal['completed'] == 1 && (pedal['distance_m'] as num) >= rota.distanceM - 1;
+    await db.update(
+      'rides',
+      {'track': packTrack(rota.points), 'loop': isLoop(rota.points) ? 1 : 0, 'laps': foiAteOFim ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [pedal['id']],
+    );
   }
 }
 
@@ -50,7 +82,12 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
             gain_m REAL NOT NULL,
             kcal REAL NOT NULL,
             completed INTEGER NOT NULL,
-            samples BLOB NOT NULL
+            samples BLOB NOT NULL,
+            laps INTEGER NOT NULL DEFAULT 0,
+            loop INTEGER NOT NULL DEFAULT 0,
+            reversed INTEGER NOT NULL DEFAULT 0,
+            trimmed_m REAL NOT NULL DEFAULT 0,
+            track BLOB
           )''');
         await db.execute('CREATE INDEX rides_started ON rides(started_at DESC)');
         await _createRoutes(db);
@@ -61,6 +98,7 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
         } else if (oldVersion < 3) {
           await _addRouteColor(db);
         }
+        if (oldVersion < 4) await _addRideLaps(db);
       },
     ),
   );

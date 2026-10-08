@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../bike/bike_controller.dart';
 import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
@@ -42,7 +41,6 @@ class RouteTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final connected = ref.watch(bikeControllerProvider.select((s) => s.connected));
     final cor = routeColor(route.colorIndex);
     return AppCard(
       onTap: onSelect,
@@ -87,7 +85,7 @@ class RouteTile extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilledButton.icon(
-              onPressed: () => context.push(connected ? '/pedal-rota/${route.id}' : '/bike'),
+              onPressed: () => context.push('/rota/${route.id}/preparar'),
               icon: const Icon(Icons.directions_bike),
               label: const Text('Pedalar esta rota'),
             ),

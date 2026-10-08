@@ -19,3 +19,25 @@ List<ProfilePoint> northProfile(List<double> alts, {double spacingM = 20}) {
 
 void expectNear(double actual, double expected, double tol) =>
     expect((actual - expected).abs(), lessThanOrEqualTo(tol), reason: 'esperado $expected ± $tol, veio $actual');
+
+/// Volta quadrada de [sideM] metros, pontos a cada [stepM]: norte, leste, sul e oeste (sentido horário).
+/// O último ponto repete o primeiro.
+List<ProfilePoint> squareLoop(double sideM, {double stepM = 20, double Function(int i)? alts, GeoPoint start = const GeoPoint(-23.5, -46.6)}) {
+  final n = (sideM / stepM).round();
+  final mPerDegLon = mPerDegLat * math.cos(start.lat * math.pi / 180);
+  final dLat = stepM / mPerDegLat;
+  final dLon = stepM / mPerDegLon;
+  final pts = <GeoPoint>[];
+  var lat = start.lat;
+  var lon = start.lon;
+  for (final (passoLat, passoLon) in [(dLat, 0.0), (0.0, dLon), (-dLat, 0.0), (0.0, -dLon)]) {
+    for (var i = 0; i < n; i++) {
+      pts.add(GeoPoint(lat, lon));
+      lat += passoLat;
+      lon += passoLon;
+    }
+  }
+  pts.add(pts.first);
+  final alt = alts ?? (i) => 700.0;
+  return [for (var i = 0; i < pts.length; i++) ProfilePoint(pts[i].lat, pts[i].lon, alt(i))];
+}

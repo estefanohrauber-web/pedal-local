@@ -12,6 +12,8 @@ class AppSettings {
     this.metaSemanalKm = 60,
     this.ultimaBikeId,
     this.ultimaBikeNome,
+    this.nome,
+    this.margemVolta = 0.03,
   });
 
   final double pesoKg;
@@ -23,6 +25,12 @@ class AppSettings {
   final String? ultimaBikeId;
   final String? ultimaBikeNome;
 
+  /// Como a pessoa quer ser chamada (vazio = sem nome).
+  final String? nome;
+
+  /// Quanto pode passar da volta (fração dela) e ainda fechar a volta ao encerrar.
+  final double margemVolta;
+
   AppSettings copyWith({
     double? pesoKg,
     PowerMode? modoPotencia,
@@ -32,6 +40,8 @@ class AppSettings {
     double? metaSemanalKm,
     String? ultimaBikeId,
     String? ultimaBikeNome,
+    String? nome,
+    double? margemVolta,
   }) =>
       AppSettings(
         pesoKg: pesoKg ?? this.pesoKg,
@@ -42,6 +52,8 @@ class AppSettings {
         metaSemanalKm: metaSemanalKm ?? this.metaSemanalKm,
         ultimaBikeId: ultimaBikeId ?? this.ultimaBikeId,
         ultimaBikeNome: ultimaBikeNome ?? this.ultimaBikeNome,
+        nome: nome ?? this.nome,
+        margemVolta: margemVolta ?? this.margemVolta,
       );
 
   Map<String, String> toMap() => {
@@ -53,6 +65,8 @@ class AppSettings {
         'metaSemanalKm': '$metaSemanalKm',
         'ultimaBikeId': ?ultimaBikeId,
         'ultimaBikeNome': ?ultimaBikeNome,
+        'nome': ?nome,
+        'margemVolta': '$margemVolta',
       };
 
   factory AppSettings.fromMap(Map<String, String> m) {
@@ -67,6 +81,8 @@ class AppSettings {
       metaSemanalKm: dbl('metaSemanalKm', d.metaSemanalKm),
       ultimaBikeId: m['ultimaBikeId'],
       ultimaBikeNome: m['ultimaBikeNome'],
+      nome: m['nome'],
+      margemVolta: dbl('margemVolta', d.margemVolta),
     );
   }
 }

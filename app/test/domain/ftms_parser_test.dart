@@ -21,7 +21,7 @@ void main() {
     );
   });
 
-  test('pula os campos opcionais antes da potência', () {
+  test('lê o nível de resistência e pula os outros campos opcionais', () {
     // flags 0x007E: vel. média, cadência, cad. média, distância, resistência, potência
     final r = parseIndoorBikeData(pkt([
       0x7e, 0x00,
@@ -33,7 +33,7 @@ void main() {
       0x05, 0x00, // resistência
       0xc8, 0x00, // potência 200 W
     ]));
-    expect(r, const IndoorBikeData(speedKmh: 25, cadence: 90, power: 200));
+    expect(r, const IndoorBikeData(speedKmh: 25, cadence: 90, power: 200, resistance: 5));
   });
 
   test('bit 0 ligado: sem velocidade', () {

@@ -20,6 +20,8 @@ void main() {
     expect(s.cargaPadrao, 4);
     expect(s.metaSemanalKm, 60);
     expect(s.ultimaBikeId, isNull);
+    expect(s.nome, isNull);
+    expect(s.margemVolta, 0.03);
   });
 
   test('salva e lê de volta', () async {
@@ -31,6 +33,8 @@ void main() {
       cargaPadrao: 6,
       ultimaBikeId: 'AA:BB',
       ultimaBikeNome: 'FS-1234',
+      nome: 'Ana',
+      margemVolta: 0.05,
     ));
     final s = await store.load();
     expect(s.pesoKg, 82);
@@ -39,6 +43,8 @@ void main() {
     expect(s.cargaPadrao, 6);
     expect(s.ultimaBikeId, 'AA:BB');
     expect(s.ultimaBikeNome, 'FS-1234');
+    expect(s.nome, 'Ana');
+    expect(s.margemVolta, 0.05);
   });
 
   test('versão em memória', () async {
