@@ -86,15 +86,18 @@ Future<ProviderContainer> abrirApp(WidgetTester tester, {required MemoryRoutesSt
 }
 
 void main() {
-  testWidgets('Explorar mostra as rotas salvas', (tester) async {
+  testWidgets('Explorar mostra as rotas salvas, mesmo num celular pequeno', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2070);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     final routes = MemoryRoutesStore();
-    await routes.upsert(rotaDeTeste('r1', 'Volta do bairro', 6));
+    await routes.upsert(rotaDeTeste('r1', 'Volta do bairro pela praça e pela padaria', 6));
     await abrirApp(tester, routes: routes);
     await tester.tap(find.text('Explorar').last);
     await tester.pumpAndSettle();
     expect(find.text('Minhas rotas'), findsOneWidget);
-    expect(find.text('Volta do bairro'), findsOneWidget);
-    expect(find.text('Pedalar'), findsOneWidget);
+    expect(find.text('Volta do bairro pela praça e pela padaria'), findsOneWidget);
+    expect(find.text('Pedalar esta rota'), findsOneWidget);
   });
 
   testWidgets('criar rota: tocar pontos, calcular e salvar', (tester) async {
@@ -136,7 +139,7 @@ void main() {
 
     await tester.tap(find.text('Explorar').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Pedalar'));
+    await tester.tap(find.text('Pedalar esta rota'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Rua curta'), findsOneWidget);
@@ -151,5 +154,11 @@ void main() {
     expect(pedal.mode, RideMode.rota);
     expect(pedal.routeId, 'r1');
     expect(pedal.completed, isTrue);
+
+    await tester.tap(find.text('Concluir'));
+    await tester.pumpAndSettle();
+    expect(find.text('Último pedal'), findsOneWidget);
+    // Cartão da rota no topo + pedal no histórico, ambos com o nome da rota.
+    expect(find.text('Rua curta'), findsNWidgets(2));
   });
 }

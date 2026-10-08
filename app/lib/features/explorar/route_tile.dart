@@ -10,9 +10,12 @@ import '../../data/providers.dart';
 import '../../data/routes_store.dart';
 
 class RouteTile extends ConsumerWidget {
-  const RouteTile({super.key, required this.route});
+  const RouteTile({super.key, required this.route, this.canDelete = true});
 
   final RouteRecord route;
+
+  /// No Início o cartão é só um atalho; apagar fica no Explorar.
+  final bool canDelete;
 
   Future<void> _apagar(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
@@ -35,33 +38,50 @@ class RouteTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final connected = ref.watch(bikeControllerProvider.select((s) => s.connected));
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(color: AppColors.destaqueSuave, borderRadius: BorderRadius.circular(14)),
-            child: const Icon(Icons.route, color: AppColors.destaqueTexto),
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(color: AppColors.destaqueSuave, borderRadius: BorderRadius.circular(14)),
+                child: const Icon(Icons.route, color: AppColors.destaqueTexto),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(route.name, style: AppText.corpoForte, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${formatKm(route.distanceM)} · ↑ ${formatNumber(route.gainM)} m · ↓ ${formatNumber(route.lossM)} m',
+                      style: AppText.suave,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (canDelete)
+                IconButton(
+                  tooltip: 'Apagar rota',
+                  onPressed: () => _apagar(context, ref),
+                  icon: const Icon(Icons.delete_outline, color: AppColors.textoSuave),
+                ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(route.name, style: AppText.corpoForte, maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text('${formatKm(route.distanceM)} · ↑ ${formatNumber(route.gainM)} m', style: AppText.suave),
-              ],
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilledButton.icon(
+              onPressed: () => context.push(connected ? '/pedal-rota/${route.id}' : '/bike'),
+              icon: const Icon(Icons.directions_bike),
+              label: const Text('Pedalar esta rota'),
             ),
-          ),
-          IconButton(
-            tooltip: 'Apagar rota',
-            onPressed: () => _apagar(context, ref),
-            icon: const Icon(Icons.delete_outline, color: AppColors.textoSuave),
-          ),
-          FilledButton(
-            onPressed: () => context.push(connected ? '/pedal-rota/${route.id}' : '/bike'),
-            child: const Text('Pedalar'),
           ),
         ],
       ),

@@ -114,7 +114,10 @@ class _Conteudo extends ConsumerWidget {
         Row(
           children: [
             const Expanded(
-              child: OutlinedButton(onPressed: null, child: Text('Strava · em breve', maxLines: 1)),
+              child: OutlinedButton(
+                onPressed: null,
+                child: FittedBox(fit: BoxFit.scaleDown, child: Text('Strava · em breve', maxLines: 1)),
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(

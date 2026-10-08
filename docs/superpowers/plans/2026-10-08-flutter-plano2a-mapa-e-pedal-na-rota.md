@@ -3914,13 +3914,13 @@ cd /c/dev/pedal-local && git add -A app && git commit -m "feat(app): mapa no Exp
 
 ### Task 6: No celular
 
-- [ ] **Step 1: Compilar e instalar**
+- [x] **Step 1: Compilar e instalar**
 
 ```bash
 cd /c/dev/pedal-local/app && flutter build apk --debug && /c/dev/android-sdk/platform-tools/adb.exe -s RQ8R905CDWJ install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 
-- [ ] **Step 2: Roteiro (agente, com bike simulada)**
+- [x] **Step 2: Roteiro (agente, com bike simulada)**
 
 1. Explorar vazio mostra “Nenhuma rota ainda” e “Criar minha primeira rota”.
 2. Criar rota: a caixa de localização do Android aparece → **“Não permitir”** (a decisão de verdade fica com o usuário); o aviso “Sem localização” aparece e o mapa fica em São Paulo.
@@ -3937,3 +3937,11 @@ cd /c/dev/pedal-local/app && flutter build apk --debug && /c/dev/android-sdk/pla
 - O `SimpleAttributionWidget` do flutter_map estourava 128 px em tela estreita: trocado por `MapAttribution` próprio e compacto (“© OpenStreetMap”).
 - Linha de resultado do Criar rota estourava 28 px: subida/descida em `Expanded` alinhado à direita.
 - Resultado: `flutter analyze` sem avisos, **107 testes passando**.
+- Task 6 no celular (S20 FE), com serviços reais: rota “Volta da Liberdade” criada tocando no mapa (3,03 km, ↑76 m, ↓73 m), salva, exibida no Explorar; pedalada com a bike simulada (~400 W): bolinha e linha percorrida acompanham, inclinação muda, aviso “Subida de 4% chegando” aparece, e no fim abre “Rota concluída!” sozinho (4:50, 37,6 km/h média).
+- Ajustes vindos do teste no celular:
+  - Cartão de rota (`RouteTile`) cortava o nome e quebrava os números: agora nome em até 2 linhas, “km · ↑ · ↓” numa linha e botão “Pedalar esta rota” na largura toda. O Início reaproveita o mesmo cartão (`canDelete: false`).
+  - Histórico (`RideTile`) mostra o nome da rota em vez de só “Rota”.
+  - Botão “Strava · em breve” do resumo era cortado: texto em `FittedBox`.
+  - Teste do Explorar roda em celular pequeno com nome longo; teste da rota confere o nome no Início depois de concluir.
+- **Caixas de permissão do Android: o agente não toca nelas.** Um toque em “Não permitir” via adb foi registrado como “Durante o uso do app” (já tinha acontecido com o Bluetooth). A permissão foi revogada na hora e o `pm clear` final zera tudo; a decisão fica com o usuário. O passo 2 do roteiro acima deve ser lido assim.
+- Resultado final: `flutter analyze` sem avisos, **107 testes passando**; dados de teste apagados com `pm clear`.

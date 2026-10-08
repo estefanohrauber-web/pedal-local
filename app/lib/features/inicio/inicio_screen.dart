@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../bike/bike_controller.dart';
-import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import '../../data/providers.dart';
 import '../bike/bike_chip.dart';
+import '../explorar/route_tile.dart';
 import '../pedal_livre/pedal_livre_card.dart';
 import '../voce/ride_tile.dart';
 
@@ -82,7 +82,6 @@ class _RotaCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final routes = ref.watch(routesProvider);
-    final connected = ref.watch(bikeControllerProvider.select((s) => s.connected));
     return routes.when(
       loading: () => const SizedBox.shrink(),
       error: (e, s) => const SizedBox.shrink(),
@@ -108,33 +107,7 @@ class _RotaCard extends ConsumerWidget {
             ),
           );
         }
-        final r = lista.first;
-        return AppCard(
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: AppColors.destaqueSuave, borderRadius: BorderRadius.circular(14)),
-                child: const Icon(Icons.route, color: AppColors.destaqueTexto),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(r.name, style: AppText.corpoForte, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text('${formatKm(r.distanceM)} · ↑ ${formatNumber(r.gainM)} m', style: AppText.suave),
-                  ],
-                ),
-              ),
-              FilledButton(
-                onPressed: () => context.push(connected ? '/pedal-rota/${r.id}' : '/bike'),
-                child: const Text('Pedalar'),
-              ),
-            ],
-          ),
-        );
+        return RouteTile(route: lista.first, canDelete: false);
       },
     );
   }
