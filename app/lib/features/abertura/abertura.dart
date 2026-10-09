@@ -29,13 +29,12 @@ const _primeiroAnelMs = 810.0;
 const _anelMs = 700.0;
 const _cicloDoAnelMs = 1200.0;
 
-// Depois que o app assume (e não antes de a rota estar desenhada), em ms: o nome aparece; o
-// pininho cai no i; o app é montado por baixo; a logo fica parada um instante; e a bolinha vira
-// uma janela que cresce e mostra o app.
+// Depois que o app assume (e não antes de a rota estar desenhada), em ms: o nome aparece; o app
+// é montado por baixo; a logo fica parada um instante; e a bolinha vira uma janela que cresce e
+// mostra o app.
 const _nomeMs = (0.0, 380.0);
-const _pininhoMs = (200.0, 700.0);
-const _montaAppMs = 700.0;
-const _revelaMs = (1080.0, 1520.0);
+const _montaAppMs = 600.0;
+const _revelaMs = (900.0, 1340.0);
 
 /// Quanto o app espera a tela de carregamento passar a abertura antes de fazê-la sozinho: um
 /// tempo e um tanto de quadros (na versão de teste, o app trava o Android por mais de 1 s ao
@@ -44,8 +43,8 @@ const _esperaMaximaMs = 1000.0;
 const _esperaMaximaQuadros = 60;
 
 /// Abertura do app, por cima dele, no verde da tela de carregamento: a rota da logo se desenha,
-/// a bolinha amarela pinga e solta anéis enquanto o app carrega; então o nome aparece e o
-/// pininho cai no i; um instante depois, a bolinha se abre e mostra o app. No Android 12+, o
+/// a bolinha amarela pinga e solta anéis enquanto o app carrega; então o nome aparece; um
+/// instante depois, a bolinha se abre e mostra o app. No Android 12+, o
 /// começo é desenhado pela tela de carregamento, e a abertura continua do mesmo ponto.
 /// Um toque pula para a abertura final.
 class Abertura extends StatefulWidget {
@@ -81,7 +80,7 @@ class _AberturaState extends State<Abertura> with SingleTickerProviderStateMixin
   /// Ponto da animação em que o app assumiu; null enquanto ela está com a tela de carregamento.
   double? _assumiu;
 
-  /// Começo da parte do app (nome, pininho, transição), no tempo da animação.
+  /// Começo da parte do app (nome e transição), no tempo da animação.
   double _sequencia = double.infinity;
 
   bool _pulou = false;
@@ -247,8 +246,8 @@ class _AberturaState extends State<Abertura> with SingleTickerProviderStateMixin
                                   child: Center(
                                     child: RevealMask(
                                       fraction: _fase(_sequencia, _nomeMs, Curves.easeOutCubic),
-                                      // Folga em volta: a perninha do q e o pininho do i saem
-                                      // da caixa do texto, e o que fica fora da máscara aparece antes.
+                                      // Folga em volta: a perninha do q sai da caixa do texto,
+                                      // e o que fica fora da máscara aparece antes.
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(vertical: 14),
                                         child: PedalaquiWordmark(
@@ -256,7 +255,6 @@ class _AberturaState extends State<Abertura> with SingleTickerProviderStateMixin
                                           color: Colors.white,
                                           accent: Colors.white,
                                           style: widget.nameStyle,
-                                          pin: _fase(_sequencia, _pininhoMs, Curves.bounceOut),
                                         ),
                                       ),
                                     ),

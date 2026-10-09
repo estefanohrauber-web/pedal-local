@@ -26,8 +26,8 @@ Data: 2026-10-09.
 - Escolhida entre 7 esboços e 3 refinamentos (página de esboços no claude.ai). Comparada
   com 43 ícones de apps de bike e trilha da Google Play: o mais parecido era o AllTrails
   (montanha de linha sobre verde); nenhum usa o relevo com o pino no traço.
-- Nome escrito: Plus Jakarta Sans ExtraBold, “aqui” na cor de destaque e um pininho amarelo
-  no lugar do pingo do i (`ı` + desenho).
+- Nome escrito: Plus Jakarta Sans ExtraBold, “aqui” na cor de destaque, com o i normal (o
+  pininho amarelo no pingo do i saiu em 09/10 para a logo ficar mais limpa).
 
 ## Onde está
 
@@ -51,13 +51,12 @@ Uma linha do tempo só, em ms desde o começo da animação (o toque no ícone):
   quando a animação começou (no relógio dos quadros, o mesmo do Flutter); o app desenha a
   logo nesse mesmo ponto e responde depois de dois quadros, e só então a tela de carregamento
   sai, sem a animação padrão. Se ela não tinha animação, o app desenha tudo; se o aviso não
-  chega em 1 s, também. Antes do 12, o app desenha tudo.
+  chega em 1 s (e 60 quadros), também. Antes do 12, o app desenha tudo.
 - **Depois que o app assume (e não antes de 750), em ms:** o nome se revela da esquerda
-  (0–380); o pininho cai no i quicando (200–700); o app é montado por baixo (700); a logo fica
-  parada até 1080; e a bolinha vira uma janela redonda que cresce e mostra o app, com a logo se
-  aproximando e sumindo (1080–1520). O anel que estiver saindo termina; outro não sai. Um
+  (0–380); o app é montado por baixo (600); a logo fica parada até 900; e a bolinha vira uma
+  janela redonda que cresce e mostra o app, com a logo se aproximando e sumindo (900–1340). O anel que estiver saindo termina; outro não sai. Um
   toque pula para a janela.
-- **Tempo total:** o app pronto em até 0,75 s dá 2,3 s do toque ao app. A versão de teste
+- **Tempo total:** o app pronto em até 0,75 s dá 2,1 s do toque ao app. A versão de teste
   (debug) leva 2,3 a 3,2 s para ficar pronta, e esse tempo passa com a bolinha soltando
   anéis. A versão final (release) não dá para gerar neste computador: o Controle Inteligente
   de Aplicativos do Windows bloqueia o gen_snapshot.

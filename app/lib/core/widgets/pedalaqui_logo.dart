@@ -217,7 +217,7 @@ class PedalaquiIcon extends StatelessWidget {
   );
 }
 
-/// “Pedalaqui” escrito, com um pininho amarelo no lugar do pingo do i.
+/// “Pedalaqui” escrito, com o “aqui” na cor de destaque.
 class PedalaquiWordmark extends StatelessWidget {
   const PedalaquiWordmark({
     super.key,
@@ -225,7 +225,6 @@ class PedalaquiWordmark extends StatelessWidget {
     this.color = AppColors.texto,
     this.accent = AppColors.destaque,
     this.style,
-    this.pin = 1,
   });
 
   final double fontSize;
@@ -236,9 +235,6 @@ class PedalaquiWordmark extends StatelessWidget {
 
   /// Cor do “aqui”.
   final Color accent;
-
-  /// O pininho do i caindo no lugar (0 = ainda não apareceu, 1 = no lugar).
-  final double pin;
 
   @override
   Widget build(BuildContext context) {
@@ -259,56 +255,12 @@ class PedalaquiWordmark extends StatelessWidget {
         children: [
           const TextSpan(text: 'Pedal'),
           TextSpan(
-            text: 'aqu',
+            text: 'aqui',
             style: TextStyle(color: accent),
-          ),
-          WidgetSpan(
-            alignment: PlaceholderAlignment.baseline,
-            baseline: TextBaseline.alphabetic,
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.topCenter,
-              children: [
-                Text('ı', style: estilo.copyWith(color: accent)), // i sem pingo
-                Positioned(
-                  // Cai de quase uma letra de altura; aparece logo no começo da queda.
-                  top: -0.16 * fontSize - 0.9 * fontSize * (1 - pin),
-                  child: Opacity(
-                    opacity: (pin * 4).clamp(0.0, 1.0),
-                    child: CustomPaint(
-                      size: Size(0.3 * fontSize, 0.39 * fontSize),
-                      painter: const _PinoPainter(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
       semanticsLabel: 'Pedalaqui',
     );
   }
-}
-
-/// O pininho do pingo do i.
-class _PinoPainter extends CustomPainter {
-  const _PinoPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final r = w / 2;
-    final pino = Path()
-      ..moveTo(r, h)
-      ..cubicTo(r * 0.7, h * 0.85, 0, h * 0.62, 0, r)
-      ..arcToPoint(Offset(w, r), radius: Radius.circular(r), largeArc: true)
-      ..cubicTo(w, h * 0.62, r * 1.3, h * 0.85, r, h)
-      ..close();
-    canvas.drawPath(pino, Paint()..color = logoAmarelo);
-  }
-
-  @override
-  bool shouldRepaint(_PinoPainter old) => false;
 }

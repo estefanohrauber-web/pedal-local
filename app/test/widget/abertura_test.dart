@@ -57,11 +57,10 @@ List<Object?> _entregar(WidgetTester tester, {required double decorrido, double?
 }
 
 PedalaquiMark _marca(WidgetTester t) => t.widget<PedalaquiMark>(find.byType(PedalaquiMark));
-PedalaquiWordmark _nome(WidgetTester t) => t.widget<PedalaquiWordmark>(find.byType(PedalaquiWordmark));
 RevealMask _revela(WidgetTester t) => t.widget<RevealMask>(find.byType(RevealMask));
 
 void main() {
-  testWidgets('abertura: a rota se desenha; depois a bolinha com o anel, o nome e o pininho; a bolinha abre o app', (tester) async {
+  testWidgets('abertura: a rota se desenha; depois a bolinha com o anel e o nome; a bolinha abre o app', (tester) async {
     await _abrirApp(tester);
     await tester.pump();
     expect(find.byKey(aberturaKey), findsOneWidget);
@@ -83,11 +82,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 650)); // 1,6 s: logo completa, parada
     expect(_marca(tester).dot, closeTo(1, 0.01));
     expect(_marca(tester).ring, 0);
-    expect(_nome(tester).pin, closeTo(1, 0.01));
     expect(_revela(tester).fraction, 1);
     expect(find.text('Bora pedalar?'), findsOneWidget); // o app já está pronto por baixo
 
-    await tester.pump(const Duration(milliseconds: 600)); // 2,2 s: nenhum anel novo
+    await tester.pump(const Duration(milliseconds: 450)); // 2,05 s: a janela abrindo, nenhum anel novo
     expect(_marca(tester).ring, 0);
 
     await tester.pumpAndSettle();
@@ -116,7 +114,6 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 700));
     expect(_revela(tester).fraction, 1);
-    expect(_nome(tester).pin, closeTo(1, 0.01));
     await tester.pump(const Duration(milliseconds: 300)); // 3,35 s: sem um terceiro anel
     expect(_marca(tester).ring, 0);
 

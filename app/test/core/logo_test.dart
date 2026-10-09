@@ -75,13 +75,12 @@ void main() {
             PedalaquiMark(size: 120),
             PedalaquiIcon(size: 64),
             PedalaquiWordmark(fontSize: 32),
-            PedalaquiWordmark(fontSize: 32, pin: 0.5),
           ],
         ),
       ),
     );
     expect(find.byType(PedalaquiMark), findsNWidgets(2)); // o ícone usa o símbolo
-    expect(find.textContaining('Pedal', findRichText: true), findsNWidgets(2));
+    expect(find.text('Pedalaqui', findRichText: true), findsOneWidget); // o i com o pingo normal
     expect(tester.takeException(), isNull);
   });
 }
