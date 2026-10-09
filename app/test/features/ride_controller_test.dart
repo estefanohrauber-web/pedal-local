@@ -5,6 +5,7 @@ import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/bike/bike_source.dart';
 import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
+import 'package:pedal_local/data/custom_workouts_store.dart';
 import 'package:pedal_local/data/providers.dart';
 import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/routes_store.dart';
@@ -15,6 +16,7 @@ import 'package:pedal_local/domain/ride_narrator.dart';
 import 'package:pedal_local/domain/power.dart';
 import 'package:pedal_local/domain/ride_session.dart';
 import 'package:pedal_local/domain/workout.dart';
+import 'package:pedal_local/domain/workout_blocks.dart';
 import 'package:pedal_local/features/pedal/ghost_options.dart';
 import 'package:pedal_local/features/pedal/ride_controller.dart';
 
@@ -59,7 +61,13 @@ const rampaCurta = Workout(id: 'rampa', name: 'Rampa', summary: '', category: 'T
   WorkoutStep(30, 0.4),
 ]);
 
-Workout? treinoDeTeste(String id) => {'curto': treinoCurto, 'rampa': rampaCurta}[id] ?? workoutById(id);
+const treinoLivre = Workout(id: 'livre', name: 'Livre', summary: '', category: 'Meus treinos', steps: [
+  WorkoutStep(10, 0.5),
+  WorkoutStep(30, 0.5, free: true),
+]);
+
+Workout? treinoDeTeste(String id) =>
+    {'curto': treinoCurto, 'rampa': rampaCurta, 'livre': treinoLivre}[id] ?? workoutById(id);
 
 /// Pedal anterior concluído na rota, a [vel] m/s constante.
 RideRecord pedalAnterior(String id, String rota, {required int segundos, required double vel}) => RideRecord(
@@ -87,6 +95,7 @@ void main() {
   late FakeVoice voz;
   late MemoryRidesStore rides;
   late MemoryRoutesStore routes;
+  late MemoryCustomWorkoutsStore customs;
   late ProviderContainer container;
   late DateTime agora;
 
@@ -96,11 +105,13 @@ void main() {
     voz = FakeVoice();
     rides = MemoryRidesStore();
     routes = MemoryRoutesStore();
+    customs = MemoryCustomWorkoutsStore();
     agora = DateTime(2026, 10, 8, 20);
     container = ProviderContainer(overrides: [
       settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
       ridesStoreProvider.overrideWithValue(rides),
       routesStoreProvider.overrideWithValue(routes),
+      customWorkoutsStoreProvider.overrideWithValue(customs),
       wakeLockProvider.overrideWithValue(wake),
       voiceProvider.overrideWithValue(voz),
       workoutLookupProvider.overrideWithValue(treinoDeTeste),
@@ -438,6 +449,76 @@ void main() {
       expect(salvo.workoutDone, isTrue);
       expect(voz.spoken.last, startsWith('Treino concluído em '));
       expect(controle.releases, greaterThanOrEqualTo(1));
+    });
+
+    test('ajustes no meio do treino: mais forte, +1 min e pular; a bike recebe a meta na hora', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200));
+      final controle = FakeBikeControl();
+      bike.control = controle;
+      const alvo = RideTarget.treino('curto');
+      await ctrl(alvo).start();
+      await pedalar(alvo, 1);
+      expect(view(alvo).frame!.targetWatts, 100);
+      ctrl(alvo).nudge(1);
+      expect(view(alvo).frame!.targetWatts, 105);
+      expect(view(alvo).frame!.adjustment, closeTo(0.05, 1e-9));
+      expect(controle.powers.last, 105);
+      expect(voz.spoken.last, 'Mais forte: 105 watts.');
+      ctrl(alvo).extendStep();
+      expect(view(alvo).workout!.seconds, 80);
+      expect(voz.spoken.last, 'Mais 1 minuto.');
+      ctrl(alvo).skipStep();
+      expect(view(alvo).frame!.index, 1);
+      expect(view(alvo).frame!.targetWatts, 210);
+      expect(controle.powers.last, 210);
+      expect(voz.spoken, contains('Pulando para o próximo bloco.'));
+      expect(voz.spoken.last, 'Forte! 10 segundos forte, 210 watts.');
+      ctrl(alvo).skipStep(); // o último: termina o treino
+      expect(view(alvo).state, RideState.concluido);
+      await ctrl(alvo).finish();
+      final salvo = (await rides.byId('p1'))!;
+      expect(salvo.workoutName, 'Curto');
+      expect(salvo.workoutDone, isTrue);
+    });
+
+    test('pedal livre: a carga volta para o botão da bike e não há meta', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200));
+      final controle = FakeBikeControl();
+      bike.control = controle;
+      const alvo = RideTarget.treino('livre');
+      await ctrl(alvo).start();
+      await pedalar(alvo, 1);
+      expect(controle.powers.last, 100);
+      final soltou = controle.releases;
+      await pedalar(alvo, 10);
+      expect(view(alvo).frame!.step.free, isTrue);
+      expect(view(alvo).frame!.targetWatts, 0);
+      expect(controle.releases, soltou + 1);
+      final enviados = controle.powers.length;
+      await pedalar(alvo, 5);
+      expect(controle.powers.length, enviados);
+    });
+
+    test('treino montado pelo usuário: acha no banco e guarda o nome no pedal', () async {
+      await customs.upsert(CustomWorkout(
+        id: 'meu-a',
+        name: 'Tiros de terça',
+        blocks: [WorkoutBlock.novo(BlockKind.ritmo).copyWith(seconds: 15)],
+        createdAt: DateTime(2026, 10, 9),
+        updatedAt: DateTime(2026, 10, 9),
+      ));
+      const alvo = RideTarget.treino('meu-a');
+      await ctrl(alvo).start();
+      expect(view(alvo).notFound, isFalse);
+      expect(view(alvo).workout!.name, 'Tiros de terça');
+      for (var i = 0; i < 30 && view(alvo).state != RideState.concluido; i++) {
+        await pedalar(alvo, 1);
+      }
+      await ctrl(alvo).finish();
+      final salvo = (await rides.byId('p1'))!;
+      expect(salvo.workoutId, 'meu-a');
+      expect(salvo.workoutName, 'Tiros de terça');
+      expect(salvo.workoutDone, isTrue);
     });
 
     test('teste de rampa: “não aguento mais” calcula, fala e guarda o FTP', () async {

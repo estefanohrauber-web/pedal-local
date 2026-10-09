@@ -213,6 +213,9 @@ class RideController extends Notifier<RideView> {
   WorkoutFrame? _frame;
   BikeControl? _controle;
   int? _alvoEnviado;
+
+  /// A meta mudou por um ajuste (mais leve, mais forte): vai para a bike mesmo se for pouco.
+  bool _alvoMudou = false;
   double _ftp = 0;
   PowerCalibration _calibracao = const PowerCalibration(base: 0.6, factor: 0.25);
   bool _treinoCompleto = false;
@@ -280,7 +283,14 @@ class RideController extends Notifier<RideView> {
     }
     final treinoId = target.workoutId;
     if (treinoId != null) {
-      final treino = ref.read(workoutLookupProvider)(treinoId);
+      if (isCustomWorkoutId(treinoId)) {
+        // Os treinos do usuário vêm do banco: espera eles carregarem.
+        try {
+          await ref.read(customWorkoutsProvider.future);
+        } catch (_) {}
+        if (!ref.mounted) return;
+      }
+      final treino = ref.read(findWorkoutProvider)(treinoId);
       if (treino == null) {
         state = const RideView(notFound: true);
         return;
@@ -430,20 +440,51 @@ class RideController extends Notifier<RideView> {
   }
 
   /// Manda a meta para a bike: potência (ERG) quando ela aceita; senão, a inclinação dos
-  /// trechos de subida. Numa rampa, atualiza a cada 5 W.
+  /// trechos de subida. Numa rampa, atualiza a cada 5 W. No pedal livre, a carga volta para o
+  /// botão da bike.
   void _mandarAlvo(WorkoutFrame frame, {required bool mudouPasso}) {
     final controle = _controle;
+    final forcar = _alvoMudou;
+    _alvoMudou = false;
     if (controle == null) return;
+    if (frame.step.free) {
+      if (mudouPasso) {
+        _alvoEnviado = null;
+        controle.release();
+      }
+      return;
+    }
     if (controle.features.power) {
       final alvo = frame.targetWatts;
       final ultimo = _alvoEnviado;
-      if (mudouPasso || ultimo == null || (alvo - ultimo).abs() >= 5) {
+      if (mudouPasso || forcar || ultimo == null || (alvo - ultimo).abs() >= 5) {
         _alvoEnviado = alvo;
         controle.setPower(alvo);
       }
     } else if (mudouPasso && controle.features.simulation) {
       controle.setGrade(frame.step.grade);
     }
+  }
+
+  /// Pula para o próximo trecho do treino (no último, termina).
+  void skipStep() => _ajustar((r) => r.skipStep());
+
+  /// Mais 1 minuto no trecho de agora.
+  void extendStep() => _ajustar((r) => r.extendStep());
+
+  /// Metas 5 % mais fortes ([direction] = 1) ou mais leves (−1) daqui para a frente.
+  void nudge(int direction) => _ajustar((r) => r.nudge(direction));
+
+  void _ajustar(bool Function(WorkoutRunner runner) acao) {
+    final runner = _runner;
+    final session = _session;
+    if (runner == null || session == null || _treinoCompleto || _finished) return;
+    if (!acao(runner)) return;
+    _workout = runner.workout;
+    _falar(List.of(runner.spoken));
+    _alvoMudou = true;
+    _passoDoTreino(runner, session, session.snapshot());
+    _publish();
   }
 
   /// Teste de rampa: “não aguento mais”.
@@ -564,6 +605,7 @@ class RideController extends Notifier<RideView> {
       reversed: target.reversed,
       track: _track,
       workoutId: _workout?.id,
+      workoutName: _workout?.name,
       ftp: _runner?.rampFtp,
     );
     final loop = _loop;
