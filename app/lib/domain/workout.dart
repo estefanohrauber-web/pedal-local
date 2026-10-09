@@ -4,8 +4,16 @@ import 'training.dart';
 
 /// Um trecho do treino. A potência alvo é uma fração do FTP; [from] → [to] faz uma rampa.
 class WorkoutStep {
-  const WorkoutStep(this.seconds, this.from, {double? to, this.cadenceMin, this.cadenceMax, this.grade = 0, this.cue})
-      : to = to ?? from;
+  const WorkoutStep(
+    this.seconds,
+    this.from, {
+    double? to,
+    this.cadenceMin,
+    this.cadenceMax,
+    this.grade = 0,
+    this.cue,
+    this.free = false,
+  }) : to = to ?? from;
 
   final int seconds;
   final double from;
@@ -19,6 +27,9 @@ class WorkoutStep {
   /// O que dizer no começo do trecho (“Sprint!”, “Recupere”).
   final String? cue;
 
+  /// Pedal livre: sem meta de potência. A fração só serve para o desenho e a carga do treino.
+  final bool free;
+
   bool get isRamp => (to - from).abs() > 1e-9;
   bool get hasCadence => cadenceMin != null;
 
@@ -27,6 +38,10 @@ class WorkoutStep {
 
   /// A fração do meio do trecho: é ela que dá a zona e a cor.
   double get mid => (from + to) / 2;
+
+  /// O mesmo trecho com outra duração (+1 min no meio do pedal).
+  WorkoutStep withSeconds(int s) =>
+      WorkoutStep(s, from, to: to, cadenceMin: cadenceMin, cadenceMax: cadenceMax, grade: grade, cue: cue, free: free);
 }
 
 /// Onde o treino está num instante.
@@ -58,6 +73,10 @@ class Workout {
 
   /// Teste de rampa: sobe até não aguentar; o resultado vira o FTP.
   final bool rampTest;
+
+  /// O mesmo treino com outros trechos.
+  Workout withSteps(List<WorkoutStep> steps) =>
+      Workout(id: id, name: name, summary: summary, category: category, steps: steps, rampTest: rampTest);
 
   int get seconds => steps.fold(0, (s, p) => s + p.seconds);
 
