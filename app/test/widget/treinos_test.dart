@@ -9,6 +9,7 @@ import 'package:pedal_local/core/router/app_router.dart';
 import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
+import 'package:pedal_local/data/custom_workouts_store.dart';
 import 'package:pedal_local/data/providers.dart';
 import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/routes_store.dart';
@@ -23,6 +24,11 @@ const _curto = Workout(id: 'curto', name: 'Treino curto', summary: 'Dois trechos
   WorkoutStep(10, 0.5),
   WorkoutStep(10, 1.0, cue: 'Forte!'),
 ]);
+const _livre = Workout(id: 'livre', name: 'Com pedal livre', summary: 'Livre.', category: 'Meus treinos', steps: [
+  WorkoutStep(10, 0.5),
+  WorkoutStep(30, 0.5, free: true),
+  WorkoutStep(10, 1.0),
+]);
 const _rampa = Workout(id: 'rampa', name: 'Rampa curta', summary: 'Teste.', category: 'Teste', rampTest: true, steps: [
   WorkoutStep(10, 0.4),
   WorkoutStep(60, 0.5),
@@ -35,6 +41,7 @@ Future<ProviderContainer> _abrir(
   WidgetTester tester, {
   required MemorySettingsStore settings,
   MemoryRidesStore? rides,
+  MemoryCustomWorkoutsStore? customs,
 }) async {
   tester.view.physicalSize = const Size(1080, 2070);
   tester.view.devicePixelRatio = 3;
@@ -44,11 +51,12 @@ Future<ProviderContainer> _abrir(
       settingsStoreProvider.overrideWithValue(settings),
       ridesStoreProvider.overrideWithValue(rides ?? MemoryRidesStore()),
       routesStoreProvider.overrideWithValue(MemoryRoutesStore()),
+      customWorkoutsStoreProvider.overrideWithValue(customs ?? MemoryCustomWorkoutsStore()),
       wakeLockProvider.overrideWithValue(FakeWakeLock()),
       voiceProvider.overrideWithValue(FakeVoice()),
       mapTilesEnabledProvider.overrideWithValue(false),
       locationServiceProvider.overrideWithValue(const FixedLocationService(null)),
-      workoutLookupProvider.overrideWithValue((id) => {'curto': _curto, 'rampa': _rampa}[id] ?? workoutById(id)),
+      workoutLookupProvider.overrideWithValue((id) => {'curto': _curto, 'rampa': _rampa, 'livre': _livre}[id] ?? workoutById(id)),
     ],
     child: const PedalLocalApp(),
   ));
@@ -150,5 +158,44 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Seu FTP: 113 W'), findsOneWidget);
     expect((await settings.load()).ftp, 113);
+  });
+
+  testWidgets('no pedal do treino: mais forte, +1 min e pular bloco', (tester) async {
+    final settings = MemorySettingsStore(const AppSettings(ftp: 200));
+    final container = await _abrir(tester, settings: settings);
+    final bike = FakeBikeSource()..control = FakeBikeControl();
+    await container.read(bikeControllerProvider.notifier).useSource(bike);
+    container.read(appRouterProvider).push('/treino-pedal/curto');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    await _pedalarAte(tester, bike, find.text('0:01 de 0:20'), segundos: 3);
+    expect(find.text('100 W'), findsOneWidget);
+    await tester.ensureVisible(find.text('Mais forte +5 %'));
+    await tester.tap(find.text('Mais forte +5 %'));
+    await tester.pump();
+    expect(find.text('105 W'), findsOneWidget);
+    expect(find.text('Metas +5 % neste pedal'), findsOneWidget);
+    await tester.tap(find.text('+1 min'));
+    await tester.pump();
+    expect(find.textContaining('de 1:20'), findsOneWidget);
+    await tester.tap(find.text('Pular bloco'));
+    await tester.pump();
+    expect(find.text('Forte!'), findsOneWidget);
+    expect(find.text('210 W'), findsOneWidget);
+  });
+
+  testWidgets('no pedal livre: sem meta e sem os botões de mais leve e mais forte', (tester) async {
+    final settings = MemorySettingsStore(const AppSettings(ftp: 200));
+    final container = await _abrir(tester, settings: settings);
+    final bike = FakeBikeSource();
+    await container.read(bikeControllerProvider.notifier).useSource(bike);
+    container.read(appRouterProvider).push('/treino-pedal/livre');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Depois: 0:30 pedal livre'), findsOneWidget);
+    await _pedalarAte(tester, bike, find.text('Pedal livre'), segundos: 20);
+    expect(find.text('Sem meta, no seu ritmo'), findsOneWidget);
+    expect(find.text('Mais leve −5 %'), findsNothing);
+    expect(find.text('Pular bloco'), findsOneWidget);
   });
 }

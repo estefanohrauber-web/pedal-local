@@ -151,7 +151,12 @@ class _Trecho extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final zona = zoneFor(step.mid);
-    final meta = step.isRamp ? '${watts(step.from)} → ${watts(step.to)} W' : '${watts(step.from)} W';
+    final meta = step.free
+        ? 'sem meta'
+        : step.isRamp
+            ? '${watts(step.from)} → ${watts(step.to)} W'
+            : '${watts(step.from)} W';
+    final esforco = step.free ? 'Pedal livre' : zona.effort;
     final detalhes = [
       meta,
       if (step.hasCadence) '${step.cadenceMin}–${step.cadenceMax} rpm',
@@ -161,15 +166,22 @@ class _Trecho extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Container(width: 6, height: 38, decoration: BoxDecoration(color: zoneColor(zona.number), borderRadius: BorderRadius.circular(3))),
+          Container(
+            width: 6,
+            height: 38,
+            decoration: BoxDecoration(
+              color: step.free ? zoneColor(1).withValues(alpha: 0.4) : zoneColor(zona.number),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
           const SizedBox(width: 12),
           SizedBox(width: 52, child: Text(formatTime(step.seconds.toDouble()), style: AppText.corpoForte)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(step.cue ?? zona.effort, style: AppText.corpoForte, maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text('${zona.effort} · $detalhes', style: AppText.suave, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(step.cue ?? esforco, style: AppText.corpoForte, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text('$esforco · $detalhes', style: AppText.suave, maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),

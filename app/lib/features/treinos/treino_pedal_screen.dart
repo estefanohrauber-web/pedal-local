@@ -129,13 +129,24 @@ class _TreinoPedalScreenState extends ConsumerState<TreinoPedalScreen> {
                               Text(
                                 f.next == null
                                     ? 'Último trecho'
-                                    : 'Depois: ${formatTime(f.next!.seconds.toDouble())} '
-                                        '${zoneFor(f.next!.mid).effort.toLowerCase()} · '
-                                        '${f.nextWatts} W',
+                                    : f.next!.free
+                                        ? 'Depois: ${formatTime(f.next!.seconds.toDouble())} pedal livre'
+                                        : 'Depois: ${formatTime(f.next!.seconds.toDouble())} '
+                                            '${zoneFor(f.next!.mid).effort.toLowerCase()} · '
+                                            '${f.nextWatts} W',
                                 style: AppText.suave,
                               ),
                               const SizedBox(height: 8),
                               WorkoutChart(workout: w, elapsed: f.elapsed, height: 64),
+                              if (!w.rampTest && !f.done && v.started) ...[
+                                const SizedBox(height: 12),
+                                _Ajustes(
+                                  livre: f.step.free,
+                                  onPular: ctrl.skipStep,
+                                  onMaisTempo: ctrl.extendStep,
+                                  onAjuste: ctrl.nudge,
+                                ),
+                              ],
                               if (w.rampTest && !f.rampEnded && f.index >= 1) ...[
                                 const SizedBox(height: 12),
                                 OutlinedButton.icon(
@@ -171,6 +182,46 @@ class _TreinoPedalScreenState extends ConsumerState<TreinoPedalScreen> {
   }
 }
 
+/// Pular, +1 min e ±5 % (só neste pedal). No pedal livre não há meta para ajustar.
+class _Ajustes extends StatelessWidget {
+  const _Ajustes({required this.livre, required this.onPular, required this.onMaisTempo, required this.onAjuste});
+
+  final bool livre;
+  final VoidCallback onPular;
+  final VoidCallback onMaisTempo;
+  final void Function(int direction) onAjuste;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(onPressed: onPular, icon: const Icon(Icons.skip_next), label: const Text('Pular bloco')),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(onPressed: onMaisTempo, icon: const Icon(Icons.more_time), label: const Text('+1 min')),
+            ),
+          ],
+        ),
+        if (!livre) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: OutlinedButton(onPressed: () => onAjuste(-1), child: const Text('Mais leve −5 %'))),
+              const SizedBox(width: 8),
+              Expanded(child: OutlinedButton(onPressed: () => onAjuste(1), child: const Text('Mais forte +5 %'))),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// O trecho de agora: esforço na cor da zona, meta, giro e quanto falta.
 class _MetaDoTrecho extends StatelessWidget {
   const _MetaDoTrecho({required this.frame});
@@ -181,6 +232,7 @@ class _MetaDoTrecho extends StatelessWidget {
   Widget build(BuildContext context) {
     final cor = zoneColor(frame.zone.number);
     final step = frame.step;
+    final ajuste = (frame.adjustment * 100).round();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -196,16 +248,25 @@ class _MetaDoTrecho extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  frame.zone.effort,
+                  step.free ? 'Pedal livre' : frame.zone.effort,
                   style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Color.lerp(cor, Colors.black, 0.25)),
                 ),
                 if (step.cue != null) Text(step.cue!, style: AppText.corpoForte, maxLines: 2),
                 const SizedBox(height: 6),
-                Text(
-                  '${frame.targetWatts} W${step.hasCadence ? ' · ${step.cadenceMin}–${step.cadenceMax} rpm' : ''}',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()]),
-                ),
-                Text('zona ${frame.zone.number} · ${frame.zone.name}', style: AppText.suave),
+                if (step.free)
+                  const Text('Sem meta, no seu ritmo', style: AppText.corpoForte)
+                else ...[
+                  Text(
+                    '${frame.targetWatts} W${step.hasCadence ? ' · ${step.cadenceMin}–${step.cadenceMax} rpm' : ''}',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()]),
+                  ),
+                  Text('zona ${frame.zone.number} · ${frame.zone.name}', style: AppText.suave),
+                ],
+                if (ajuste != 0)
+                  Text(
+                    'Metas ${ajuste > 0 ? '+' : '−'}${ajuste.abs()} % neste pedal',
+                    style: AppText.suave.copyWith(fontWeight: FontWeight.w700),
+                  ),
               ],
             ),
           ),

@@ -6,8 +6,8 @@ import '../../core/theme/app_theme.dart';
 import '../../domain/training.dart';
 import '../../domain/workout.dart';
 
-/// O desenho do treino: um bloco por trecho, a altura é o esforço e a cor é a zona.
-/// Com [elapsed], o que já passou fica apagado e uma linha marca o agora.
+/// O desenho do treino: um bloco por trecho, a altura é o esforço e a cor é a zona (o pedal
+/// livre é cinza claro). Com [elapsed], o que já passou fica apagado e uma linha marca o agora.
 class WorkoutChart extends StatelessWidget {
   const WorkoutChart({super.key, required this.workout, this.elapsed, this.height = 64});
 
@@ -40,7 +40,8 @@ class _WorkoutPainter extends CustomPainter {
     double y(double f) => size.height - (f / topo).clamp(0.04, 1.0) * size.height;
     var t = 0.0;
     for (final s in workout.steps) {
-      final cor = zoneColor(zoneFor(s.mid).number);
+      final cor = zoneColor(s.free ? 1 : zoneFor(s.mid).number);
+      final forca = s.free ? 0.4 : 0.9;
       final passou = elapsed != null && t + s.seconds <= elapsed!;
       final caminho = Path()
         ..moveTo(x(t), size.height)
@@ -48,7 +49,7 @@ class _WorkoutPainter extends CustomPainter {
         ..lineTo(x(t + s.seconds), y(s.to))
         ..lineTo(x(t + s.seconds), size.height)
         ..close();
-      canvas.drawPath(caminho, Paint()..color = cor.withValues(alpha: passou ? 0.35 : 0.9));
+      canvas.drawPath(caminho, Paint()..color = cor.withValues(alpha: passou ? forca * 0.4 : forca));
       t += s.seconds;
     }
     final agora = elapsed;
