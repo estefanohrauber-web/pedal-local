@@ -387,6 +387,12 @@ void main() {
       expect(voz.spoken.last, startsWith('Rota concluída em '));
     });
 
+    test('usa a voz escolhida nos Ajustes', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(vozId: 'g|voz-boa|pt-BR'));
+      await ctrl(null).start();
+      expect(voz.chosen.last, 'g|voz-boa|pt-BR');
+    });
+
     test('desligar a voz para de falar e vale para os próximos pedais', () async {
       await ctrl(null).start();
       await ctrl(null).toggleVoice();

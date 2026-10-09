@@ -67,6 +67,7 @@ Future<ProviderContainer> _abrir(
   MemoryRoutesStore? routes,
   MemoryRidesStore? rides,
   AppSettings settings = const AppSettings(),
+  FakeVoice? voz,
 }) async {
   tester.view.physicalSize = const Size(1080, 2070);
   tester.view.devicePixelRatio = 3;
@@ -77,7 +78,7 @@ Future<ProviderContainer> _abrir(
       ridesStoreProvider.overrideWithValue(rides ?? MemoryRidesStore()),
       routesStoreProvider.overrideWithValue(routes ?? MemoryRoutesStore()),
       wakeLockProvider.overrideWithValue(FakeWakeLock()),
-      voiceProvider.overrideWithValue(FakeVoice()),
+      voiceProvider.overrideWithValue(voz ?? FakeVoice()),
       mapTilesEnabledProvider.overrideWithValue(false),
       locationServiceProvider.overrideWithValue(const FixedLocationService(null)),
       bikeLogProvider.overrideWithValue(BikeLog()),
@@ -131,7 +132,9 @@ void main() {
   });
 
   testWidgets('Ajustes: voz com exemplo e desligar', (tester) async {
-    final container = await _abrir(tester);
+    const google = VoiceOption(engine: googleTtsEngine, name: 'pt-br-x-ptd-local', locale: 'pt-BR', label: 'Google · voz 1');
+    const samsung = VoiceOption(engine: 'com.samsung.SMT', name: 'pt-BR-SMTf00', locale: 'pt-BR', label: 'Samsung · voz 1');
+    final container = await _abrir(tester, voz: FakeVoice(voices: const [google, samsung]));
     await tester.tap(find.text('Você').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Ajustes'));
@@ -145,15 +148,24 @@ void main() {
     await mostrar('Avisos falados no pedal');
     await tester.tap(find.text('Avisos falados no pedal'));
     await tester.pump();
+    // Escolhe outra voz e ouve com ela.
+    await mostrar('Automática (a mais natural)');
+    await tester.tap(find.text('Automática (a mais natural)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Samsung · voz 1').last);
+    await tester.pumpAndSettle();
     await mostrar('Ouvir um exemplo');
     await tester.tap(find.text('Ouvir um exemplo'));
     await tester.pump();
     final voz = container.read(voiceProvider) as FakeVoice;
-    expect(voz.spoken, ['Subida de 6 por cento chegando. Aumente a carga.']);
+    expect(voz.chosen.last, samsung.id);
+    expect(voz.spoken, ['Subida de 6 por cento chegando. Aumente a carga da bike.']);
     await tester.scrollUntilVisible(find.text('Salvar'), 300, scrollable: _listaVertical);
     await tester.tap(find.text('Salvar'));
     await tester.pumpAndSettle();
-    expect((await container.read(settingsStoreProvider).load()).voz, isFalse);
+    final salvo = await container.read(settingsStoreProvider).load();
+    expect(salvo.voz, isFalse);
+    expect(salvo.vozId, samsung.id);
   });
 
   testWidgets('Preparar volta fechada: sentido e começo tocando no mapa', (tester) async {

@@ -15,6 +15,7 @@ class AppSettings {
     this.nome,
     this.margemVolta = 0.03,
     this.voz = true,
+    this.vozId,
     this.ftp,
     this.planoId,
     this.planoInicio,
@@ -39,6 +40,9 @@ class AppSettings {
 
   /// Avisos falados durante o pedal.
   final bool voz;
+
+  /// Voz escolhida nos Ajustes (motor|nome|idioma); null = a automática.
+  final String? vozId;
 
   /// FTP (W) do teste ou digitado; null = ainda não sabe (usa 2 W/kg).
   final double? ftp;
@@ -65,6 +69,8 @@ class AppSettings {
     String? nome,
     double? margemVolta,
     bool? voz,
+    String? vozId,
+    bool vozAutomatica = false,
     double? ftp,
     String? planoId,
     DateTime? planoInicio,
@@ -84,6 +90,7 @@ class AppSettings {
         nome: nome ?? this.nome,
         margemVolta: margemVolta ?? this.margemVolta,
         voz: voz ?? this.voz,
+        vozId: vozAutomatica ? null : (vozId ?? this.vozId),
         ftp: ftp ?? this.ftp,
         planoId: semPlano ? null : (planoId ?? this.planoId),
         planoInicio: semPlano ? null : (planoInicio ?? this.planoInicio),
@@ -103,6 +110,7 @@ class AppSettings {
         'nome': ?nome,
         'margemVolta': '$margemVolta',
         'voz': voz ? '1' : '0',
+        'vozId': ?vozId,
         'ftp': ?ftp?.toString(),
         'planoId': ?planoId,
         'planoInicio': ?planoInicio?.millisecondsSinceEpoch.toString(),
@@ -125,6 +133,7 @@ class AppSettings {
       nome: m['nome'],
       margemVolta: dbl('margemVolta', d.margemVolta),
       voz: m['voz'] != '0',
+      vozId: m['vozId'],
       ftp: double.tryParse(m['ftp'] ?? ''),
       planoId: m['planoId'],
       planoInicio: int.tryParse(m['planoInicio'] ?? '') == null

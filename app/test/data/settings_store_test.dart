@@ -68,6 +68,16 @@ void main() {
     expect(semPlano.ftp, 187);
   });
 
+  test('voz escolhida; automática = nenhuma', () async {
+    final store = SqliteSettingsStore(db);
+    expect((await store.load()).vozId, isNull);
+    await store.save(const AppSettings().copyWith(vozId: 'com.google.android.tts|pt-br-x-ptd-local|pt-BR'));
+    final s = await store.load();
+    expect(s.vozId, 'com.google.android.tts|pt-br-x-ptd-local|pt-BR');
+    expect(s.copyWith(vozAutomatica: true).vozId, isNull);
+    expect(s.copyWith(pesoKg: 80).vozId, s.vozId);
+  });
+
   test('versão em memória', () async {
     final store = MemorySettingsStore();
     await store.save(const AppSettings(pesoKg: 90));

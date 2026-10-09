@@ -281,6 +281,8 @@ class RideController extends Notifier<RideView> {
     _margem = settings.margemVolta;
     _vozLigada = settings.voz;
     _voz = ref.read(voiceProvider);
+    await _voz!.choose(settings.vozId);
+    if (!ref.mounted) return;
     _narrador = RideNarrator(routeLength: _loop == null ? _profile?.distance : null);
     final relogio = ref.read(clockProvider);
     final Terrain terreno = _loop ?? _profile ?? _terrenoTreino ?? const FlatTerrain();

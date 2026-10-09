@@ -29,6 +29,8 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
   double _carga = 4;
   double _margem = 3;
   bool _voz = true;
+  String? _vozId;
+  List<VoiceOption> _vozes = const [];
   bool _controleBike = true;
   double _intensidade = 1;
 
@@ -48,11 +50,32 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
         _carga = s.cargaPadrao.toDouble();
         _margem = (s.margemVolta * 100).roundToDouble().clamp(0, 10);
         _voz = s.voz;
+        _vozId = s.vozId;
         _ftp.text = s.ftp == null ? '' : s.ftp!.round().toString();
         _controleBike = s.controleBike;
         _intensidade = s.intensidade;
       });
+      _carregarVozes(s.vozId);
     });
+  }
+
+  /// Vozes em português do celular; o exemplo já sai com a voz guardada.
+  Future<void> _carregarVozes(String? guardada) async {
+    final voz = ref.read(voiceProvider);
+    final vozes = await voz.options();
+    if (!mounted) return;
+    final existe = vozes.any((v) => v.id == guardada);
+    await voz.choose(existe ? guardada : null);
+    if (!mounted) return;
+    setState(() {
+      _vozes = vozes;
+      if (!existe) _vozId = null;
+    });
+  }
+
+  void _escolherVoz(String? id) {
+    setState(() => _vozId = id);
+    ref.read(voiceProvider).choose(id);
   }
 
   @override
@@ -77,6 +100,8 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
       cargaPadrao: _carga.round(),
       margemVolta: _margem / 100,
       voz: _voz,
+      vozId: _vozId,
+      vozAutomatica: _vozId == null,
       ftp: _numero(_ftp)?.clamp(50, 600).roundToDouble(),
       controleBike: _controleBike,
       intensidade: _intensidade,
@@ -162,10 +187,24 @@ class _AjustesScreenState extends ConsumerState<AjustesScreen> {
                   'os 200 metros finais e como você está contra o fantasma. A música abaixa enquanto ele fala. '
                   'Dá para ligar e desligar também no pedal, no botão do alto-falante.',
                 ),
+                if (_vozes.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    initialValue: _vozId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Qual voz'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Automática (a mais natural)')),
+                      for (final v in _vozes) DropdownMenuItem(value: v.id, child: Text(v.label)),
+                    ],
+                    onChanged: _escolherVoz,
+                  ),
+                  const _Ajuda('Escolha uma e toque em “Ouvir um exemplo” para comparar.'),
+                ],
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
-                    onPressed: () => ref.read(voiceProvider).speak('Subida de 6 por cento chegando. Aumente a carga.'),
+                    onPressed: () => ref.read(voiceProvider).speak('Subida de 6 por cento chegando. Aumente a carga da bike.'),
                     icon: const Icon(Icons.record_voice_over_outlined),
                     label: const Text('Ouvir um exemplo'),
                   ),

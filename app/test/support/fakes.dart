@@ -114,14 +114,28 @@ class FakeBikeControl implements BikeControl {
 
 /// Voz de teste: guarda o que foi falado.
 class FakeVoice implements Voice {
+  FakeVoice({this.voices = const []});
+
   final spoken = <String>[];
   int stops = 0;
+
+  /// Vozes que o “celular” tem.
+  final List<VoiceOption> voices;
+
+  /// Ids passados para [choose], em ordem.
+  final chosen = <String?>[];
 
   @override
   Future<void> speak(String text) async => spoken.add(text);
 
   @override
   Future<void> stop() async => stops++;
+
+  @override
+  Future<List<VoiceOption>> options() async => voices;
+
+  @override
+  Future<void> choose(String? id) async => chosen.add(id);
 }
 
 /// Deixa timers de zero segundos e eventos de stream acontecerem.
