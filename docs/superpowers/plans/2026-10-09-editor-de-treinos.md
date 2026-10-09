@@ -14,7 +14,7 @@ nova; `findWorkoutProvider` acha qualquer treino (biblioteca ou do usuário) pel
 
 ## Tarefas
 
-- [ ] **1. Domínio dos blocos** — `lib/domain/workout_blocks.dart` (novo), `lib/domain/workout.dart`.
+- [x] **1. Domínio dos blocos** — `lib/domain/workout_blocks.dart` (novo), `lib/domain/workout.dart`.
   - `WorkoutStep.free` (pedal livre) e `withSeconds`; `Workout.withSteps`.
   - `BlockKind` (7 tipos), títulos e explicações; `WorkoutBlock` com `novo(kind)` (valores do
     desenho), `copyWith`, `totalSeconds`, `toSteps` (série → “Tiro 3 de 4[. frase]” + descanso
@@ -28,31 +28,31 @@ nova; `findWorkoutProvider` acha qualquer treino (biblioteca ou do usuário) pel
   - Testes: `test/domain/workout_blocks_test.dart` (cada bloco → trechos, série com frase, números,
     livre como muito leve, JSON ida e volta, cópia de toda a biblioteca com o mesmo desenho, tipos
     reconhecidos na cópia, limites, resumos em palavras).
-- [ ] **2. Condutor do treino** — `lib/domain/workout_runner.dart`.
+- [x] **2. Condutor do treino** — `lib/domain/workout_runner.dart`.
   - Pedal livre: meta 0, sem “fora da meta”, voz “1 minuto de pedal livre, no seu ritmo.”.
   - `skipStep`, `extendStep` (até +30 min por trecho), `nudge(±1)` (5 %, de −30 % a +30 %), com a
     voz confirmando; `workout` passa a refletir o +1 min; `WorkoutFrame.adjustment`.
   - Nada disso no Teste de rampa.
   - Testes em `test/domain/workout_runner_test.dart`.
-- [ ] **3. Dados** — `lib/data/db/app_database.dart` (versão 7), `lib/data/custom_workouts_store.dart`
+- [x] **3. Dados** — `lib/data/db/app_database.dart` (versão 7), `lib/data/custom_workouts_store.dart`
   (novo: SQLite e memória), `lib/data/rides_store.dart` (`workoutName`), `lib/data/providers.dart`,
   `lib/features/pedal/ride_controller.dart` (`findWorkoutProvider`).
   - Tabela `custom_workouts`; coluna `workout_name` nos pedais; migração da 6 para a 7.
   - `rideName` usa o nome guardado antes de procurar na biblioteca.
   - Testes: `test/data/custom_workouts_store_test.dart` (salvar, listar, apagar, migração 6 → 7,
     `findWorkoutProvider`), `test/data/rides_store_test.dart` (nome do treino no pedal).
-- [ ] **4. Pedal do treino** — `lib/features/pedal/ride_controller.dart`.
+- [x] **4. Pedal do treino** — `lib/features/pedal/ride_controller.dart`.
   - Acha treinos do usuário (espera eles carregarem); guarda `workoutName`.
   - `skipStep`, `extendStep`, `nudge` repassam ao condutor, falam e mandam a meta nova para a bike
     na hora (mesmo abaixo de 5 W de diferença); no pedal livre, a carga volta para a bike.
   - Testes em `test/features/ride_controller_test.dart`.
-- [ ] **5. Telas do pedal** — `lib/features/treinos/treino_pedal_screen.dart`, `workout_chart.dart`,
+- [x] **5. Telas do pedal** — `lib/features/treinos/treino_pedal_screen.dart`, `workout_chart.dart`,
   `treino_screen.dart` (linhas dos trechos).
   - Botões Pular bloco, +1 min, Mais leve −5 %, Mais forte +5 % (os dois últimos somem no pedal
     livre; nada no Teste de rampa); “Pedal livre / Sem meta” no trecho livre; “Metas +5 % neste
     pedal”; “Depois: … pedal livre”; barra cinza clara no desenho.
   - Teste de tela em `test/widget/treinos_test.dart`.
-- [ ] **6. Editor** — `lib/features/treinos/editor_treino_screen.dart` e `bloco_sheet.dart` (novos),
+- [x] **6. Editor** — `lib/features/treinos/editor_treino_screen.dart` e `bloco_sheet.dart` (novos),
   rotas `/treino-novo[?de=id]` e `/treino-editar/:id`.
   - Nome, desenho e números ao vivo; lista com segurar e arrastar; menu Duplicar/Apagar; “Adicionar
     bloco” (entra antes do Soltar e já abre os ajustes); Salvar com validação; sair com mudanças
@@ -60,13 +60,35 @@ nova; `findWorkoutProvider` acha qualquer treino (biblioteca ou do usuário) pel
   - Ajustes do bloco: tempo (− e +, segurar repete), intensidade em palavras + ajuste fino com
     watts, giro (Livre, Pesado, Normal, Rápido, Outro), inclinação, série (repetições, tiro,
     descanso), frase da voz; “Pronto”.
-- [ ] **7. Treinos e tela do treino** — `treinos_screen.dart` (“Meus treinos” e “Criar treino”),
+- [x] **7. Treinos e tela do treino** — `treinos_screen.dart` (“Meus treinos” e “Criar treino”),
   `treino_screen.dart` (Copiar e editar; Editar, Duplicar, Apagar com confirmação).
   - Testes de tela em `test/widget/treinos_test.dart`: criar do zero e salvar; copiar da biblioteca
     e mudar um bloco; sair sem salvar; apagar; o treino montado começa no pedal com o nome certo.
   - Todos os testes de tela passam a sobrescrever `customWorkoutsStoreProvider` com o de memória.
-- [ ] **8. No celular e registro** — instalar, conferir as telas em fotos, migração 6 → 7 com as
+- [x] **8. No celular e registro** — instalar, conferir as telas em fotos, migração 6 → 7 com as
   rotas e pedais do usuário intactos; notas aqui; ajuste no desenho (a série gera as frases
   “Tiro 3 de 4” em vez de um campo novo no trecho); commit e push.
 
 ## Notas da execução
+
+- O condutor guarda as frases da última atualização em `spoken`; pular, +1 min e ±5 % limpam a
+  lista antes, senão a voz repetiria a frase do trecho junto com a confirmação.
+- No ERG, a meta nova de um ajuste vai para a bike na hora, mesmo com menos de 5 W de diferença
+  (a regra dos 5 W é para as rampas).
+- A cópia de treino pronto só faz série com pares repetidos cujo descanso não tem giro próprio
+  (Cadência alta e Resistência 40 viram blocos soltos); o desenho de toda a biblioteca fica igual
+  (testado). O descanso da série fala sempre “Recupere”.
+- A lista do editor usa `onReorderItem` (o `onReorder` ficou obsoleto no Flutter 3.41): a
+  posição já vem final.
+- A folha de ajustes do bloco é uma coluna com rolagem (e não uma `ListView`), para o botão
+  “Pronto” existir mesmo fora da tela (a lista preguiçosa não o construía).
+- Entre o número e a unidade (“98 W”, “6 %”) vai um espaço que não quebra: no celular, o “W)”
+  caía sozinho na linha de baixo.
+- Os testes de tela usam o `MemoryCustomWorkoutsStore` (sem ele, a lista dos treinos do usuário
+  ficava em erro, sem banco).
+- No celular (S20 FE): cópia do banco antes de instalar; migração da versão 6 para a 7 conferida
+  (as rotas “Entre pontes” e “Casa trabalho” e os 2 pedais intactos; tabela nova vazia). Telas
+  conferidas em fotos: Meus treinos, Novo treino, Adicionar bloco, a série e “Descartar as
+  mudanças?”. Nada foi salvo nos dados do usuário. O pedal do treino com os botões novos não foi
+  visto no aparelho (precisa da bike conectada); está coberto pelos testes de tela e do controle.
+- Resultado: `flutter analyze` sem avisos, **343 testes passando**.

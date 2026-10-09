@@ -106,8 +106,9 @@ constante. As frases (cues) vão junto. O desenho da cópia fica igual ao do ori
   na biblioteca e depois nos treinos do usuário, então a tela do treino, o pedal e o resumo
   funcionam igual para os dois.
 - Na hora de pedalar, os blocos viram os trechos de sempre (`WorkoutStep`); a série vira
-  os pares repetidos. O `WorkoutStep` ganha `free` (pedal livre) e o número do tiro para a
-  voz. O condutor do treino (`WorkoutRunner`) ganha pular, +1 min e o ajuste de ±5 %.
+  os pares repetidos, cada tiro com a frase “Tiro 3 de 4” (antes da frase do usuário). O
+  `WorkoutStep` ganha `free` (pedal livre). O condutor do treino (`WorkoutRunner`) ganha
+  pular, +1 min e o ajuste de ±5 %.
 
 ## Limites e casos especiais
 

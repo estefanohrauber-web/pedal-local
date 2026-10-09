@@ -360,6 +360,25 @@ class _Intensidade extends StatelessWidget {
   }
 }
 
+/// Uma opção de giro, no mesmo estilo das de intensidade (sem o tique).
+class _ChipDeGiro extends StatelessWidget {
+  const _ChipDeGiro({required this.texto, required this.escolhido, required this.onTap});
+
+  final String texto;
+  final bool escolhido;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => ChoiceChip(
+    label: Text(texto),
+    selected: escolhido,
+    showCheckmark: false,
+    selectedColor: AppColors.destaqueSuave,
+    side: BorderSide(color: escolhido ? AppColors.destaque : AppColors.borda),
+    onSelected: (_) => onTap(),
+  );
+}
+
 /// Faixas de giro prontas: (mínimo, máximo, nome).
 const _faixas = [(70, 80, 'Pesado 70–80'), (85, 95, 'Normal 85–95'), (95, 105, 'Rápido 95–105')];
 
@@ -385,14 +404,10 @@ class _Giro extends StatelessWidget {
           spacing: 6,
           runSpacing: 6,
           children: [
-            ChoiceChip(label: const Text('Livre'), selected: mn == null, onSelected: (_) => onChanged(null, null)),
+            _ChipDeGiro(texto: 'Livre', escolhido: mn == null, onTap: () => onChanged(null, null)),
             for (final f in _faixas)
-              ChoiceChip(
-                label: Text(f.$3),
-                selected: mn == f.$1 && mx == f.$2,
-                onSelected: (_) => onChanged(f.$1, f.$2),
-              ),
-            ChoiceChip(label: const Text('Outro'), selected: outro, onSelected: (_) => onChanged(80, 90)),
+              _ChipDeGiro(texto: f.$3, escolhido: mn == f.$1 && mx == f.$2, onTap: () => onChanged(f.$1, f.$2)),
+            _ChipDeGiro(texto: 'Outro', escolhido: outro, onTap: () => onChanged(80, 90)),
           ],
         ),
         if (outro) ...[

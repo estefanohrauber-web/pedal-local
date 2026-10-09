@@ -181,11 +181,11 @@ void main() {
 
     test('resumo em palavras com os watts', () {
       int watts(double f) => (200 * f).round();
-      expect(describeBlock(WorkoutBlock.novo(BlockKind.serie), watts), '1 min muito forte (220 W) + 1 min muito leve');
-      expect(describeBlock(WorkoutBlock.novo(BlockKind.aquecer), watts), 'Muito leve subindo para leve (90 → 130 W)');
-      expect(describeBlock(WorkoutBlock.novo(BlockKind.soltar), watts), 'Leve descendo para muito leve (110 → 80 W)');
-      expect(describeBlock(WorkoutBlock.novo(BlockKind.ritmo), watts), 'Leve (140 W)');
-      expect(describeBlock(WorkoutBlock.novo(BlockKind.subida), watts), 'Moderado (170 W), 6 %, giro 70–85');
+      expect(describeBlock(WorkoutBlock.novo(BlockKind.serie), watts), '1 min muito forte (220\u00a0W) + 1 min muito leve');
+      expect(describeBlock(WorkoutBlock.novo(BlockKind.aquecer), watts), 'Muito leve subindo para leve (90\u00a0→\u00a0130\u00a0W)');
+      expect(describeBlock(WorkoutBlock.novo(BlockKind.soltar), watts), 'Leve descendo para muito leve (110\u00a0→\u00a080\u00a0W)');
+      expect(describeBlock(WorkoutBlock.novo(BlockKind.ritmo), watts), 'Leve (140\u00a0W)');
+      expect(describeBlock(WorkoutBlock.novo(BlockKind.subida), watts), 'Moderado (170\u00a0W), 6\u00a0%, giro 70–85');
       expect(describeBlock(WorkoutBlock.novo(BlockKind.livre), watts), 'Sem meta, no seu ritmo');
       expect(
         describeBlock(WorkoutBlock.novo(BlockKind.serie).copyWith(seconds: 90), watts),

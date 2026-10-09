@@ -227,7 +227,7 @@ void main() {
     await tester.tap(find.text('Pronto'));
     await tester.pumpAndSettle();
     expect(find.text('Série de tiros · 5 ×'), findsOneWidget);
-    expect(find.text('1 min muito forte (220 W) + 1 min muito leve'), findsOneWidget);
+    expect(find.text('1 min muito forte (220\u00a0W) + 1 min muito leve'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'Tiros de terça');
     await tester.tap(find.text('Salvar'));

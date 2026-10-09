@@ -385,21 +385,22 @@ String _palavra(double f) => zoneFor(f).effort;
 
 String _giro(WorkoutBlock b) => b.cadenceMin == null ? '' : ', giro ${b.cadenceMin}–${b.cadenceMax}';
 
-/// Resumo do bloco em palavras, com os watts do FTP (cartão do editor).
+/// Resumo do bloco em palavras, com os watts do FTP (cartão do editor). Entre o número e a unidade
+/// vai um espaço que não quebra a linha.
 String describeBlock(WorkoutBlock b, int Function(double fraction) watts) {
   switch (b.kind) {
     case BlockKind.livre:
       return 'Sem meta, no seu ritmo';
     case BlockKind.serie:
-      return '${_tempoCurto(b.seconds)} ${_palavra(b.from).toLowerCase()} (${watts(b.from)} W) + '
+      return '${_tempoCurto(b.seconds)} ${_palavra(b.from).toLowerCase()} (${watts(b.from)}\u00a0W) + '
           '${_tempoCurto(b.restSeconds)} ${_palavra(b.restFraction).toLowerCase()}${_giro(b)}';
     case BlockKind.subida:
-      return '${_palavra(b.from)} (${watts(b.from)} W), ${(b.grade * 100).round()} %${_giro(b)}';
+      return '${_palavra(b.from)} (${watts(b.from)}\u00a0W), ${(b.grade * 100).round()}\u00a0%${_giro(b)}';
     case BlockKind.aquecer || BlockKind.rampa || BlockKind.soltar when b.from != b.to:
       final sentido = b.to > b.from ? 'subindo' : 'descendo';
       return '${_palavra(b.from)} $sentido para ${_palavra(b.to).toLowerCase()} '
-          '(${watts(b.from)} → ${watts(b.to)} W)${_giro(b)}';
+          '(${watts(b.from)}\u00a0→\u00a0${watts(b.to)}\u00a0W)${_giro(b)}';
     default:
-      return '${_palavra(b.from)} (${watts(b.from)} W)${_giro(b)}';
+      return '${_palavra(b.from)} (${watts(b.from)}\u00a0W)${_giro(b)}';
   }
 }
