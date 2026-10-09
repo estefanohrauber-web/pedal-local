@@ -16,6 +16,10 @@ Data: 2026-10-09.
 
 ## Logo (E3, “a rota vira o pino”)
 
+- Ajuste do usuário (mesmo dia): o cruzamento embaixo do pino virou um X de linhas retas.
+  Os lados do pino são as retas que saem da ponta e tocam a cabeça (35,4° com a vertical),
+  continuadas 16 abaixo da ponta; o traço é contínuo: sobe reto pelo lado direito, contorna
+  a cabeça e desce reto pelo esquerdo, sem trancos (é também a ordem da animação).
 - Uma linha só: passa por uma colina, sobe a segunda e no alto se enrola e forma o pino
   (“aqui”), depois segue. Bolinha amarela `#F6C445` no pino; verde `#138A52`
   (`AppColors.destaque`); linha branca de 12 num quadro de 200.
@@ -50,5 +54,5 @@ Data: 2026-10-09.
 
 ## Verificação
 
-303 testes automáticos (logo, abertura e o resto). No celular: ícone e nome novos nas
+304 testes automáticos (logo, abertura e o resto). No celular: ícone e nome novos nas
 informações do app; abertura conferida em fotos da tela.

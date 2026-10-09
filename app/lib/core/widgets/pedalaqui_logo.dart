@@ -8,20 +8,37 @@ import '../theme/app_theme.dart';
 const logoAmarelo = Color(0xFFF6C445);
 
 /// A rota da logo, num quadro de 200 × 200: passa por uma colina, sobe a segunda e, lá no
-/// alto, se enrola e vira o pino (“aqui”); depois segue em frente.
-Path logoRoute() => Path()
-  ..moveTo(8, 150)
-  ..cubicTo(30, 150, 40, 116, 62, 116)
-  ..cubicTo(84, 116, 88, 136, 104, 136)
-  ..cubicTo(118, 136, 126, 110, 136, 96)
-  ..cubicTo(128, 86, 114, 74, 114, 58)
-  ..arcToPoint(
-    const Offset(158, 58),
-    radius: const Radius.circular(22),
-    largeArc: true,
-  )
-  ..cubicTo(158, 74, 144, 86, 136, 96)
-  ..cubicTo(146, 110, 160, 124, 192, 126);
+/// alto, vira o pino (“aqui”); depois segue em frente. Um traço só, sem trancos: sobe reto
+/// pelo lado direito do pino, contorna a cabeça e desce reto pelo lado esquerdo, cruzando a
+/// si mesmo na ponta do pino num X de linhas retas.
+Path logoRoute() {
+  // Os lados do pino são as retas que saem da ponta e tocam a cabeça (um círculo).
+  const ponta = Offset(136, 96);
+  final d = (ponta - logoPinCenter).distance;
+  final abertura = math.asin(_raioDoPino / d); // ângulo de cada lado com a vertical
+  final lado = math.sqrt(d * d - _raioDoPino * _raioDoPino);
+  final paraDireita = Offset(math.sin(abertura), -math.cos(abertura)); // subindo
+  final paraEsquerda = Offset(-math.sin(abertura), -math.cos(abertura));
+  final toqueDireito = ponta + paraDireita * lado;
+  final toqueEsquerdo = ponta + paraEsquerda * lado;
+  // As retas continuam 16 abaixo da ponta, e as curvas chegam e saem na mesma direção.
+  final chegada = ponta - paraDireita * 16;
+  final saida = ponta - paraEsquerda * 16;
+  final antesDaChegada = chegada - paraDireita * 10;
+  final depoisDaSaida = saida - paraEsquerda * 10;
+  return Path()
+    ..moveTo(8, 150)
+    ..cubicTo(30, 150, 40, 116, 62, 116)
+    ..cubicTo(84, 116, 88, 136, 104, 136)
+    ..cubicTo(114, 136, antesDaChegada.dx, antesDaChegada.dy, chegada.dx, chegada.dy)
+    ..lineTo(toqueDireito.dx, toqueDireito.dy)
+    ..arcToPoint(toqueEsquerdo, radius: const Radius.circular(_raioDoPino), largeArc: true, clockwise: false)
+    ..lineTo(saida.dx, saida.dy)
+    ..cubicTo(depoisDaSaida.dx, depoisDaSaida.dy, 170, 126, 192, 126);
+}
+
+/// Raio da cabeça do pino.
+const _raioDoPino = 22.0;
 
 /// Centro do pino, onde fica a bolinha amarela.
 const logoPinCenter = Offset(136, 58);

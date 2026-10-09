@@ -12,7 +12,7 @@
         android:translateY="26.1">
         <path
             android:fillColor="#00000000"
-            android:pathData="M8,150 C30,150 40,116 62,116 C84,116 88,136 104,136 C118,136 126,110 136,96 C128,86 114,74 114,58 A22,22 0 1,1 158,58 C158,74 144,86 136,96 C146,110 160,124 192,126"
+            android:pathData="M8,150 C30,150 40,116 62,116 C84,116 88,136 104,136 C114,136 120.95,117.2 126.74,109.05 L153.94,70.74 A22,22 0 1,0 118.06,70.74 L145.26,109.05 C151.05,117.2 170,126 192,126"
             android:strokeWidth="12"
             android:strokeColor="#FFFFFFFF"
             android:strokeLineCap="round"

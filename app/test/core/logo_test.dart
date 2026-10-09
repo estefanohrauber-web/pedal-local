@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/core/widgets/pedalaqui_logo.dart';
@@ -7,12 +9,40 @@ double _comprimento(Path p) =>
 
 void main() {
   test('a rota da logo cabe no quadro de 200 e o pino fica no alto da segunda colina', () {
-    final b = logoRoute().getBounds();
+    // A caixa de verdade, seguindo o traço (getBounds conta os pontos de controle das curvas).
+    final m = logoRoute().computeMetrics().first;
+    final pontos = [for (var d = 0.0; d <= m.length; d += 0.5) m.getTangentForOffset(d)!.position];
+    final b = Rect.fromLTRB(
+      pontos.map((p) => p.dx).reduce(math.min),
+      pontos.map((p) => p.dy).reduce(math.min),
+      pontos.map((p) => p.dx).reduce(math.max),
+      pontos.map((p) => p.dy).reduce(math.max),
+    );
     expect(b.left, greaterThanOrEqualTo(0));
     expect(b.right, lessThanOrEqualTo(200));
     expect(b.top, closeTo(36, 1)); // topo da cabeça do pino (58 − 22)
     expect(b.bottom, closeTo(150, 1));
     expect(logoPinCenter.dx, closeTo(b.left + 128, 1));
+  });
+
+  test('no cruzamento embaixo do pino as duas linhas passam retas, num X simétrico', () {
+    final m = logoRoute().computeMetrics().first;
+    const ponta = Offset(136, 96);
+    final passagens = <double>[];
+    for (var s = 0.0; s <= m.length; s += 0.25) {
+      final perto = (m.getTangentForOffset(s)!.position - ponta).distance < 0.2;
+      if (perto && (passagens.isEmpty || s - passagens.last > 20)) passagens.add(s);
+    }
+    expect(passagens.length, 2); // passa pela ponta do pino duas vezes
+    for (final s in passagens) {
+      final antes = m.getTangentForOffset(s - 14)!.vector;
+      final depois = m.getTangentForOffset(s + 14)!.vector;
+      expect((antes.direction - depois.direction).abs(), lessThan(0.01)); // reta
+    }
+    final subida = m.getTangentForOffset(passagens[0])!.vector;
+    final descida = m.getTangentForOffset(passagens[1])!.vector;
+    expect(subida.dx, closeTo(descida.dx, 0.01)); // espelhadas: sobe para a direita…
+    expect(subida.dy, closeTo(-descida.dy, 0.01)); // …e desce para a direita
   });
 
   test('desenho parcial: metade do caminho tem metade do comprimento', () {
