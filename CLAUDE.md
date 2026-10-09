@@ -6,6 +6,9 @@ Documentos de design e planos em `docs/superpowers/`.
 O app se chama **Pedalaqui** (desde 2026-10-09); a pasta, o pacote e o código continuam
 `pedal-local` / `pedal_local`. Logo e ícones em `docs/marca/` e `app/lib/core/widgets/pedalaqui_logo.dart`.
 
+**Resumo completo** (o que já foi feito, regras combinadas, próximos passos e como montar um
+computador novo sem perder dados): `docs/RESUMO-DO-PROJETO.md`. Leia antes de começar.
+
 ## Como responder
 
 - Toda mensagem ao usuário termina com um **Resumo** curto (3 a 5 linhas), em
