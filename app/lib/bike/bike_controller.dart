@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
+import 'bike_log.dart';
 import 'bike_source.dart';
 import 'ftms_source.dart';
 import 'sim_source.dart';
@@ -28,7 +29,7 @@ class BikeState {
 typedef FtmsFactory = BikeSource Function(String deviceId, String deviceName);
 
 final ftmsFactoryProvider = Provider<FtmsFactory>(
-  (ref) => (id, name) => FtmsSource(deviceId: id, deviceName: name),
+  (ref) => (id, name) => FtmsSource(deviceId: id, deviceName: name, log: ref.read(bikeLogProvider)),
 );
 
 final reconnectDelaysProvider = Provider<List<Duration>>(

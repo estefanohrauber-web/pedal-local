@@ -68,3 +68,43 @@ IndoorBikeData parseIndoorBikeData(Uint8List bytes) {
   }
   return IndoorBikeData(speedKmh: speed, cadence: cadence, power: power, heartRate: heartRate, resistance: resistance);
 }
+
+/// Junta os pedaços de uma leitura. Pelo padrão FTMS, a bike pode dividir os campos em vários
+/// pacotes (bit 0, "More Data"), e cada pacote traz só parte deles. Sem juntar, o pacote só com
+/// a velocidade apagaria a cadência e a potência do pacote anterior. Um campo que parou de vir
+/// há mais de [maxAge] é descartado.
+class IndoorBikeAssembler {
+  IndoorBikeAssembler({this.maxAge = const Duration(seconds: 3)});
+
+  final Duration maxAge;
+  (double, DateTime)? _speed;
+  (double, DateTime)? _cadence;
+  (int, DateTime)? _power;
+  (int, DateTime)? _heartRate;
+  (int, DateTime)? _resistance;
+
+  IndoorBikeData add(IndoorBikeData d, DateTime t) {
+    if (d.speedKmh != null) _speed = (d.speedKmh!, t);
+    if (d.cadence != null) _cadence = (d.cadence!, t);
+    if (d.power != null) _power = (d.power!, t);
+    if (d.heartRate != null) _heartRate = (d.heartRate!, t);
+    if (d.resistance != null) _resistance = (d.resistance!, t);
+    V? recente<V>((V, DateTime)? v) => v == null || t.difference(v.$2) > maxAge ? null : v.$1;
+    return IndoorBikeData(
+      speedKmh: recente(_speed),
+      cadence: recente(_cadence),
+      power: recente(_power),
+      heartRate: recente(_heartRate),
+      resistance: recente(_resistance),
+    );
+  }
+
+  /// Esquece o que juntou (ao conectar de novo).
+  void reset() {
+    _speed = null;
+    _cadence = null;
+    _power = null;
+    _heartRate = null;
+    _resistance = null;
+  }
+}

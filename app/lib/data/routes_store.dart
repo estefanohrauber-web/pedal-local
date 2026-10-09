@@ -5,6 +5,10 @@ import 'package:sqflite/sqflite.dart';
 import '../domain/geo.dart';
 import '../domain/route_profile.dart';
 
+/// Versão do cálculo do relevo: 0 = rota plana (a altitude falhou), 1 = altitude do terreno,
+/// 2 = com pontes e túneis em reta. Rotas abaixo da atual são refeitas quando houver internet.
+const reliefVersion = 2;
+
 /// Quantas cores de rota existem (a paleta fica em AppColors.rotas).
 const routeColorCount = 6;
 
@@ -32,6 +36,7 @@ class RouteRecord {
     required this.gainM,
     required this.lossM,
     this.colorIndex = 0,
+    this.relief = reliefVersion,
   });
 
   final String id;
@@ -46,16 +51,28 @@ class RouteRecord {
   /// Cor da rota no mapa e na lista (índice da paleta); fica fixa depois de salva.
   final int colorIndex;
 
-  RouteRecord copyWith({String? name, int? colorIndex}) => RouteRecord(
+  /// Versão do relevo (veja [reliefVersion]).
+  final int relief;
+
+  RouteRecord copyWith({
+    String? name,
+    int? colorIndex,
+    List<ProfilePoint>? points,
+    double? gainM,
+    double? lossM,
+    int? relief,
+  }) =>
+      RouteRecord(
         id: id,
         name: name ?? this.name,
         createdAt: createdAt,
         waypoints: waypoints,
-        points: points,
+        points: points ?? this.points,
         distanceM: distanceM,
-        gainM: gainM,
-        lossM: lossM,
+        gainM: gainM ?? this.gainM,
+        lossM: lossM ?? this.lossM,
         colorIndex: colorIndex ?? this.colorIndex,
+        relief: relief ?? this.relief,
       );
 
   Map<String, Object?> toRow() => {
@@ -72,6 +89,7 @@ class RouteRecord {
         'gain_m': gainM,
         'loss_m': lossM,
         'color': colorIndex,
+        'relief': relief,
       };
 
   factory RouteRecord.fromRow(Map<String, Object?> r) {
@@ -92,6 +110,7 @@ class RouteRecord {
       gainM: n(r['gain_m']),
       lossM: n(r['loss_m']),
       colorIndex: (r['color'] as int?) ?? 0,
+      relief: (r['relief'] as int?) ?? 1,
     );
   }
 }

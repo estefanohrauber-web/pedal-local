@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../domain/geo.dart';
+import '../../domain/structures.dart';
 import 'app_http.dart';
 import 'polyline.dart';
 import 'request_pacer.dart';
@@ -81,5 +82,44 @@ class RoutingService {
       linha.addAll(emenda ? pontos.skip(1) : pontos);
     }
     return linha;
+  }
+
+  /// Pontes e túneis no caminho [points], em metros ao longo dele. O mapa (OpenStreetMap) diz
+  /// quais ruas são ponte ou túnel; a altitude não sabe disso (veja [flattenStructures]).
+  Future<List<StructureSpan>> structures(List<GeoPoint> points) async {
+    final body = jsonEncode({
+      'shape': [
+        for (final p in points) {'lat': p.lat, 'lon': p.lon},
+      ],
+      'costing': 'bicycle',
+      'costing_options': bikeCostingOptions,
+      'shape_match': 'map_snap',
+      'filters': {
+        'attributes': ['edge.bridge', 'edge.tunnel', 'edge.begin_shape_index', 'edge.end_shape_index', 'shape'],
+        'action': 'include',
+      },
+    });
+    await _pacer.wait();
+    final res = await _client
+        .post(Uri.parse('$valhallaBase/trace_attributes'), headers: appJsonHeaders, body: body)
+        .timeout(const Duration(seconds: 30));
+    Map<String, dynamic>? data;
+    try {
+      data = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      data = null;
+    }
+    final shape = data?['shape'];
+    final edges = data?['edges'];
+    if (res.statusCode != 200 || shape is! String || edges is! List) {
+      throw const RouteException('servico', 'Não deu para achar as pontes da rota.');
+    }
+    final trechos = <ShapeRange>[
+      for (final e in edges.cast<Map<String, dynamic>>())
+        if (e['bridge'] == true || e['tunnel'] == true)
+          (begin: (e['begin_shape_index'] as num).toInt(), end: (e['end_shape_index'] as num).toInt()),
+    ];
+    if (trechos.isEmpty) return const [];
+    return structureSpans(points, decodePolyline(shape), trechos);
   }
 }

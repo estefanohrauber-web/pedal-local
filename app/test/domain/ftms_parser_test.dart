@@ -64,4 +64,45 @@ void main() {
   test('pacote vazio', () {
     expect(parseIndoorBikeData(pkt([])), const IndoorBikeData());
   });
+
+  group('leitura dividida em pacotes (bit More Data)', () {
+    final t0 = DateTime(2026, 10, 9, 20);
+    DateTime em(int ms) => t0.add(Duration(milliseconds: ms));
+    // 1º pedaço: bit 0 ligado (mais dados vêm depois, sem velocidade), cadência e potência.
+    IndoorBikeData pedaco1(int cad2, int watts) =>
+        parseIndoorBikeData(pkt([0x45, 0x00, cad2 & 0xff, cad2 >> 8, watts & 0xff, watts >> 8]));
+    // 2º pedaço: velocidade e frequência cardíaca (flags 0x0200), sem cadência e potência.
+    final pedaco2 = parseIndoorBikeData(pkt([0x00, 0x02, 0xc4, 0x09, 0]));
+
+    test('o pedaço só com a velocidade não apaga a cadência e a potência do anterior', () {
+      final m = IndoorBikeAssembler();
+      expect(m.add(pedaco1(160, 150), em(0)), const IndoorBikeData(cadence: 80, power: 150));
+      expect(m.add(pedaco2, em(40)), const IndoorBikeData(speedKmh: 25, cadence: 80, power: 150, heartRate: 0));
+      expect(m.add(pedaco1(170, 160), em(1000)), const IndoorBikeData(speedKmh: 25, cadence: 85, power: 160, heartRate: 0));
+    });
+
+    test('valor novo de um campo troca o antigo, inclusive zero (parou de pedalar)', () {
+      final m = IndoorBikeAssembler();
+      m.add(pedaco1(160, 150), em(0));
+      expect(m.add(pedaco1(0, 0), em(1000)).cadence, 0);
+      expect(m.add(pedaco2, em(1040)).power, 0);
+    });
+
+    test('campo que parou de vir há mais de 3 s some', () {
+      final m = IndoorBikeAssembler();
+      m.add(pedaco1(160, 150), em(0));
+      expect(m.add(pedaco2, em(3000)).cadence, 80);
+      final depois = m.add(pedaco2, em(3500));
+      expect(depois.cadence, isNull);
+      expect(depois.power, isNull);
+      expect(depois.speedKmh, 25);
+    });
+
+    test('recomeçar (bike reconectada) esquece tudo', () {
+      final m = IndoorBikeAssembler();
+      m.add(pedaco1(160, 150), em(0));
+      m.reset();
+      expect(m.add(pedaco2, em(100)), const IndoorBikeData(speedKmh: 25, heartRate: 0));
+    });
+  });
 }

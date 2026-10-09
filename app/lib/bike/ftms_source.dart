@@ -6,6 +6,7 @@ import 'package:universal_ble/universal_ble.dart';
 import '../domain/ftms_control.dart';
 import '../domain/ftms_parser.dart';
 import 'bike_control.dart';
+import 'bike_log.dart';
 import 'bike_reading.dart';
 import 'bike_source.dart';
 
@@ -19,12 +20,15 @@ class NoFtmsException implements Exception {
   String toString() => 'Sem FTMS\n$diagnostic';
 }
 
-/// Bike real pelo Bluetooth, padrão FTMS.
+/// Bike real pelo Bluetooth, padrão FTMS. Anota no [log] o que acontece com a conexão e cada
+/// pacote cru, para entender uma bike de verdade.
 class FtmsSource implements BikeSource {
-  FtmsSource({required this.deviceId, required this.deviceName});
+  FtmsSource({required this.deviceId, required this.deviceName, this.log});
 
   final String deviceId;
   final String deviceName;
+  final BikeLog? log;
+  final _montador = IndoorBikeAssembler();
   final _readings = StreamController<BikeReading>.broadcast();
   final _connection = StreamController<BikeConnection>.broadcast();
   StreamSubscription<Uint8List>? _valueSub;
@@ -59,10 +63,18 @@ class FtmsSource implements BikeSource {
   @override
   Future<void> connect() async {
     _manual = false;
+    _montador.reset();
     _set(BikeConnection.conectando);
+    log?.add('conectando a $deviceName ($deviceId)');
+    UniversalBle.onConnectionChange = (id, ligada, erro) {
+      if (id == deviceId) log?.add('conexão ${ligada ? 'ligada' : 'caiu'}${erro == null ? '' : ': $erro'}');
+    };
     try {
       await UniversalBle.connect(deviceId, timeout: const Duration(seconds: 15));
       final services = await UniversalBle.discoverServices(deviceId);
+      log?.add('serviços: ${[
+        for (final s in services) '${_curto(s.uuid)}(${s.characteristics.map((c) => _curto(c.uuid)).join(' ')})',
+      ].join(', ')}');
       final hasFtms = services.any((s) => s.uuid.toLowerCase() == ftmsServiceUuid);
       if (!hasFtms) {
         final lista = services.map((s) => '  ${s.uuid}').join('\n');
@@ -79,13 +91,27 @@ class FtmsSource implements BikeSource {
         if (!connected) _set(_manual ? BikeConnection.desconectada : BikeConnection.caiu);
       });
       _control = await _lerControle(services);
+      final f = _control?.features;
+      log?.add('controle: ${f == null ? 'não aceita' : [
+          if (f.power) 'potência',
+          if (f.resistance) 'resistência',
+          if (f.simulation) 'simulação',
+        ].join(', ')}');
       _set(BikeConnection.conectada);
     } on NoFtmsException {
+      log?.add('sem FTMS');
       rethrow;
-    } catch (_) {
+    } catch (e) {
+      log?.add('falhou ao conectar: $e');
       _set(BikeConnection.desconectada);
       rethrow;
     }
+  }
+
+  /// UUID padrão do Bluetooth (0000xxxx-0000-1000-8000-00805f9b34fb) só com o xxxx.
+  static String _curto(String uuid) {
+    final u = uuid.toLowerCase();
+    return u.startsWith('0000') && u.endsWith('-0000-1000-8000-00805f9b34fb') ? u.substring(4, 8) : u;
   }
 
   /// Lê o que a bike aceita de comandos. Qualquer falha = sem controle (só dados).
@@ -102,13 +128,16 @@ class FtmsSource implements BikeSource {
       }
       await UniversalBle.subscribeIndications(deviceId, ftmsServiceUuid, controlPointUuid);
       return FtmsControl(deviceId, recursos, faixa);
-    } catch (_) {
+    } catch (e) {
+      log?.add('controle: erro ao ler ($e)');
       return null;
     }
   }
 
   void _onValue(Uint8List bytes) {
-    final d = parseIndoorBikeData(bytes);
+    log?.packet(bytes);
+    // A bike pode mandar uma leitura em pedaços (bit "More Data"): junta antes de usar.
+    final d = _montador.add(parseIndoorBikeData(bytes), DateTime.now());
     if (_readings.isClosed) return;
     _readings.add(BikeReading(
       cadence: d.cadence,
@@ -123,6 +152,7 @@ class FtmsSource implements BikeSource {
   @override
   Future<void> disconnect() async {
     _manual = true;
+    log?.add('desconectada pelo app');
     await _control?.release();
     _control = null;
     await _valueSub?.cancel();
@@ -138,6 +168,7 @@ class FtmsSource implements BikeSource {
   @override
   Future<void> dispose() async {
     await disconnect();
+    await log?.flush();
     await _connSub?.cancel();
     await _readings.close();
     await _connection.close();

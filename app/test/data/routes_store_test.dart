@@ -82,6 +82,41 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('guarda a versão do relevo; rotas de antes das pontes ficam com a versão 1', () async {
+    final store = SqliteRoutesStore(db);
+    await store.upsert(rota('a', DateTime(2026, 10, 1)));
+    expect((await store.byId('a'))!.relief, reliefVersion);
+    await store.upsert(rota('b', DateTime(2026, 10, 2)).copyWith(relief: 1));
+    expect((await store.byId('b'))!.relief, 1);
+  });
+
+  test('banco da versão 5: rotas salvas ganham relevo versão 1 (para refazer as pontes)', () async {
+    final dir = await Directory.systemTemp.createTemp('pedal_v5');
+    final caminho = '${dir.path}/v5.db';
+    final antigo = await databaseFactoryFfi.openDatabase(caminho,
+        options: OpenDatabaseOptions(
+          version: 5,
+          onCreate: (d, v) async {
+            await d.execute('CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+            await d.execute('''
+              CREATE TABLE routes (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at INTEGER NOT NULL,
+                waypoints TEXT NOT NULL, points TEXT NOT NULL,
+                distance_m REAL NOT NULL, gain_m REAL NOT NULL, loss_m REAL NOT NULL,
+                color INTEGER NOT NULL DEFAULT 0
+              )''');
+            await d.insert('routes', rota('velha', DateTime(2026, 10, 1)).toRow()..remove('relief'));
+          },
+        ));
+    await antigo.close();
+    final novo = await openAppDatabase(factory: databaseFactoryFfi, path: caminho);
+    final velha = await SqliteRoutesStore(novo).byId('velha');
+    expect(velha!.relief, 1);
+    expect(velha.name, 'Volta do bairro');
+    await novo.close();
+    await dir.delete(recursive: true);
+  });
+
   test('guarda a cor da rota', () async {
     final store = SqliteRoutesStore(db);
     await store.upsert(rota('a', DateTime(2026)).copyWith(colorIndex: 3));
@@ -113,7 +148,9 @@ void main() {
                 distance_m REAL NOT NULL, gain_m REAL NOT NULL, loss_m REAL NOT NULL
               )''');
             for (final (id, dia) in [('terceira', 3), ('primeira', 1), ('segunda', 2)]) {
-              final linha = rota(id, DateTime(2026, 10, dia)).toRow()..remove('color');
+              final linha = rota(id, DateTime(2026, 10, dia)).toRow()
+                ..remove('color')
+                ..remove('relief');
               await d.insert('routes', linha);
             }
           },

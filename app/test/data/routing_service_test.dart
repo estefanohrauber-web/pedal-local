@@ -7,6 +7,8 @@ import 'package:pedal_local/data/services/request_pacer.dart';
 import 'package:pedal_local/data/services/routing_service.dart';
 import 'package:pedal_local/domain/geo.dart';
 
+import '../support/geo_helpers.dart';
+
 import '../support/polyline_encode.dart';
 
 const dois = [GeoPoint(-23.5, -46.6), GeoPoint(-23.51, -46.61)];
@@ -99,6 +101,69 @@ void main() {
     expect(servico(http.Response('<html>', 502)).route(dois), erro('servico'));
     expect(servico(http.Response('devagar', 429)).route(dois), erro('servico'));
     expect(servico(json({'trip': {'legs': []}})).route(dois), erro('servico'));
+  });
+
+  group('pontes e túneis', () {
+    // 1 km para o norte, pontos a cada 20 m; o caminho casado tem vértices a cada 100 m.
+    final pontos = northLine(51, 20);
+    final casado = northLine(11, 100);
+
+    test('pergunta ao Valhalla quais trechos são ponte ou túnel e devolve os metros na rota', () async {
+      late http.Request pedido;
+      final client = MockClient((req) async {
+        pedido = req;
+        return json({
+          'shape': encodePolyline(casado),
+          'edges': [
+            {'begin_shape_index': 0, 'end_shape_index': 2},
+            {'bridge': true, 'begin_shape_index': 2, 'end_shape_index': 4},
+            {'bridge': false, 'tunnel': false, 'begin_shape_index': 4, 'end_shape_index': 7},
+            {'tunnel': true, 'begin_shape_index': 7, 'end_shape_index': 8},
+            {'begin_shape_index': 8, 'end_shape_index': 10},
+          ],
+        });
+      });
+      final spans = await RoutingService(client, semEspera).structures(pontos);
+      expect(pedido.url.toString(), '$valhallaBase/trace_attributes');
+      final corpo = jsonDecode(pedido.body) as Map<String, dynamic>;
+      expect((corpo['shape'] as List).length, 51);
+      expect(corpo['shape'][1], {'lat': pontos[1].lat, 'lon': pontos[1].lon});
+      expect(corpo['costing'], 'bicycle');
+      expect(corpo['shape_match'], 'map_snap');
+      expect(
+        (corpo['filters'] as Map)['attributes'],
+        containsAll(['edge.bridge', 'edge.tunnel', 'edge.begin_shape_index', 'edge.end_shape_index', 'shape']),
+      );
+      expect(spans.length, 2);
+      expectNear(spans[0].start, 200, 1);
+      expectNear(spans[0].end, 400, 1);
+      expectNear(spans[1].start, 700, 1);
+      expectNear(spans[1].end, 800, 1);
+    });
+
+    test('sem pontes: lista vazia', () async {
+      final spans = await servico(json({
+        'shape': encodePolyline(casado),
+        'edges': [
+          {'begin_shape_index': 0, 'end_shape_index': 10},
+        ],
+      })).structures(pontos);
+      expect(spans, isEmpty);
+    });
+
+    test('espera a vez e avisa quando o serviço falha', () async {
+      final ordem = <String>[];
+      final client = MockClient((req) async {
+        ordem.add('pedido');
+        return http.Response('devagar', 429);
+      });
+      await expectLater(
+        RoutingService(client, _PacerRastreado(() => ordem.add('vez'))).structures(pontos),
+        throwsA(isA<RouteException>()),
+      );
+      expect(ordem, ['vez', 'pedido']);
+      expect(servico(json({'height': []})).structures(pontos), throwsA(isA<RouteException>()));
+    });
   });
 }
 

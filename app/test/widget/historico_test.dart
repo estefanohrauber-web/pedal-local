@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
+import 'package:pedal_local/bike/bike_log.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/core/router/app_router.dart';
 import 'package:pedal_local/core/voice.dart';
@@ -78,6 +80,7 @@ Future<ProviderContainer> _abrir(
       voiceProvider.overrideWithValue(FakeVoice()),
       mapTilesEnabledProvider.overrideWithValue(false),
       locationServiceProvider.overrideWithValue(const FixedLocationService(null)),
+      bikeLogProvider.overrideWithValue(BikeLog()),
     ],
     child: const PedalLocalApp(),
   ));
@@ -229,5 +232,33 @@ void main() {
     expect(find.text('2 leituras recebidas'), findsOneWidget);
     expect(find.text('de 5 a 8'), findsOneWidget);
     expect(find.text('não manda'), findsWidgets); // potência (e o que mais não chegou)
+  });
+
+  testWidgets('Dados da bike: últimos pacotes crus e copiar o diário para mandar na conversa', (tester) async {
+    final container = await _abrir(tester);
+    final log = container.read(bikeLogProvider);
+    final bike = FakeBikeSource();
+    await container.read(bikeControllerProvider.notifier).useSource(bike);
+    container.read(appRouterProvider).push('/bike/dados');
+    await tester.pumpAndSettle();
+    log.add('conectando a Winnek');
+    log.packet(Uint8List.fromList([0x45, 0x00, 0xa0, 0x00]));
+    bike.emitReading(BikeReading(cadence: 80, timestamp: DateTime.now()));
+    await tester.pump();
+    await tester.scrollUntilVisible(find.text('Copiar o diário'), 200, scrollable: _listaVertical);
+    await tester.ensureVisible(find.text('Copiar o diário'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('dados 45 00 a0 00'), findsOneWidget);
+    String? copiado;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copiado = (call.arguments as Map)['text'] as String;
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    await tester.tap(find.text('Copiar o diário'));
+    await tester.pump();
+    expect(copiado, contains('conectando a Winnek'));
+    expect(copiado, contains('dados 45 00 a0 00'));
+    expect(find.text('Diário copiado. É só colar na conversa.'), findsOneWidget);
   });
 }

@@ -7,16 +7,43 @@ import 'package:pedal_local/domain/geo.dart';
 
 import 'polyline_encode.dart';
 
-/// Valhalla falso: /route devolve [linha] numa perna só; /height devolve [altura] de cada ponto pedido.
-/// [heightStatus] diferente de 200 simula a altitude fora do ar (é lido a cada pedido).
+/// Resposta do /trace_attributes: o caminho casado é o próprio caminho pedido e [pontes] são
+/// os trechos de ponte, em índices dos pontos pedidos.
+http.Response traceAttributes(http.Request req, [List<(int, int)> pontes = const []]) {
+  final shape = (jsonDecode(req.body) as Map<String, dynamic>)['shape'] as List;
+  final pontos = [
+    for (final p in shape) GeoPoint((p['lat'] as num).toDouble(), (p['lon'] as num).toDouble()),
+  ];
+  return http.Response(
+    jsonEncode({
+      'shape': encodePolyline(pontos),
+      'edges': [
+        {'begin_shape_index': 0, 'end_shape_index': pontos.length - 1},
+        for (final (a, b) in pontes) {'bridge': true, 'begin_shape_index': a, 'end_shape_index': b},
+      ],
+    }),
+    200,
+  );
+}
+
+/// Valhalla falso: /route devolve [linha] numa perna só; /height devolve [altura] de cada ponto pedido;
+/// /trace_attributes devolve as [pontes] (índices dos pontos pedidos).
+/// [heightStatus] e [traceStatus] diferentes de 200 simulam o serviço fora do ar (lidos a cada pedido).
 MockClient fakeValhalla({
   required List<GeoPoint> linha,
   double Function(int i)? altura,
   int Function()? heightStatus,
+  int Function()? traceStatus,
+  List<(int, int)> pontes = const [],
   List<http.Request>? pedidos,
 }) =>
     MockClient((req) async {
       pedidos?.add(req);
+      if (req.url.path == '/trace_attributes') {
+        final status = traceStatus?.call() ?? 200;
+        if (status != 200) return http.Response('erro', status);
+        return traceAttributes(req, pontes);
+      }
       if (req.url.path == '/route') {
         return http.Response(
           jsonEncode({
@@ -43,6 +70,7 @@ MockClient fakeValhallaStraight({List<String>? caminhos, bool semCaminho = false
     MockClient((req) async {
       caminhos?.add(req.url.path);
       final corpo = jsonDecode(req.body) as Map<String, dynamic>;
+      if (req.url.path == '/trace_attributes') return traceAttributes(req);
       if (req.url.path == '/route') {
         if (semCaminho) return http.Response(jsonEncode({'error_code': 442, 'error': 'No path'}), 400);
         final pontos = [

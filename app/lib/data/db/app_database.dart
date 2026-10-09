@@ -5,7 +5,7 @@ import '../../domain/ride_samples.dart';
 import '../../domain/route_variant.dart';
 import '../routes_store.dart';
 
-const _schemaVersion = 5;
+const _schemaVersion = 6;
 
 Future<void> _createRoutes(DatabaseExecutor db) => db.execute('''
   CREATE TABLE routes (
@@ -17,7 +17,8 @@ Future<void> _createRoutes(DatabaseExecutor db) => db.execute('''
     distance_m REAL NOT NULL,
     gain_m REAL NOT NULL,
     loss_m REAL NOT NULL,
-    color INTEGER NOT NULL DEFAULT 0
+    color INTEGER NOT NULL DEFAULT 0,
+    relief INTEGER NOT NULL DEFAULT 1
   )''');
 
 /// Versão 3: cor de cada rota. As que já existiam ganham cores seguidas, pela ordem de criação.
@@ -68,6 +69,14 @@ Future<void> _addRideWorkout(DatabaseExecutor db) async {
   }
 }
 
+/// Versão 6: versão do relevo de cada rota. As salvas antes ficam com 1 (sem pontes em reta) e
+/// são refeitas quando houver internet.
+Future<void> _addRouteRelief(DatabaseExecutor db) async {
+  final colunas = await db.rawQuery('PRAGMA table_info(routes)');
+  if (colunas.any((c) => c['name'] == 'relief')) return;
+  await db.execute('ALTER TABLE routes ADD COLUMN relief INTEGER NOT NULL DEFAULT 1');
+}
+
 /// Abre (ou cria/atualiza) o banco do app. Nos testes, passe `databaseFactoryFfi` e `inMemoryDatabasePath`.
 Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async {
   final f = factory ?? databaseFactory;
@@ -112,6 +121,7 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
         }
         if (oldVersion < 4) await _addRideLaps(db);
         if (oldVersion < 5) await _addRideWorkout(db);
+        if (oldVersion >= 2 && oldVersion < 6) await _addRouteRelief(db);
       },
     ),
   );

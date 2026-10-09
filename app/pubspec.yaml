@@ -39,6 +39,7 @@ dependencies:
   universal_ble: ^2.3.0
   sqflite: ^2.4.4+1
   path: ^1.9.1
+  path_provider: ^2.1.6
   wakelock_plus: 1.8.0
   google_fonts: 8.0.0
   intl: ^0.20.3

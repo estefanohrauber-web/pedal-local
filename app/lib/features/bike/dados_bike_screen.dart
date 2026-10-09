@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../bike/bike_controller.dart';
+import '../../bike/bike_log.dart';
 import '../../bike/bike_reading.dart';
 import '../../bike/bike_source.dart';
 import '../../core/format/format.dart';
@@ -93,6 +95,8 @@ class _DadosBikeScreenState extends ConsumerState<DadosBikeScreen> {
                 const Text('Conecte a bike para ver o que ela envia.', style: AppText.corpoForte),
                 const SizedBox(height: 12),
                 FilledButton(onPressed: () => context.push('/bike'), child: const Text('Conectar bike')),
+                const SizedBox(height: 24),
+                _Diario(log: ref.read(bikeLogProvider)),
               ]
             : [
                 Text(fonte.name, style: AppText.secao),
@@ -114,6 +118,8 @@ class _DadosBikeScreenState extends ConsumerState<DadosBikeScreen> {
                 _Linha(rotulo: 'Frequência cardíaca', faixa: _campos['fc'], unidade: 'bpm'),
                 const SizedBox(height: 12),
                 _Controle(fonte: fonte),
+                const SizedBox(height: 12),
+                _Diario(log: ref.read(bikeLogProvider)),
               ],
       ),
     );
@@ -145,6 +151,53 @@ class _Controle extends StatelessWidget {
                 ? 'Não aceita: a carga é só no botão da bike. Nos treinos, a tela e a voz avisam quando mudar.'
                 : 'Aceita: ${aceita.join(', ')}. Nos treinos, a bike ajusta a carga sozinha.',
             style: AppText.suave,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Os últimos pacotes crus e o diário da conexão, para mandar na conversa quando algo não
+/// funciona com a bike.
+class _Diario extends StatelessWidget {
+  const _Diario({required this.log});
+
+  final BikeLog log;
+
+  /// Quantas linhas vão para a área de transferência (as mais novas).
+  static const _linhasCopiadas = 400;
+
+  Future<void> _copiar(BuildContext context) async {
+    final linhas = log.lines;
+    final fim = linhas.sublist(linhas.length > _linhasCopiadas ? linhas.length - _linhasCopiadas : 0);
+    await Clipboard.setData(ClipboardData(text: fim.join('\n')));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Diário copiado. É só colar na conversa.')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pacotes = log.recentPackets(4);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Diário da conexão', style: AppText.corpoForte),
+          const SizedBox(height: 4),
+          const Text(
+            'O que a bike mandou por último, do jeito que chegou. Se algo não funcionar, copie e mande na conversa.',
+            style: AppText.suave,
+          ),
+          const SizedBox(height: 8),
+          for (final p in pacotes)
+            Text(p, style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppColors.textoSuave)),
+          if (pacotes.isEmpty) const Text('Nenhum pacote ainda.', style: AppText.suave),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: () => _copiar(context),
+            icon: const Icon(Icons.copy_outlined),
+            label: const Text('Copiar o diário'),
           ),
         ],
       ),
