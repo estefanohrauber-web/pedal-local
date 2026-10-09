@@ -101,4 +101,106 @@ void main() {
       expect(r.update(321, power: 50, cadence: 80).index, rampTestWorkout.steps.length - 1);
     });
   });
+
+  group('pedal livre', () {
+    const w = Workout(id: 'livre', name: 'Livre', summary: '', category: 'Meus treinos', steps: [
+      WorkoutStep(10, 0.5),
+      WorkoutStep(60, 0.5, free: true),
+      WorkoutStep(60, 1.0),
+    ]);
+
+    test('sem meta e sem toque de fora da meta; a voz diz que é livre', () {
+      final r = WorkoutRunner(w, ftp: 200);
+      r.update(0, power: 100, cadence: 80);
+      final f = r.update(10, power: 100, cadence: 80);
+      expect(f.index, 1);
+      expect(f.targetWatts, 0);
+      expect(r.spoken.single, '1 minuto de pedal livre, no seu ritmo.');
+      final falas = <String>[];
+      for (var t = 11; t < 60; t++) {
+        final g = r.update(t.toDouble(), power: 20, cadence: 40);
+        expect(g.compliance, Compliance.semAlvo);
+        expect(g.cadenceHint, isNull);
+        falas.addAll(r.spoken);
+      }
+      expect(falas, isEmpty);
+      expect(r.update(71, power: 200, cadence: 85).targetWatts, 200); // depois do livre, a meta volta
+    });
+
+    test('o próximo trecho livre não tem meta', () {
+      final r = WorkoutRunner(w, ftp: 200);
+      expect(r.update(0, power: 100, cadence: 80).nextWatts, isNull);
+    });
+  });
+
+  group('ajustes durante o pedal', () {
+    const w = Workout(id: 'aj', name: 'Ajustes', summary: '', category: 'Meus treinos', steps: [
+      WorkoutStep(10, 0.5),
+      WorkoutStep(10, 1.0, cue: 'Forte!'),
+    ]);
+
+    test('pular vai para o começo do próximo trecho; no último, termina', () {
+      final r = WorkoutRunner(w, ftp: 200);
+      r.update(2, power: 100, cadence: 80);
+      expect(r.skipStep(), isTrue);
+      expect(r.spoken, ['Pulando para o próximo bloco.']);
+      final f = r.update(3, power: 100, cadence: 80);
+      expect(f.index, 1);
+      expect(f.inStep, closeTo(1, 1e-9));
+      expect(r.spoken.single, startsWith('Forte!'));
+      expect(r.skipStep(), isTrue);
+      expect(r.update(4, power: 100, cadence: 80).done, isTrue);
+      expect(r.skipStep(), isFalse); // já acabou
+    });
+
+    test('+1 min estica o trecho de agora, até 30 minutos a mais', () {
+      final r = WorkoutRunner(w, ftp: 200);
+      r.update(2, power: 100, cadence: 80);
+      expect(r.extendStep(), isTrue);
+      expect(r.spoken, ['Mais 1 minuto.']);
+      expect(r.workout.seconds, 80);
+      expect(r.workout.steps.first.seconds, 70);
+      final f = r.update(3, power: 100, cadence: 80);
+      expect(f.index, 0);
+      expect(f.remaining, closeTo(67, 1e-9));
+      expect(f.total, 80);
+      for (var i = 1; i < 30; i++) {
+        expect(r.extendStep(), isTrue);
+      }
+      expect(r.extendStep(), isFalse);
+      expect(r.workout.steps.first.seconds, 10 + 30 * 60);
+    });
+
+    test('mais leve e mais forte: 5 % por toque, de −30 % a +30 %, nas metas daqui para a frente', () {
+      final r = WorkoutRunner(w, ftp: 200);
+      r.update(2, power: 100, cadence: 80);
+      expect(r.nudge(1), isTrue);
+      expect(r.spoken, ['Mais forte: 105 watts.']);
+      var f = r.update(3, power: 100, cadence: 80);
+      expect(f.targetWatts, 105);
+      expect(f.adjustment, closeTo(0.05, 1e-9));
+      expect(f.nextWatts, 210);
+      r.nudge(-1);
+      r.nudge(-1);
+      expect(r.spoken.last, 'Mais leve: 95 watts.');
+      expect(r.update(4, power: 100, cadence: 80).adjustment, closeTo(-0.05, 1e-9));
+      for (var i = 0; i < 10; i++) {
+        r.nudge(1);
+      }
+      expect(r.adjustment, closeTo(0.3, 1e-9));
+      expect(r.nudge(1), isFalse);
+      f = r.update(5, power: 100, cadence: 80);
+      expect(f.targetWatts, 130);
+    });
+
+    test('no teste de rampa, nada disso', () {
+      final r = WorkoutRunner(rampTestWorkout, ftp: 150);
+      r.update(0, power: 60, cadence: 80);
+      r.update(2, power: 60, cadence: 80);
+      expect(r.skipStep(), isFalse);
+      expect(r.extendStep(), isFalse);
+      expect(r.nudge(1), isFalse);
+      expect(r.spoken, isEmpty);
+    });
+  });
 }

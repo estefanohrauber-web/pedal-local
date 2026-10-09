@@ -25,6 +25,7 @@ class WorkoutFrame {
     required this.done,
     required this.rampEnded,
     required this.rampFtp,
+    this.adjustment = 0,
   });
 
   final int index;
@@ -51,6 +52,9 @@ class WorkoutFrame {
 
   /// FTP calculado no fim da rampa (null se não deu para calcular).
   final double? rampFtp;
+
+  /// Ajuste das metas neste pedal (“mais leve” / “mais forte”): 0,05 = +5 %.
+  final double adjustment;
 }
 
 /// Segundos para se ajustar a um trecho novo antes de dizer que está fora da meta.
@@ -65,12 +69,23 @@ const rampFailAfterS = 15.0;
 const rampStopCadence = 40.0;
 const rampStopAfterS = 10.0;
 
+/// Cada toque em “mais leve” ou “mais forte” muda as metas em 5 %, até 30 % para cada lado.
+const nudgeStep = 0.05;
+const maxNudge = 0.30;
+
+/// Quantas vezes um trecho pode ganhar +1 min no mesmo pedal.
+const maxExtraMinutes = 30;
+
 /// Conduz um treino: em que trecho está, a meta, se está na meta e o que falar.
 class WorkoutRunner {
-  WorkoutRunner(this.workout, {required this.ftp, double intensity = 1})
-      : intensity = workout.rampTest ? 1 : intensity;
+  WorkoutRunner(Workout workout, {required this.ftp, double intensity = 1})
+      : _workout = workout,
+        intensity = workout.rampTest ? 1 : intensity;
 
-  final Workout workout;
+  Workout _workout;
+
+  /// O treino, com os minutos somados neste pedal (+1 min).
+  Workout get workout => _workout;
   final double ftp;
 
   /// Ajuste do plano (1 = como o treino foi escrito).
@@ -89,7 +104,12 @@ class WorkoutRunner {
   double? _rampFtp;
   int? _rampStartSample;
   final _potencias = <double>[];
+  final _extras = <int, int>{};
+  double _ajuste = 0;
   final spoken = <String>[];
+
+  /// Ajuste das metas neste pedal (veja [nudge]).
+  double get adjustment => _ajuste;
 
   /// Trecho que começou no último [update] (para mandar a nova carga para a bike).
   int? stepChanged;
@@ -100,7 +120,55 @@ class WorkoutRunner {
   bool get rampEnded => _rampEnded;
   double? get rampFtp => _rampFtp;
 
-  int watts(double fraction) => (ftp * fraction * intensity).round();
+  int watts(double fraction) => (ftp * fraction * intensity * (1 + _ajuste)).round();
+
+  /// Pular, +1 min e ±5 % valem em qualquer treino, menos no teste de rampa. Cada um deixa em
+  /// [spoken] só a sua frase.
+  bool get _ajustavel => !workout.rampTest;
+
+  /// Pula para o começo do próximo trecho; no último, vai para o fim do treino.
+  bool skipStep() {
+    if (!_ajustavel) return false;
+    spoken.clear();
+    final pos = workout.at(_lastClock);
+    final starts = workout.starts;
+    final proximo = pos.index + 1 < starts.length ? starts[pos.index + 1].toDouble() : workout.seconds.toDouble();
+    if (proximo <= _lastClock) return false;
+    _skip += proximo - _lastClock;
+    _lastClock = proximo;
+    spoken.add('Pulando para o próximo bloco.');
+    return true;
+  }
+
+  /// O trecho de agora fica 1 minuto mais longo (até [maxExtraMinutes] por trecho).
+  bool extendStep() {
+    if (!_ajustavel || _lastClock >= workout.seconds) return false;
+    spoken.clear();
+    final i = workout.at(_lastClock).index;
+    final extras = _extras[i] ?? 0;
+    if (extras >= maxExtraMinutes) return false;
+    _extras[i] = extras + 1;
+    final passos = List.of(workout.steps);
+    passos[i] = passos[i].withSeconds(passos[i].seconds + 60);
+    _workout = workout.withSteps(passos);
+    spoken.add('Mais 1 minuto.');
+    return true;
+  }
+
+  /// Metas daqui para a frente [direction] × 5 % (de −30 % a +30 %), só neste pedal.
+  bool nudge(int direction) {
+    if (!_ajustavel) return false;
+    spoken.clear();
+    final limite = (maxNudge * 100).round();
+    final novo = ((_ajuste + direction * nudgeStep) * 100).round().clamp(-limite, limite) / 100;
+    if (novo == _ajuste) return false;
+    _ajuste = novo;
+    final pos = workout.at(_lastClock);
+    final step = workout.steps[pos.index];
+    final palavra = direction < 0 ? 'Mais leve' : 'Mais forte';
+    spoken.add(step.free ? '$palavra.' : '$palavra: ${watts(step.fractionAt(pos.inStep))} watts.');
+    return true;
+  }
 
   /// Uma amostra de potência por segundo do pedal (para o teste de rampa).
   void addSample(double power) => _potencias.add(power);
@@ -160,7 +228,7 @@ class WorkoutRunner {
     // Meta de potência e de giro.
     var compliance = Compliance.semAlvo;
     String? giro;
-    if (!done && pos.inStep >= complianceGraceS) {
+    if (!done && pos.inStep >= complianceGraceS && !step.free) {
       final folga = math.max(8.0, alvo * 0.06);
       compliance = power < alvo - folga
           ? Compliance.abaixo
@@ -191,11 +259,11 @@ class WorkoutRunner {
       step: step,
       inStep: pos.inStep,
       remaining: pos.remaining,
-      fraction: fracao * intensity,
-      targetWatts: alvo,
+      fraction: fracao * intensity * (1 + _ajuste),
+      targetWatts: step.free ? 0 : alvo,
       zone: zona,
       next: proximo,
-      nextWatts: proximo == null ? null : watts(proximo.from),
+      nextWatts: proximo == null || proximo.free ? null : watts(proximo.from),
       elapsed: math.min(clock, workout.seconds.toDouble()),
       total: workout.seconds,
       compliance: compliance,
@@ -203,6 +271,7 @@ class WorkoutRunner {
       done: done,
       rampEnded: _rampEnded,
       rampFtp: _rampFtp,
+      adjustment: _ajuste,
     );
   }
 
@@ -249,6 +318,7 @@ class WorkoutRunner {
           : '${watts(s.from)} watts.';
     }
     final cue = s.cue == null ? '' : '${s.cue}${s.cue!.endsWith('!') ? '' : '.'} ';
+    if (s.free) return '$cue${spokenTime(s.seconds.toDouble())} de pedal livre, no seu ritmo.';
     final giro = s.hasCadence ? ', giro de ${s.cadenceMin} a ${s.cadenceMax}' : '';
     return '$cue${spokenTime(s.seconds.toDouble())} ${zoneFor(s.mid).effort.toLowerCase()}, $alvo watts$giro.';
   }
