@@ -8,6 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'data/providers.dart';
 import 'data/relief_upgrade.dart';
 import 'data/routes_store.dart';
+import 'features/abertura/abertura.dart';
 
 class PedalLocalApp extends ConsumerStatefulWidget {
   const PedalLocalApp({super.key});
@@ -42,13 +43,17 @@ class _PedalLocalAppState extends ConsumerState<PedalLocalApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Pedal Local',
+      title: 'Pedalaqui',
       debugShowCheckedModeBanner: false,
       theme: ref.watch(appThemeProvider),
       routerConfig: ref.watch(appRouterProvider),
       locale: const Locale('pt', 'BR'),
       supportedLocales: const [Locale('pt', 'BR')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      builder: (context, child) => Abertura(
+        nameStyle: ref.watch(brandTextStyleProvider),
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

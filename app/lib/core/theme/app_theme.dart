@@ -136,3 +136,7 @@ ThemeData buildAppTheme({TextTheme? textTheme}) {
 
 /// Sobrescrito no main() com a fonte Plus Jakarta Sans; os testes usam a fonte padrão.
 final appThemeProvider = Provider<ThemeData>((ref) => buildAppTheme());
+
+/// Fonte do nome “Pedalaqui” (Plus Jakarta Sans ExtraBold de verdade, não o negrito
+/// imitado). Sobrescrita no main(); nos testes, null = a fonte do tema.
+final brandTextStyleProvider = Provider<TextStyle?>((ref) => null);

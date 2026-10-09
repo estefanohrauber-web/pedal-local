@@ -16,6 +16,7 @@ Future<void> main() async {
     overrides: [
       databaseProvider.overrideWithValue(db),
       appThemeProvider.overrideWithValue(buildAppTheme(textTheme: GoogleFonts.plusJakartaSansTextTheme())),
+      brandTextStyleProvider.overrideWithValue(GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800)),
     ],
     child: const PedalLocalApp(),
   ));

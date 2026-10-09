@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo do Pedalaqui (a rota que vira o pino), desenhada num quadro de 200 e
+     encolhida para caber na área segura do ícone adaptável (108 dp). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.3"
+        android:scaleY="0.3"
+        android:translateX="24"
+        android:translateY="26.1">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M8,150 C30,150 40,116 62,116 C84,116 88,136 104,136 C118,136 126,110 136,96 C128,86 114,74 114,58 A22,22 0 1,1 158,58 C158,74 144,86 136,96 C146,110 160,124 192,126"
+            android:strokeWidth="12"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:fillColor="#FFF6C445"
+            android:pathData="M127,58 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+    </group>
+</vector>

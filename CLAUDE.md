@@ -3,6 +3,8 @@
 App para pedalar, numa bike ergométrica em casa, rotas reais do próprio bairro.
 Protótipo web na raiz (GitHub Pages); app Flutter em `app/`.
 Documentos de design e planos em `docs/superpowers/`.
+O app se chama **Pedalaqui** (desde 2026-10-09); a pasta, o pacote e o código continuam
+`pedal-local` / `pedal_local`. Logo e ícones em `docs/marca/` e `app/lib/core/widgets/pedalaqui_logo.dart`.
 
 ## Como responder
 

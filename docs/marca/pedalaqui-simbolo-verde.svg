@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 23 200 140" width="200" height="140">
+  <title>Pedalaqui — símbolo (para fundo claro)</title>
+  <path d="M8 150 C30 150 40 116 62 116 C84 116 88 136 104 136 C118 136 126 110 136 96 C128 86 114 74 114 58 A22 22 0 1 1 158 58 C158 74 144 86 136 96 C146 110 160 124 192 126" fill="none" stroke="#138A52" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="136" cy="58" r="9" fill="#F6C445"/>
+</svg>

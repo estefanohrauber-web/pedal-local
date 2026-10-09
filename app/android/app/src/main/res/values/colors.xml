@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Verde do Pedalaqui (AppColors.destaque no app). -->
+    <color name="ic_launcher_background">#138A52</color>
+    <color name="splash_background">#138A52</color>
+</resources>
