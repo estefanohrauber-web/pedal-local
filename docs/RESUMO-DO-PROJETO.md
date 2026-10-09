@@ -69,6 +69,8 @@ Faça na ordem. Tudo o que não está no GitHub vem no arquivo `.zip` da transfe
    memória do Claude.
    - Pelo GitHub: `git clone https://github.com/estefanohrauber-web/pedal-local.git C:\dev\pedal-local`
    - Sem internet para o GitHub: `git clone pedal-local.bundle C:\dev\pedal-local` (o bundle vai no .zip).
+     Depois, aponte de volta para o GitHub:
+     `git remote set-url origin https://github.com/estefanohrauber-web/pedal-local.git`.
 4. **A chave do app (o passo mais importante para não perder dados).** Copie o `debug.keystore`
    do .zip para `%USERPROFILE%\.android\debug.keystore`, **antes do primeiro build**.
    - O Android só instala uma atualização por cima se ela vier assinada com a **mesma chave**.
