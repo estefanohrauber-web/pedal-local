@@ -363,11 +363,11 @@ String workoutNameOrDefault(String digitado) {
 int insertIndex(List<WorkoutBlock> blocks) =>
     blocks.isNotEmpty && blocks.last.kind == BlockKind.soltar ? blocks.length - 1 : blocks.length;
 
-/// Muda um bloco de lugar, como a lista arrastável entrega: [to] conta o bloco ainda na lista.
+/// Muda um bloco de lugar: [to] é a posição final dele (como o onReorderItem da lista entrega).
 List<T> moveBlock<T>(List<T> blocks, int from, int to) {
   final lista = List.of(blocks);
   final item = lista.removeAt(from);
-  lista.insert(to > from ? to - 1 : to, item);
+  lista.insert(to, item);
   return lista;
 }
 

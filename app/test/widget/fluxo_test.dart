@@ -6,6 +6,7 @@ import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
+import 'package:pedal_local/data/custom_workouts_store.dart';
 import 'package:pedal_local/data/providers.dart';
 import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/routes_store.dart';
@@ -27,6 +28,7 @@ Future<ProviderContainer> abrirApp(WidgetTester tester, MemoryRidesStore rides) 
       settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
       ridesStoreProvider.overrideWithValue(rides),
       routesStoreProvider.overrideWithValue(MemoryRoutesStore()),
+      customWorkoutsStoreProvider.overrideWithValue(MemoryCustomWorkoutsStore()),
       wakeLockProvider.overrideWithValue(FakeWakeLock()),
       voiceProvider.overrideWithValue(FakeVoice()),
       mapTilesEnabledProvider.overrideWithValue(false),

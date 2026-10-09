@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/app.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
+import 'package:pedal_local/data/custom_workouts_store.dart';
 import 'package:pedal_local/data/providers.dart';
 import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/routes_store.dart';
@@ -14,6 +15,7 @@ Widget app(MemoryRidesStore rides) => ProviderScope(
         settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
         ridesStoreProvider.overrideWithValue(rides),
         routesStoreProvider.overrideWithValue(MemoryRoutesStore()),
+        customWorkoutsStoreProvider.overrideWithValue(MemoryCustomWorkoutsStore()),
         mapTilesEnabledProvider.overrideWithValue(false),
         locationServiceProvider.overrideWithValue(const FixedLocationService(null)),
       ],

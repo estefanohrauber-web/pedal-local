@@ -168,14 +168,14 @@ void main() {
       expect(workoutNameOrDefault('x' * 60).length, maxWorkoutName);
     });
 
-    test('bloco novo entra antes do Soltar; mudar de lugar como a lista arrastável entrega', () {
+    test('bloco novo entra antes do Soltar; mudar de lugar para a posição final', () {
       final a = WorkoutBlock.novo(BlockKind.aquecer);
       final s = WorkoutBlock.novo(BlockKind.soltar);
       final r = WorkoutBlock.novo(BlockKind.ritmo);
       expect(insertIndex([a, s]), 1);
       expect(insertIndex([a, r]), 2);
       expect(insertIndex(const []), 0);
-      expect(moveBlock([a, r, s], 0, 2), [r, a, s]);
+      expect(moveBlock([a, r, s], 0, 1), [r, a, s]);
       expect(moveBlock([a, r, s], 2, 0), [s, a, r]);
     });
 

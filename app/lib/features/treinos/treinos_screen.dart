@@ -10,6 +10,7 @@ import '../../data/settings_store.dart';
 import '../../domain/training.dart';
 import '../../domain/training_plans.dart';
 import '../../domain/workout.dart';
+import '../../domain/workout_blocks.dart';
 import '../pedal_livre/pedal_livre_card.dart';
 import 'workout_chart.dart';
 
@@ -32,6 +33,8 @@ class TreinosScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             CondicionamentoCard(settings: s),
             const SizedBox(height: 20),
+            const MeusTreinos(),
+            const SizedBox(height: 20),
             const SectionTitle('Plano de treino'),
             if (progresso != null)
               PlanoAtivoCard(progresso: progresso)
@@ -53,6 +56,46 @@ class TreinosScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Os treinos montados pelo usuário e o botão de criar um.
+class MeusTreinos extends ConsumerWidget {
+  const MeusTreinos({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final meus = ref.watch(customWorkoutsProvider).value ?? const <CustomWorkout>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SectionTitle('Meus treinos'),
+        if (meus.isEmpty)
+          const AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Monte um treino do seu jeito', style: AppText.corpoForte),
+                SizedBox(height: 2),
+                Text(
+                  'Com blocos prontos: aquecer, séries de tiros, subidas e mais. Os watts saem do seu FTP.',
+                  style: AppText.suave,
+                ),
+              ],
+            ),
+          ),
+        for (final m in meus) ...[
+          TreinoTile(workout: m.toWorkout()),
+          const SizedBox(height: 10),
+        ],
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => context.push('/treino-novo'),
+          icon: const Icon(Icons.add),
+          label: const Text('Criar treino'),
+        ),
+      ],
     );
   }
 }

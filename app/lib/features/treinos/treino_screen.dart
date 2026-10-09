@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import '../../data/settings_store.dart';
 import '../../domain/training.dart';
 import '../../domain/workout.dart';
+import '../../domain/workout_blocks.dart';
 import '../pedal/ride_controller.dart';
 import 'workout_chart.dart';
 
@@ -27,10 +28,15 @@ class TreinoScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final w = ref.watch(workoutLookupProvider)(workoutId);
+    final w = ref.watch(findWorkoutProvider)(workoutId);
     if (w == null) {
-      return Scaffold(appBar: AppBar(), body: const Center(child: Text('Esse treino não existe.')));
+      final carregando = isCustomWorkoutId(workoutId) && ref.watch(customWorkoutsProvider).isLoading;
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: carregando ? const CircularProgressIndicator() : const Text('Esse treino não existe.')),
+      );
     }
+    final meu = isCustomWorkoutId(w.id);
     final s = ref.watch(settingsProvider).value ?? const AppSettings();
     final bike = ref.watch(bikeControllerProvider);
     final ftp = s.ftp ?? defaultFtp(s.pesoKg);
@@ -39,7 +45,26 @@ class TreinoScreen extends ConsumerWidget {
     final ajuste = ((intensidade - 1) * 100).round();
     final controle = bike.source?.control;
     return Scaffold(
-      appBar: AppBar(title: Text(w.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      appBar: AppBar(
+        title: Text(w.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        actions: [
+          if (meu) ...[
+            IconButton(
+              tooltip: 'Editar',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => context.push('/treino-editar/${w.id}'),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Mais opções',
+              onSelected: (opcao) => opcao == 'duplicar' ? context.push('/treino-novo?de=${w.id}') : _apagar(context, ref, w),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'duplicar', child: Text('Duplicar')),
+                PopupMenuItem(value: 'apagar', child: Text('Apagar')),
+              ],
+            ),
+          ],
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
@@ -63,6 +88,14 @@ class TreinoScreen extends ConsumerWidget {
             '${ajuste == 0 ? '' : ', com ${ajuste > 0 ? '+' : ''}$ajuste% pelas suas respostas'}.',
             style: AppText.suave,
           ),
+          if (!meu && !w.rampTest) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/treino-novo?de=${w.id}'),
+              icon: const Icon(Icons.copy_outlined),
+              label: const Text('Copiar e editar'),
+            ),
+          ],
           const SizedBox(height: 16),
           if (w.rampTest)
             const _ComoFuncionaRampa()
@@ -116,6 +149,27 @@ class TreinoScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Apaga um treino do usuário (os pedais feitos com ele continuam no histórico).
+Future<void> _apagar(BuildContext context, WidgetRef ref, Workout w) async {
+  final apagar = await showDialog<bool>(
+    context: context,
+    builder: (c) => AlertDialog(
+      title: const Text('Apagar este treino?'),
+      content: const Text('Os pedais feitos com ele continuam no histórico.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
+        FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Apagar')),
+      ],
+    ),
+  );
+  if (apagar != true || !context.mounted) return;
+  final store = ref.read(customWorkoutsStoreProvider);
+  final container = ProviderScope.containerOf(context);
+  context.pop();
+  await store.delete(w.id);
+  container.invalidate(customWorkoutsProvider);
 }
 
 class _Info extends StatelessWidget {

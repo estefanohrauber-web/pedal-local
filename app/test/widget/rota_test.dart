@@ -15,6 +15,7 @@ import 'package:pedal_local/core/theme/app_theme.dart';
 import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
+import 'package:pedal_local/data/custom_workouts_store.dart';
 import 'package:pedal_local/data/providers.dart';
 import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/route_builder.dart';
@@ -86,6 +87,7 @@ Future<ProviderContainer> abrirApp(
       settingsStoreProvider.overrideWithValue(MemorySettingsStore()),
       ridesStoreProvider.overrideWithValue(rides ?? MemoryRidesStore()),
       routesStoreProvider.overrideWithValue(routes),
+      customWorkoutsStoreProvider.overrideWithValue(MemoryCustomWorkoutsStore()),
       wakeLockProvider.overrideWithValue(FakeWakeLock()),
       voiceProvider.overrideWithValue(FakeVoice()),
       mapTilesEnabledProvider.overrideWithValue(false),

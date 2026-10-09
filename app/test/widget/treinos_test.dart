@@ -16,6 +16,7 @@ import 'package:pedal_local/data/routes_store.dart';
 import 'package:pedal_local/data/services/location_service.dart';
 import 'package:pedal_local/data/settings_store.dart';
 import 'package:pedal_local/domain/workout.dart';
+import 'package:pedal_local/domain/workout_blocks.dart';
 import 'package:pedal_local/features/pedal/ride_controller.dart';
 
 import '../support/fakes.dart';
@@ -197,5 +198,142 @@ void main() {
     expect(find.text('Sem meta, no seu ritmo'), findsOneWidget);
     expect(find.text('Mais leve −5 %'), findsNothing);
     expect(find.text('Pular bloco'), findsOneWidget);
+  });
+
+  testWidgets('criar um treino do zero: adiciona uma série, dá nome e salva', (tester) async {
+    final customs = MemoryCustomWorkoutsStore();
+    await _abrir(tester, settings: MemorySettingsStore(const AppSettings(ftp: 200)), customs: customs);
+    await tester.tap(find.text('Treinos').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Meus treinos'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Criar treino'), 200, scrollable: _lista);
+    await tester.tap(find.text('Criar treino'));
+    await tester.pumpAndSettle();
+    expect(find.text('Novo treino'), findsOneWidget);
+    expect(find.text('Aquecer'), findsOneWidget);
+    expect(find.text('Soltar'), findsOneWidget);
+    expect(find.text('15 min · Leve · carga 7'), findsOneWidget);
+
+    await tester.tap(find.text('Adicionar bloco'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Série de tiros'));
+    await tester.pumpAndSettle();
+    expect(find.text('4 vezes'), findsOneWidget);
+    await tester.tap(find.byTooltip('Aumentar repetições'));
+    await tester.pump();
+    expect(find.text('5 vezes'), findsOneWidget);
+    await tester.ensureVisible(find.text('Pronto'));
+    await tester.enterText(find.byType(TextField).last, 'Vai!');
+    await tester.tap(find.text('Pronto'));
+    await tester.pumpAndSettle();
+    expect(find.text('Série de tiros · 5 ×'), findsOneWidget);
+    expect(find.text('1 min muito forte (220 W) + 1 min muito leve'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'Tiros de terça');
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+    final salvo = (await customs.all()).single;
+    expect(salvo.name, 'Tiros de terça');
+    expect(salvo.blocks.map((b) => b.kind), [BlockKind.aquecer, BlockKind.serie, BlockKind.soltar]);
+    expect(salvo.blocks[1].reps, 5);
+    expect(salvo.blocks[1].cue, 'Vai!');
+    // Depois de salvar, abre a tela do treino.
+    expect(find.text('Trechos'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Tiro 1 de 5. Vai!'), 200, scrollable: _lista);
+    expect(find.text('Tiro 1 de 5. Vai!'), findsOneWidget);
+  });
+
+  testWidgets('copiar um treino pronto e mudar a intensidade dos tiros', (tester) async {
+    final customs = MemoryCustomWorkoutsStore();
+    final container = await _abrir(tester, settings: MemorySettingsStore(const AppSettings(ftp: 200)), customs: customs);
+    container.read(appRouterProvider).push('/treino/intervalos-5x1');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Copiar e editar'));
+    await tester.tap(find.text('Copiar e editar'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, 'Intervalos 5 × 1 min (cópia)'), findsOneWidget);
+    expect(find.text('Série de tiros · 5 ×'), findsOneWidget);
+    await tester.tap(find.text('Série de tiros · 5 ×'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Forte').first);
+    await tester.pump();
+    expect(find.text('97 % · 194 W'), findsOneWidget);
+    await tester.ensureVisible(find.text('Pronto'));
+    await tester.tap(find.text('Pronto'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+    final salvo = (await customs.all()).single;
+    expect(salvo.name, 'Intervalos 5 × 1 min (cópia)');
+    expect(salvo.blocks[1].from, 0.97);
+    expect(salvo.blocks[1].reps, 5);
+  });
+
+  testWidgets('editar: sair sem salvar pergunta; apagar pede confirmação', (tester) async {
+    final customs = MemoryCustomWorkoutsStore();
+    await customs.upsert(CustomWorkout(
+      id: 'meu-a',
+      name: 'Subidas do bairro',
+      blocks: [WorkoutBlock.novo(BlockKind.subida)],
+      createdAt: DateTime(2026, 10, 9),
+      updatedAt: DateTime(2026, 10, 9),
+    ));
+    await _abrir(tester, settings: MemorySettingsStore(const AppSettings(ftp: 200)), customs: customs);
+    await tester.tap(find.text('Treinos').last);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Subidas do bairro'), 200, scrollable: _lista);
+    await tester.tap(find.text('Subidas do bairro'));
+    await tester.pumpAndSettle();
+    expect(find.text('Moderado · 170 W · 70–85 rpm · subida de 6%'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Editar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar treino'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Subidões');
+    await tester.pump();
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Descartar as mudanças?'), findsOneWidget);
+    await tester.tap(find.text('Continuar editando'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar treino'), findsOneWidget);
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Descartar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Trechos'), findsOneWidget);
+    expect((await customs.all()).single.name, 'Subidas do bairro');
+
+    await tester.tap(find.byTooltip('Mais opções'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apagar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Apagar este treino?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Apagar'));
+    await tester.pumpAndSettle();
+    expect(await customs.all(), isEmpty);
+    expect(find.text('Meus treinos'), findsOneWidget);
+    expect(find.text('Subidas do bairro'), findsNothing);
+  });
+
+  testWidgets('treino montado: começa o pedal com o nome dele', (tester) async {
+    final customs = MemoryCustomWorkoutsStore();
+    await customs.upsert(CustomWorkout(
+      id: 'meu-a',
+      name: 'Subidas do bairro',
+      blocks: [WorkoutBlock.novo(BlockKind.subida)],
+      createdAt: DateTime(2026, 10, 9),
+      updatedAt: DateTime(2026, 10, 9),
+    ));
+    final container = await _abrir(tester, settings: MemorySettingsStore(const AppSettings(ftp: 200)), customs: customs);
+    final bike = FakeBikeSource();
+    await container.read(bikeControllerProvider.notifier).useSource(bike);
+    container.read(appRouterProvider).push('/treino/meu-a');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Começar treino'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Subidas do bairro'), findsOneWidget);
+    expect(find.text('170 W · 70–85 rpm'), findsOneWidget);
   });
 }
