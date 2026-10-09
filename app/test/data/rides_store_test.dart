@@ -51,6 +51,16 @@ void main() {
     expect(await store.byId('zzz'), isNull);
   });
 
+  test('guarda o nome do treino; o nome do pedal vem dele, mesmo se o treino sumir', () async {
+    final store = SqliteRidesStore(db);
+    await store.upsert(pedal('t', DateTime(2026, 10, 9))
+        .copyWith(mode: RideMode.treino, workoutId: 'meu-x', workoutName: 'Tiros de terça'));
+    final r = (await store.byId('t'))!;
+    expect(r.workoutName, 'Tiros de terça');
+    expect(rideName(r), 'Tiros de terça');
+    expect(rideName((await store.recent()).single), 'Tiros de terça');
+  });
+
   test('upsert com o mesmo id substitui', () async {
     final store = SqliteRidesStore(db);
     await store.upsert(pedal('a', DateTime(2026, 10, 7), completed: false));

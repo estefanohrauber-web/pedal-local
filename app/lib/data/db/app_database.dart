@@ -5,7 +5,7 @@ import '../../domain/ride_samples.dart';
 import '../../domain/route_variant.dart';
 import '../routes_store.dart';
 
-const _schemaVersion = 6;
+const _schemaVersion = 7;
 
 Future<void> _createRoutes(DatabaseExecutor db) => db.execute('''
   CREATE TABLE routes (
@@ -77,6 +77,24 @@ Future<void> _addRouteRelief(DatabaseExecutor db) async {
   await db.execute('ALTER TABLE routes ADD COLUMN relief INTEGER NOT NULL DEFAULT 1');
 }
 
+/// Versão 7: treinos montados pelo usuário.
+Future<void> _createCustomWorkouts(DatabaseExecutor db) => db.execute('''
+  CREATE TABLE IF NOT EXISTS custom_workouts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    blocks TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )''');
+
+/// Versão 7: o nome do treino em cada pedal (o histórico mostra o nome mesmo se o treino for
+/// apagado ou renomeado).
+Future<void> _addRideWorkoutName(DatabaseExecutor db) async {
+  final colunas = await db.rawQuery('PRAGMA table_info(rides)');
+  if (colunas.isEmpty || colunas.any((c) => c['name'] == 'workout_name')) return;
+  await db.execute('ALTER TABLE rides ADD COLUMN workout_name TEXT');
+}
+
 /// Abre (ou cria/atualiza) o banco do app. Nos testes, passe `databaseFactoryFfi` e `inMemoryDatabasePath`.
 Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async {
   final f = factory ?? databaseFactory;
@@ -108,10 +126,12 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
             track BLOB,
             workout_id TEXT,
             feeling INTEGER,
-            ftp REAL
+            ftp REAL,
+            workout_name TEXT
           )''');
         await db.execute('CREATE INDEX rides_started ON rides(started_at DESC)');
         await _createRoutes(db);
+        await _createCustomWorkouts(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -122,6 +142,10 @@ Future<Database> openAppDatabase({DatabaseFactory? factory, String? path}) async
         if (oldVersion < 4) await _addRideLaps(db);
         if (oldVersion < 5) await _addRideWorkout(db);
         if (oldVersion >= 2 && oldVersion < 6) await _addRouteRelief(db);
+        if (oldVersion < 7) {
+          await _addRideWorkoutName(db);
+          await _createCustomWorkouts(db);
+        }
       },
     ),
   );

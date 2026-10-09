@@ -18,9 +18,13 @@ String rideModeLabel(RideMode mode) => switch (mode) {
       RideMode.treino => 'Treino',
     };
 
-/// Nome do pedal para mostrar: a rota, o treino ou o tipo.
+/// Nome do pedal para mostrar: a rota, o treino (o nome guardado, ou o da biblioteca nos pedais
+/// antigos) ou o tipo.
 String rideName(RideRecord r, {String? routeName}) =>
-    routeName ?? (r.workoutId == null ? null : workoutById(r.workoutId!)?.name) ?? rideModeLabel(r.mode);
+    routeName ??
+    r.workoutName ??
+    (r.workoutId == null ? null : workoutById(r.workoutId!)?.name) ??
+    rideModeLabel(r.mode);
 
 class RideRecord implements RideStat {
   const RideRecord({
@@ -44,6 +48,7 @@ class RideRecord implements RideStat {
     this.workoutId,
     this.feeling,
     this.ftp,
+    this.workoutName,
   });
 
   final String id;
@@ -81,6 +86,9 @@ class RideRecord implements RideStat {
   /// Treino feito (null = não foi treino). No treino, [laps] = 1 quando foi até o fim.
   final String? workoutId;
 
+  /// Nome do treino quando foi feito (null nos pedais antigos).
+  final String? workoutName;
+
   /// Resposta “como foi?” (índice de Feeling + 1), quando houve.
   final int? feeling;
 
@@ -109,6 +117,7 @@ class RideRecord implements RideStat {
     String? workoutId,
     int? feeling,
     double? ftp,
+    String? workoutName,
   }) =>
       RideRecord(
         id: id ?? this.id,
@@ -131,6 +140,7 @@ class RideRecord implements RideStat {
         workoutId: workoutId ?? this.workoutId,
         feeling: feeling ?? this.feeling,
         ftp: ftp ?? this.ftp,
+        workoutName: workoutName ?? this.workoutName,
       );
 
   Map<String, Object?> toRow() => {
@@ -154,6 +164,7 @@ class RideRecord implements RideStat {
         'workout_id': workoutId,
         'feeling': feeling,
         'ftp': ftp,
+        'workout_name': workoutName,
       };
 
   factory RideRecord.fromRow(Map<String, Object?> r) => RideRecord(
@@ -177,6 +188,7 @@ class RideRecord implements RideStat {
         workoutId: r['workout_id'] as String?,
         feeling: r['feeling'] as int?,
         ftp: (r['ftp'] as num?)?.toDouble(),
+        workoutName: r['workout_name'] as String?,
       );
 }
 
@@ -202,7 +214,7 @@ abstract class RidesStore {
 const _listColumns = [
   'id', 'route_id', 'mode', 'started_at', 'moving_time_s', 'distance_m',
   'avg_power_w', 'avg_speed_kmh', 'gain_m', 'kcal', 'completed', 'laps', 'loop', 'reversed',
-  'trimmed_m', 'track', 'workout_id', 'feeling', 'ftp',
+  'trimmed_m', 'track', 'workout_id', 'feeling', 'ftp', 'workout_name',
 ];
 
 class SqliteRidesStore implements RidesStore {

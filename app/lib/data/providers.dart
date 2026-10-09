@@ -4,6 +4,8 @@ import 'package:sqflite/sqflite.dart';
 
 import '../domain/stats.dart';
 import '../domain/training_plans.dart';
+import '../domain/workout_blocks.dart';
+import 'custom_workouts_store.dart';
 import 'loop_generator.dart';
 import 'rides_store.dart';
 import 'route_builder.dart';
@@ -25,6 +27,13 @@ final settingsStoreProvider = Provider<SettingsStore>((ref) => SqliteSettingsSto
 final ridesStoreProvider = Provider<RidesStore>((ref) => SqliteRidesStore(ref.watch(databaseProvider)));
 
 final routesStoreProvider = Provider<RoutesStore>((ref) => SqliteRoutesStore(ref.watch(databaseProvider)));
+
+final customWorkoutsStoreProvider = Provider<CustomWorkoutsStore>(
+  (ref) => SqliteCustomWorkoutsStore(ref.watch(databaseProvider)),
+);
+
+/// Os treinos montados pelo usuário, o mais novo primeiro.
+final customWorkoutsProvider = FutureProvider<List<CustomWorkout>>((ref) => ref.watch(customWorkoutsStoreProvider).all());
 
 final settingsProvider = FutureProvider<AppSettings>((ref) => ref.watch(settingsStoreProvider).load());
 

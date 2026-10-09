@@ -22,6 +22,7 @@ import '../../domain/route_profile.dart';
 import '../../domain/route_variant.dart';
 import '../../domain/training.dart';
 import '../../domain/workout.dart';
+import '../../domain/workout_blocks.dart';
 import '../../domain/workout_runner.dart';
 import 'ghost_options.dart';
 
@@ -34,6 +35,20 @@ final rideTickProvider = Provider<Duration>((ref) => const Duration(milliseconds
 
 /// Onde achar um treino pelo id (a biblioteca; nos testes, treinos curtos).
 final workoutLookupProvider = Provider<Workout? Function(String id)>((ref) => workoutById);
+
+/// Qualquer treino pelo id: da biblioteca ([workoutLookupProvider]) ou montado pelo usuário.
+/// Enquanto os do usuário carregam, os deles dão null.
+final findWorkoutProvider = Provider<Workout? Function(String id)>((ref) {
+  final biblioteca = ref.watch(workoutLookupProvider);
+  final meus = ref.watch(customWorkoutsProvider).value ?? const <CustomWorkout>[];
+  return (id) {
+    if (!isCustomWorkoutId(id)) return biblioteca(id);
+    for (final m in meus) {
+      if (m.id == id) return m.toWorkout();
+    }
+    return null;
+  };
+});
 
 const _historyLength = 300; // 5 minutos de amostras
 const _staleAfter = Duration(seconds: 3);
