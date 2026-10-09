@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+: a tela de carregamento é verde e desenha a rota da logo (splash_logo);
-         a abertura do app continua dali (MainActivity segura até o desenho terminar). -->
+    <!-- Android 12+: a tela de carregamento é verde e desenha o começo da abertura (splash_logo);
+         a abertura do app continua do mesmo ponto (MainActivity). -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:windowSplashScreenBackground">@color/splash_background</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
-        <item name="android:windowSplashScreenAnimationDuration">750</item>
+        <item name="android:windowSplashScreenAnimationDuration">1270</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>

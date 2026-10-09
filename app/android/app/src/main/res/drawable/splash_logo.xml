@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tela de carregamento (Android 12+): a rota da logo se desenha em 0,75 s. Mesmo tamanho e
-     lugar da abertura do app (símbolo de 160 dp no centro da tela), que continua daqui. -->
+<!-- Tela de carregamento (Android 12+), igual ao começo da abertura do app (abertura.dart): a
+     rota da logo se desenha em 0,75 s; a bolinha amarela pinga; e um anel sai dela a cada 1,2 s
+     enquanto o app carrega. Mesmo tamanho e lugar da abertura do app (símbolo de 160 dp no
+     centro da tela), que continua do ponto em que esta estiver (veja MainActivity). -->
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt">
     <aapt:attr name="android:drawable">
@@ -23,6 +25,31 @@
                     android:strokeLineCap="round"
                     android:strokeLineJoin="round"
                     android:trimPathEnd="0" />
+                <!-- Escondido (escala 0) até o primeiro anel. -->
+                <group
+                    android:name="anelGrupo"
+                    android:pivotX="136"
+                    android:pivotY="58"
+                    android:scaleX="0"
+                    android:scaleY="0">
+                    <path
+                        android:name="anel"
+                        android:fillColor="#00000000"
+                        android:pathData="M127,58 A9,9 0 1,0 145,58 A9,9 0 1,0 127,58"
+                        android:strokeWidth="4.5"
+                        android:strokeColor="#FFF6C445"
+                        android:strokeAlpha="0.75" />
+                </group>
+                <group
+                    android:name="bolinha"
+                    android:pivotX="136"
+                    android:pivotY="58"
+                    android:scaleX="0"
+                    android:scaleY="0">
+                    <path
+                        android:fillColor="#FFF6C445"
+                        android:pathData="M127,58 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z" />
+                </group>
             </group>
         </vector>
     </aapt:attr>
@@ -35,6 +62,89 @@
                 android:valueFrom="0"
                 android:valueTo="1"
                 android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+    <!-- A bolinha pinga com um balanço (a mesma curva elástica do app). -->
+    <target android:name="bolinha">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="520"
+                android:startOffset="750">
+                <aapt:attr name="android:interpolator">
+                    <pathInterpolator android:pathData="M0,0 L0.0208,0.1640 L0.0417,0.3512 L0.0625,0.5415 L0.0833,0.7194 L0.1042,0.8743 L0.1250,1.0000 L0.1458,1.0942 L0.1667,1.1575 L0.1875,1.1928 L0.2083,1.2044 L0.2292,1.1973 L0.2500,1.1768 L0.2708,1.1478 L0.2917,1.1147 L0.3125,1.0811 L0.3333,1.0496 L0.3542,1.0222 L0.3750,1.0000 L0.3958,0.9833 L0.4167,0.9722 L0.4375,0.9659 L0.4583,0.9639 L0.4792,0.9651 L0.5000,0.9688 L0.5208,0.9739 L0.5417,0.9797 L0.5625,0.9857 L0.5833,0.9912 L0.6042,0.9961 L0.6250,1.0000 L0.6458,1.0029 L0.6667,1.0049 L0.6875,1.0060 L0.7083,1.0064 L0.7292,1.0062 L0.7500,1.0055 L0.7708,1.0046 L0.7917,1.0036 L0.8125,1.0025 L0.8333,1.0016 L0.8542,1.0007 L0.8750,1.0000 L0.8958,0.9995 L0.9167,0.9991 L0.9375,0.9989 L0.9583,0.9989 L0.9792,0.9989 L1,1" />
+                </aapt:attr>
+                <propertyValuesHolder
+                    android:propertyName="scaleX"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+                <propertyValuesHolder
+                    android:propertyName="scaleY"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+            </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="anelGrupo">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="1"
+                android:startOffset="810">
+                <propertyValuesHolder
+                    android:propertyName="scaleX"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+                <propertyValuesHolder
+                    android:propertyName="scaleY"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+            </objectAnimator>
+        </aapt:attr>
+    </target>
+    <!-- O anel cresce e some em 0,7 s (ease-out) e espera 0,5 s; repete até o app assumir. -->
+    <target android:name="anel">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:duration="1200"
+                    android:propertyName="pathData"
+                    android:repeatCount="infinite"
+                    android:startOffset="810"
+                    android:valueFrom="M127,58 A9,9 0 1,0 145,58 A9,9 0 1,0 127,58"
+                    android:valueTo="M103,58 A33,33 0 1,0 169,58 A33,33 0 1,0 103,58"
+                    android:valueType="pathType">
+                    <aapt:attr name="android:interpolator">
+                        <pathInterpolator android:pathData="M0,0 C0,0 0.3383,1 0.5833,1 L1,1" />
+                    </aapt:attr>
+                </objectAnimator>
+                <objectAnimator
+                    android:duration="1200"
+                    android:propertyName="strokeWidth"
+                    android:repeatCount="infinite"
+                    android:startOffset="810"
+                    android:valueFrom="4.5"
+                    android:valueTo="0.5"
+                    android:valueType="floatType">
+                    <aapt:attr name="android:interpolator">
+                        <pathInterpolator android:pathData="M0,0 C0,0 0.3383,1 0.5833,1 L1,1" />
+                    </aapt:attr>
+                </objectAnimator>
+                <objectAnimator
+                    android:duration="1200"
+                    android:propertyName="strokeAlpha"
+                    android:repeatCount="infinite"
+                    android:startOffset="810"
+                    android:valueFrom="0.75"
+                    android:valueTo="0"
+                    android:valueType="floatType">
+                    <aapt:attr name="android:interpolator">
+                        <pathInterpolator android:pathData="M0,0 C0,0 0.3383,1 0.5833,1 L1,1" />
+                    </aapt:attr>
+                </objectAnimator>
+            </set>
         </aapt:attr>
     </target>
 </animated-vector>

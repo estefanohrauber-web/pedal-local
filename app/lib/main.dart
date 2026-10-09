@@ -19,8 +19,8 @@ Future<void> main(List<String> args) async {
     overrides: [
       databaseProvider.overrideWithValue(db),
       appThemeProvider.overrideWithValue(buildAppTheme(textTheme: GoogleFonts.plusJakartaSansTextTheme())),
-      // O Android 12+ já desenhou a rota da logo na tela de carregamento (MainActivity).
-      aberturaLinhaProntaProvider.overrideWithValue(args.contains('linha-pronta')),
+      // No Android 12+, a tela de carregamento desenha o começo da abertura (MainActivity).
+      aberturaDoAndroidProvider.overrideWithValue(args.contains('abertura-android')),
       brandTextStyleProvider.overrideWithValue(GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800)),
     ],
     child: const PedalLocalApp(),

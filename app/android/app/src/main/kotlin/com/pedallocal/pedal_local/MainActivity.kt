@@ -1,37 +1,68 @@
 package com.pedallocal.pedal_local
 
+import android.annotation.TargetApi
 import android.os.Build
 import android.os.Bundle
-import android.os.Process
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
-import android.view.View
-import android.view.ViewTreeObserver
+import android.window.SplashScreenView
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.plugin.common.MethodChannel
+import java.time.Duration
+import java.time.Instant
 
-/** Duração do desenho da rota na tela de carregamento (igual a `splash_logo.xml` e à abertura em Dart). */
-private const val DESENHO_MS = 750L
+/** Canal da abertura (igual ao `aberturaCanal` em Dart). */
+private const val CANAL = "pedalaqui/abertura"
+
+/** Prazo para a abertura em Dart responder; depois disso a tela de carregamento sai mesmo assim. */
+private const val PRAZO_MS = 1000L
 
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+: a tela de carregamento desenha a rota da logo. Ela fica até o desenho
-            // terminar, mesmo se o app carregar antes, e sai sem a animação padrão: a abertura do
-            // app mostra a mesma logo no mesmo lugar e continua dali.
-            val fim = Process.getStartUptimeMillis() + DESENHO_MS
-            val conteudo = findViewById<View>(android.R.id.content)
-            conteudo.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-                override fun onPreDraw(): Boolean {
-                    if (SystemClock.uptimeMillis() < fim) return false
-                    conteudo.viewTreeObserver.removeOnPreDrawListener(this)
-                    return true
-                }
-            })
-            splashScreen.setOnExitAnimationListener { it.remove() }
+            // Android 12+: a tela de carregamento desenha o começo da abertura (splash_logo.xml)
+            // enquanto o app carrega. Quando ele fica pronto, ela sai sem a animação padrão, e a
+            // abertura do app continua do mesmo ponto.
+            splashScreen.setOnExitAnimationListener { passarParaOApp(it) }
         }
     }
 
-    /** Avisa a abertura em Dart que a linha já foi desenhada pela tela de carregamento. */
+    /**
+     * Conta à abertura em Dart quando a animação da tela de carregamento começou (no relógio dos
+     * quadros, o mesmo do Flutter) e tira a tela de carregamento quando ela responde: a essa altura
+     * o app já desenha a logo no mesmo ponto da animação.
+     */
+    @TargetApi(Build.VERSION_CODES.S)
+    private fun passarParaOApp(tela: SplashScreenView) {
+        var saiu = false
+        val sair = {
+            if (!saiu) {
+                saiu = true
+                tela.remove()
+            }
+        }
+        val messenger = flutterEngine?.dartExecutor?.binaryMessenger
+        if (messenger == null) {
+            sair()
+            return
+        }
+        val comeco = tela.iconAnimationStart
+        val decorrido = if (comeco == null) -1L else Duration.between(comeco, Instant.now()).toMillis()
+        val dados = mapOf(
+            "decorrido" to decorrido,
+            "inicio" to if (comeco == null) -1L else SystemClock.uptimeMillis() - decorrido,
+        )
+        MethodChannel(messenger, CANAL).invokeMethod("abrir", dados, object : MethodChannel.Result {
+            override fun success(result: Any?) = sair()
+            override fun error(code: String, message: String?, details: Any?) = sair()
+            override fun notImplemented() = sair()
+        })
+        Handler(Looper.getMainLooper()).postDelayed({ sair() }, PRAZO_MS)
+    }
+
+    /** Avisa a abertura em Dart que a tela de carregamento do Android vai passar a animação para ela. */
     override fun getDartEntrypointArgs(): List<String> =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf("linha-pronta") else emptyList()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf("abertura-android") else emptyList()
 }
