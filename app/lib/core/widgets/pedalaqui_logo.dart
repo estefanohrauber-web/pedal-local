@@ -43,6 +43,27 @@ Path partialPath(Path path, double t) {
   return out;
 }
 
+/// Ponto mais à direita que a linha já alcançou, a cada 1 % do caminho.
+final List<double> _maisADireita = () {
+  final m = logoRoute().computeMetrics().first;
+  var maior = 0.0;
+  return [
+    for (var i = 0; i <= 100; i++)
+      maior = math.max(maior, m.getTangentForOffset(m.length * i / 100)!.position.dx),
+  ];
+}();
+
+/// Quanto do nome aparece (0 a 1) com a rota desenhada até [progress]: acompanha o ponto
+/// mais à direita que a ponta da linha já alcançou. No laço do pino, que volta para a
+/// esquerda, o nome espera.
+double logoRevealFraction(double progress) {
+  final p = progress.clamp(0.0, 1.0) * 100;
+  final i = p.floor();
+  final j = math.min(i + 1, 100);
+  final x = _maisADireita[i] + (_maisADireita[j] - _maisADireita[i]) * (p - i);
+  return ((x - _maisADireita.first) / (_maisADireita.last - _maisADireita.first)).clamp(0.0, 1.0);
+}
+
 /// Desenha o símbolo centrado em [size]: a rota até [progress] e a bolinha do pino em
 /// escala [dot] (0 a 1).
 class LogoPainter extends CustomPainter {
@@ -170,6 +191,7 @@ class PedalaquiWordmark extends StatelessWidget {
     this.color = AppColors.texto,
     this.accent = AppColors.destaque,
     this.style,
+    this.pin = 1,
   });
 
   final double fontSize;
@@ -180,6 +202,9 @@ class PedalaquiWordmark extends StatelessWidget {
 
   /// Cor do “aqui”.
   final Color accent;
+
+  /// O pininho do i caindo no lugar (0 = ainda não apareceu, 1 = no lugar).
+  final double pin;
 
   @override
   Widget build(BuildContext context) {
@@ -212,10 +237,13 @@ class PedalaquiWordmark extends StatelessWidget {
               children: [
                 Text('ı', style: estilo.copyWith(color: accent)), // i sem pingo
                 Positioned(
-                  top: -0.16 * fontSize,
-                  child: CustomPaint(
-                    size: Size(0.3 * fontSize, 0.39 * fontSize),
-                    painter: const _PinoPainter(),
+                  top: -0.16 * fontSize - 0.4 * fontSize * (1 - pin),
+                  child: Opacity(
+                    opacity: pin.clamp(0.0, 1.0),
+                    child: CustomPaint(
+                      size: Size(0.3 * fontSize, 0.39 * fontSize),
+                      painter: const _PinoPainter(),
+                    ),
                   ),
                 ),
               ],

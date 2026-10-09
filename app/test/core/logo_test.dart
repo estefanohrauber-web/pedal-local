@@ -22,9 +22,22 @@ void main() {
     expect(_comprimento(partialPath(logoRoute(), 1)), closeTo(total, 0.5));
   });
 
-  testWidgets('símbolo, ícone e nome escrito aparecem sem erro', (
-    tester,
-  ) async {
+  test('o nome se revela junto com a ponta da linha e espera no laço do pino', () {
+    expect(logoRevealFraction(0), 0);
+    expect(logoRevealFraction(1), 1);
+    final valores = [for (var i = 0; i <= 50; i++) logoRevealFraction(i / 50)];
+    for (var i = 1; i < valores.length; i++) {
+      expect(valores[i], greaterThanOrEqualTo(valores[i - 1])); // nunca volta
+    }
+    // No laço do pino a linha volta para a esquerda: o nome para por um tempo.
+    var parado = 0;
+    for (var i = 1; i < valores.length; i++) {
+      if ((valores[i] - valores[i - 1]).abs() < 1e-9) parado++;
+    }
+    expect(parado, greaterThan(2));
+  });
+
+  testWidgets('símbolo, ícone e nome escrito aparecem sem erro', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Column(
@@ -32,15 +45,13 @@ void main() {
             PedalaquiMark(size: 120),
             PedalaquiIcon(size: 64),
             PedalaquiWordmark(fontSize: 32),
+            PedalaquiWordmark(fontSize: 32, pin: 0.5),
           ],
         ),
       ),
     );
-    expect(
-      find.byType(PedalaquiMark),
-      findsNWidgets(2),
-    ); // o ícone usa o símbolo
-    expect(find.textContaining('Pedal', findRichText: true), findsOneWidget);
+    expect(find.byType(PedalaquiMark), findsNWidgets(2)); // o ícone usa o símbolo
+    expect(find.textContaining('Pedal', findRichText: true), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 }

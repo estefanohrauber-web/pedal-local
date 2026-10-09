@@ -29,9 +29,7 @@ Future<void> _abrirApp(WidgetTester tester) async {
         wakeLockProvider.overrideWithValue(FakeWakeLock()),
         voiceProvider.overrideWithValue(FakeVoice()),
         mapTilesEnabledProvider.overrideWithValue(false),
-        locationServiceProvider.overrideWithValue(
-          const FixedLocationService(null),
-        ),
+        locationServiceProvider.overrideWithValue(const FixedLocationService(null)),
         bikeLogProvider.overrideWithValue(BikeLog()),
       ],
       child: const PedalLocalApp(),
@@ -40,45 +38,45 @@ Future<void> _abrirApp(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets(
-    'abertura: a rota se desenha, o nome aparece e tudo some no app',
-    (tester) async {
-      await _abrirApp(tester);
-      await tester.pump();
-      expect(find.byKey(aberturaKey), findsOneWidget);
-      final inicio = tester.widget<PedalaquiMark>(find.byType(PedalaquiMark));
-      expect(inicio.progress, lessThan(0.1)); // a linha começa a se desenhar
-      await tester.pump(const Duration(milliseconds: 800));
-      final meio = tester.widget<PedalaquiMark>(find.byType(PedalaquiMark));
-      expect(meio.progress, 1);
-      expect(meio.dot, greaterThan(0));
-      await tester.pump(
-        const Duration(milliseconds: 500),
-      ); // 1,3 s: o nome já apareceu inteiro
-      final nome = find.descendant(
-        of: find.byKey(aberturaKey),
-        matching: find.byType(PedalaquiWordmark),
-      );
-      expect(nome, findsOneWidget);
-      final opacidade = tester.widget<Opacity>(
-        find.ancestor(of: nome, matching: find.byType(Opacity)).first,
-      );
-      expect(opacidade.opacity, closeTo(1, 0.01));
-      await tester.pumpAndSettle();
-      expect(find.byKey(aberturaKey), findsNothing);
-      expect(find.text('Bora pedalar?'), findsOneWidget);
-    },
-  );
+  testWidgets('abertura: a rota se desenha com o nome, depois a bolinha e o pininho; tudo some no app', (tester) async {
+    await _abrirApp(tester);
+    await tester.pump();
+    expect(find.byKey(aberturaKey), findsOneWidget);
+    PedalaquiMark marca() => tester.widget<PedalaquiMark>(find.byType(PedalaquiMark));
+    PedalaquiWordmark nome() => tester.widget<PedalaquiWordmark>(find.byType(PedalaquiWordmark));
+    RevealMask revela() => tester.widget<RevealMask>(find.byType(RevealMask));
+    expect(marca().progress, lessThan(0.05)); // a linha começa do zero
+    expect(revela().fraction, lessThan(0.05));
+
+    await tester.pump(const Duration(milliseconds: 600)); // no meio do caminho
+    expect(marca().progress, inExclusiveRange(0.2, 0.9));
+    expect(revela().fraction, inExclusiveRange(0.05, 0.95)); // o nome vem junto com a linha
+    expect(marca().dot, 0); // a bolinha só depois do caminho pronto
+    expect(nome().pin, 0);
+    expect(find.text('Bora pedalar?'), findsNothing); // o app por baixo ainda não foi montado
+
+    await tester.pump(const Duration(milliseconds: 700)); // 1,3 s: caminho pronto, bolinha aparecendo
+    expect(marca().progress, 1);
+    expect(revela().fraction, 1);
+    expect(marca().dot, greaterThan(0));
+
+    await tester.pump(const Duration(milliseconds: 300)); // 1,6 s: tudo inteiro
+    expect(marca().dot, closeTo(1, 0.01));
+    expect(nome().pin, closeTo(1, 0.01));
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(aberturaKey), findsNothing);
+    expect(find.text('Bora pedalar?'), findsOneWidget);
+  });
 
   testWidgets('abertura: um toque pula para o app', (tester) async {
     await _abrirApp(tester);
     await tester.pump(const Duration(milliseconds: 200));
     await tester.tap(find.byKey(aberturaKey));
     await tester.pump(); // o resto da animação começa a contar neste quadro
-    await tester.pump(
-      const Duration(milliseconds: 400),
-    ); // termina em menos de 0,3 s
+    await tester.pump(const Duration(milliseconds: 400)); // termina em menos de 0,3 s
     await tester.pump();
     expect(find.byKey(aberturaKey), findsNothing);
+    expect(find.text('Bora pedalar?'), findsOneWidget);
   });
 }

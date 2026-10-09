@@ -38,11 +38,17 @@ Data: 2026-10-09.
 
 - Tela de carregamento do Android só verde (Android 12+: sem ícone, `values-v31`; antes:
   `launch_background`). Atividade travada em pé (o app já era só em pé).
-- `features/abertura/abertura.dart`, por cima do app: a rota se desenha (0,74 s), a bolinha
-  aparece, o nome sobe e fica inteiro de 1,2 s a 1,6 s, e tudo some até 1,9 s. Um toque
-  pula para o fim. Só na abertura do app.
+- `features/abertura/abertura.dart`, por cima do app (2,1 s; um toque pula): a rota se
+  desenha da esquerda para a direita e dá a volta no pino (0,08 s a 1,13 s), com o nome se
+  revelando junto (borda esfumada que acompanha o ponto mais à direita da linha; no laço
+  do pino o nome espera). Com o caminho pronto, a bolinha amarela aparece e o pininho cai
+  no i; tudo inteiro até 1,83 s; some até 2,1 s. O app por baixo só é montado com o
+  caminho pronto (montar as telas na versão de teste fazia a linha andar aos trancos).
+- Os ~2 s de verde antes da animação são da versão de teste (debug: 2,3 a 3,2 s até o
+  primeiro quadro). A versão final (release) não deu para gerar neste computador: o
+  Controle Inteligente de Aplicativos do Windows bloqueia o gen_snapshot.
 
 ## Verificação
 
-302 testes automáticos (logo, abertura e o resto). No celular: ícone e nome novos nas
+303 testes automáticos (logo, abertura e o resto). No celular: ícone e nome novos nas
 informações do app; abertura conferida em fotos da tela.
