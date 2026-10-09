@@ -52,6 +52,7 @@ class _PedalLocalAppState extends ConsumerState<PedalLocalApp> {
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       builder: (context, child) => Abertura(
         nameStyle: ref.watch(brandTextStyleProvider),
+        linhaPronta: ref.watch(aberturaLinhaProntaProvider),
         child: child ?? const SizedBox.shrink(),
       ),
     );

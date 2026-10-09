@@ -89,6 +89,7 @@ class LogoPainter extends CustomPainter {
     this.dotColor = logoAmarelo,
     this.progress = 1,
     this.dot = 1,
+    this.ring = 0,
     this.strokeScale = 1,
   });
 
@@ -96,6 +97,9 @@ class LogoPainter extends CustomPainter {
   final Color dotColor;
   final double progress;
   final double dot;
+
+  /// Anel que se espalha da bolinha (0 a 1), como o sinal de “você está aqui”; 0 = sem anel.
+  final double ring;
 
   /// Linha mais grossa em tamanhos pequenos (1 = a do desenho).
   final double strokeScale;
@@ -120,6 +124,16 @@ class LogoPainter extends CustomPainter {
       progress >= 1 ? logoRoute() : partialPath(logoRoute(), progress),
       linha,
     );
+    if (ring > 0 && ring < 1) {
+      canvas.drawCircle(
+        logoPinCenter,
+        9 + 24 * ring,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4 * (1 - ring) + 0.5
+          ..color = dotColor.withValues(alpha: 0.75 * (1 - ring)),
+      );
+    }
     if (dot > 0) {
       canvas.drawCircle(logoPinCenter, 9 * dot, Paint()..color = dotColor);
     }
@@ -130,6 +144,7 @@ class LogoPainter extends CustomPainter {
   bool shouldRepaint(LogoPainter old) =>
       old.progress != progress ||
       old.dot != dot ||
+      old.ring != ring ||
       old.color != color ||
       old.dotColor != dotColor;
 }
@@ -167,17 +182,19 @@ class PedalaquiMark extends StatelessWidget {
     this.color = Colors.white,
     this.progress = 1,
     this.dot = 1,
+    this.ring = 0,
   });
 
   final double size;
   final Color color;
   final double progress;
   final double dot;
+  final double ring;
 
   @override
   Widget build(BuildContext context) => CustomPaint(
     size: Size.square(size),
-    painter: LogoPainter(color: color, progress: progress, dot: dot),
+    painter: LogoPainter(color: color, progress: progress, dot: dot, ring: ring),
   );
 }
 
@@ -254,9 +271,10 @@ class PedalaquiWordmark extends StatelessWidget {
               children: [
                 Text('ı', style: estilo.copyWith(color: accent)), // i sem pingo
                 Positioned(
-                  top: -0.16 * fontSize - 0.4 * fontSize * (1 - pin),
+                  // Cai de quase uma letra de altura; aparece logo no começo da queda.
+                  top: -0.16 * fontSize - 0.9 * fontSize * (1 - pin),
                   child: Opacity(
-                    opacity: pin.clamp(0.0, 1.0),
+                    opacity: (pin * 4).clamp(0.0, 1.0),
                     child: CustomPaint(
                       size: Size(0.3 * fontSize, 0.39 * fontSize),
                       painter: const _PinoPainter(),

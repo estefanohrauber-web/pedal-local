@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tela de carregamento (Android 12+): a rota da logo se desenha em 0,75 s. Mesmo tamanho e
+     lugar da abertura do app (símbolo de 160 dp no centro da tela), que continua daqui. -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="288dp"
+            android:height="288dp"
+            android:viewportWidth="288"
+            android:viewportHeight="288">
+            <group
+                android:scaleX="0.8"
+                android:scaleY="0.8"
+                android:translateX="64"
+                android:translateY="69.6">
+                <path
+                    android:name="linha"
+                    android:fillColor="#00000000"
+                    android:pathData="M8,150 C30,150 40,116 62,116 C84,116 88,136 104,136 C114,136 120.95,117.2 126.74,109.05 L153.94,70.74 A22,22 0 1,0 118.06,70.74 L145.26,109.05 C151.05,117.2 170,126 192,126"
+                    android:strokeWidth="12"
+                    android:strokeColor="#FFFFFFFF"
+                    android:strokeLineCap="round"
+                    android:strokeLineJoin="round"
+                    android:trimPathEnd="0" />
+            </group>
+        </vector>
+    </aapt:attr>
+    <target android:name="linha">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="750"
+                android:interpolator="@android:interpolator/accelerate_decelerate"
+                android:propertyName="trimPathEnd"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+</animated-vector>

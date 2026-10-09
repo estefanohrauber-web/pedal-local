@@ -40,19 +40,23 @@ Data: 2026-10-09.
 
 ## Abertura
 
-- Tela de carregamento do Android só verde (Android 12+: sem ícone, `values-v31`; antes:
-  `launch_background`). Atividade travada em pé (o app já era só em pé).
-- `features/abertura/abertura.dart`, por cima do app (2,1 s; um toque pula): a rota se
-  desenha da esquerda para a direita e dá a volta no pino (0,08 s a 1,13 s), com o nome se
-  revelando junto (borda esfumada que acompanha o ponto mais à direita da linha; no laço
-  do pino o nome espera). Com o caminho pronto, a bolinha amarela aparece e o pininho cai
-  no i; tudo inteiro até 1,83 s; some até 2,1 s. O app por baixo só é montado com o
-  caminho pronto (montar as telas na versão de teste fazia a linha andar aos trancos).
-- Os ~2 s de verde antes da animação são da versão de teste (debug: 2,3 a 3,2 s até o
-  primeiro quadro). A versão final (release) não deu para gerar neste computador: o
-  Controle Inteligente de Aplicativos do Windows bloqueia o gen_snapshot.
+- **Android 12+:** a tela de carregamento do sistema já desenha a rota (ícone animado
+  `splash_logo.xml`, 0,75 s, mesmo tamanho e lugar do símbolo de 160 dp da abertura). A
+  MainActivity segura essa tela até o desenho terminar e a tira sem a animação padrão; avisa
+  o Dart pelo argumento `linha-pronta`, e a abertura continua da linha pronta (conferido
+  no celular: mesma caixa de pixels nas duas telas). Antes do 12, o app desenha a linha.
+- **Depois da linha (ms):** a bolinha amarela pinga (elástica, 0–520) com um anel se
+  espalhando (60–760); o nome se revela da esquerda (0–380); o pininho cai no i quicando
+  (200–700); o app é montado por baixo (700); a logo fica parada até 1080; e a bolinha vira
+  uma janela redonda que cresce e mostra o app, com a logo se aproximando e sumindo
+  (1080–1520). Total ≈ 2,3 s do toque no ícone ao app. Um toque pula para a janela.
+- **Os ~2 s parados:** a versão de teste (debug) leva 2,3 a 3,2 s até o primeiro quadro do
+  app; com a tela de carregamento animada, esse tempo mostra a rota se desenhando e depois a
+  linha pronta. Na versão final (release) o app fica pronto antes do fim do desenho. Ela não
+  dá para gerar neste computador: o Controle Inteligente de Aplicativos do Windows bloqueia
+  o gen_snapshot.
 
 ## Verificação
 
-304 testes automáticos (logo, abertura e o resto). No celular: ícone e nome novos nas
+305 testes automáticos (logo, abertura e o resto). No celular: ícone e nome novos nas
 informações do app; abertura conferida em fotos da tela.
