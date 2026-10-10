@@ -66,6 +66,26 @@ void main() {
     },
   );
 
+  test('duas gravações ao mesmo tempo não apagam o diário antigo', () async {
+    final dir = await Directory.systemTemp.createTemp('bike_log');
+    final arquivo = File('${dir.path}/bike_log.txt');
+    await arquivo.writeAsString('10-09 19:04:31.861 conexão ligada\n');
+    // Achar a pasta demora um pouco, como no celular: as duas gravações se cruzam.
+    final log = BikeLog(
+      file: () async {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        return arquivo;
+      },
+    );
+    withClock(Clock.fixed(t0), () => log.add('desconectada pelo app'));
+    await Future.wait([log.flush(), log.flush()]);
+    expect(await arquivo.readAsLines(), [
+      '10-09 19:04:31.861 conexão ligada',
+      '10-09 20:15:03.042 desconectada pelo app',
+    ]);
+    await dir.delete(recursive: true);
+  });
+
   test('sem arquivo (ou arquivo com problema) não atrapalha', () async {
     final log = BikeLog(
       file: () async => throw const FileSystemException('sem pasta'),

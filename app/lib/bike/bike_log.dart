@@ -42,7 +42,13 @@ class BikeLog {
   }
 
   /// Grava no arquivo. Na primeira vez, junta o que já estava lá (de outras aberturas do app).
-  Future<void> flush() async {
+  /// Uma gravação espera a outra: duas ao mesmo tempo apagavam o diário antigo (a segunda
+  /// regravava o arquivo enquanto a primeira ainda ia ler o que havia nele).
+  Future<void> flush() => _fila = _fila.then((_) => _gravar());
+
+  Future<void> _fila = Future.value();
+
+  Future<void> _gravar() async {
     _timer?.cancel();
     _timer = null;
     try {
