@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 /// Características do FTMS para saber o que a bike aceita e mandar comandos.
@@ -164,4 +165,57 @@ Future<ControlResponse?> startSession({
 
   await enviar(requestControlCommand());
   return enviar(startCommand());
+}
+
+/// Manda a bike começar e insiste até ela confirmar. A Winnek recém-acordada responde “ok” ao
+/// começar, mas o painel só obedece quando termina de ligar (uns 20 s depois). Sem confirmação
+/// (o aviso “começou” ou dados chegando, via [confirm]), manda de novo a cada [interval], até
+/// [maxTries] vezes.
+class SessionStarter {
+  SessionStarter({required this.send, this.interval = const Duration(seconds: 5), this.maxTries = 12});
+
+  /// Uma tentativa (pedir controle e começar).
+  final Future<void> Function() send;
+  final Duration interval;
+  final int maxTries;
+
+  bool _confirmed = false;
+  int _tries = 0;
+  Timer? _timer;
+
+  bool get confirmed => _confirmed;
+
+  /// Quantas vezes já mandou.
+  int get tries => _tries;
+
+  /// Manda a primeira vez (espera ela terminar); as outras seguem sozinhas.
+  Future<void> start() async {
+    stop();
+    _confirmed = false;
+    _tries = 0;
+    await _tentar();
+  }
+
+  /// A bike confirmou: para de insistir.
+  void confirm() {
+    _confirmed = true;
+    stop();
+  }
+
+  /// Para de insistir (a bike desconectou).
+  void stop() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  Future<void> _tentar() async {
+    if (_confirmed || _tries >= maxTries) return;
+    _tries++;
+    try {
+      await send();
+    } catch (_) {
+      // a próxima tentativa tenta de novo
+    }
+    if (!_confirmed && _tries < maxTries) _timer = Timer(interval, _tentar);
+  }
 }

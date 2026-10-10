@@ -111,6 +111,68 @@ void main() {
       expect(r, isNull);
     });
 
+    group('insistir até a bike confirmar', () {
+      const intervalo = Duration(milliseconds: 5);
+
+      test('confirmada na primeira: não manda de novo', () async {
+        var envios = 0;
+        late final SessionStarter inicio;
+        inicio = SessionStarter(send: () async => envios++, interval: intervalo);
+        final fim = inicio.start();
+        inicio.confirm();
+        await fim;
+        await Future<void>.delayed(intervalo * 4);
+        expect(envios, 1);
+        expect(inicio.confirmed, isTrue);
+      });
+
+      test('sem confirmação: manda de novo a cada intervalo e para quando confirma', () async {
+        var envios = 0;
+        final inicio = SessionStarter(send: () async => envios++, interval: intervalo);
+        await inicio.start();
+        while (envios < 3) {
+          await Future<void>.delayed(intervalo);
+        }
+        inicio.confirm();
+        final depois = envios;
+        await Future<void>.delayed(intervalo * 4);
+        expect(envios, depois);
+      });
+
+      test('desiste depois do número máximo de tentativas', () async {
+        var envios = 0;
+        final inicio = SessionStarter(send: () async => envios++, interval: intervalo, maxTries: 3);
+        await inicio.start();
+        await Future<void>.delayed(intervalo * 10);
+        expect(envios, 3);
+        expect(inicio.confirmed, isFalse);
+      });
+
+      test('parar (a bike desconectou) cancela as próximas tentativas', () async {
+        var envios = 0;
+        final inicio = SessionStarter(send: () async => envios++, interval: intervalo);
+        await inicio.start();
+        inicio.stop();
+        await Future<void>.delayed(intervalo * 4);
+        expect(envios, 1);
+      });
+
+      test('erro ao mandar não interrompe a insistência', () async {
+        var envios = 0;
+        final inicio = SessionStarter(
+          send: () async {
+            envios++;
+            throw Exception('bike ocupada');
+          },
+          interval: intervalo,
+          maxTries: 2,
+        );
+        await inicio.start();
+        await Future<void>.delayed(intervalo * 4);
+        expect(envios, 2);
+      });
+    });
+
     test('bike que recusa: devolve a recusa ao começar', () async {
       final respostas = StreamController<ControlResponse>.broadcast();
       final r = await startSession(

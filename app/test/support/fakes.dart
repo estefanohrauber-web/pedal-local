@@ -27,6 +27,9 @@ class FakeBikeSource implements BikeSource {
   Exception? failWith;
   bool disposed = false;
 
+  /// Segura o connect até completar (para simular uma bike que demora a responder).
+  Completer<void>? hold;
+
   @override
   Stream<BikeReading> get readings => _readings.stream;
 
@@ -46,6 +49,7 @@ class FakeBikeSource implements BikeSource {
   @override
   Future<void> connect() async {
     connectCalls++;
+    await hold?.future;
     final f = failWith;
     if (f != null) throw f;
     if (failNext > 0) {

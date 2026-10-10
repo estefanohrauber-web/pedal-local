@@ -81,9 +81,11 @@ class BikeController extends Notifier<BikeState> {
     _sub = source.connection.listen(_onConnection);
     try {
       await source.connect();
-      if (!ref.mounted) return;
+      // Tocaram em outra bike (ou de novo) enquanto esta conectava: vale a mais nova.
+      if (!ref.mounted || !identical(state.source, source)) return;
       state = BikeState(source: source, connection: source.state);
     } on NoFtmsException catch (e) {
+      if (!identical(state.source, source)) return; // quem tocou de novo já descartou esta
       await _drop(source);
       if (!ref.mounted) return;
       state = BikeState(
@@ -91,6 +93,7 @@ class BikeController extends Notifier<BikeState> {
         diagnostic: e.diagnostic,
       );
     } catch (e) {
+      if (!identical(state.source, source)) return;
       await _drop(source);
       if (!ref.mounted) return;
       state = BikeState(message: _motivo(e));

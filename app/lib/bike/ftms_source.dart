@@ -39,6 +39,11 @@ class FtmsSource implements BikeSource {
   BikeConnection _state = BikeConnection.desconectada;
   bool _manual = false;
   FtmsControl? _control;
+  SessionStarter? _inicio;
+
+  /// Muda a cada conexão e ao desconectar. O que uma conexão antiga ainda escutar (ou uma conexão
+  /// interrompida no meio) fica quieto: não anota nem manda nada.
+  int _geracao = 0;
 
   @override
   BikeControl? get control => _control;
@@ -65,6 +70,8 @@ class FtmsSource implements BikeSource {
 
   @override
   Future<void> connect() async {
+    final g = ++_geracao;
+    _inicio?.stop();
     _manual = false;
     _montador.reset();
     _set(BikeConnection.conectando);
@@ -75,6 +82,7 @@ class FtmsSource implements BikeSource {
     try {
       await UniversalBle.connect(deviceId, timeout: const Duration(seconds: 15));
       final services = await UniversalBle.discoverServices(deviceId);
+      if (g != _geracao) return; // desconectaram no meio
       log?.add('serviços: ${[
         for (final s in services) '${_curto(s.uuid)}(${s.characteristics.map((c) => _curto(c.uuid)).join(' ')})',
       ].join(', ')}');
@@ -87,14 +95,20 @@ class FtmsSource implements BikeSource {
         throw NoFtmsException('Aparelho: $deviceName\nServiços:\n${lista.isEmpty ? '  (nenhum)' : lista}');
       }
       await _valueSub?.cancel();
-      _valueSub = UniversalBle.characteristicValueStream(deviceId, indoorBikeDataUuid).listen(_onValue);
+      _valueSub = UniversalBle.characteristicValueStream(deviceId, indoorBikeDataUuid).listen((b) {
+        if (g == _geracao) _onValue(b);
+      });
       await UniversalBle.subscribeNotifications(deviceId, ftmsServiceUuid, indoorBikeDataUuid);
       await _connSub?.cancel();
       _connSub = UniversalBle.connectionStream(deviceId).listen((connected) {
-        if (!connected) _set(_manual ? BikeConnection.desconectada : BikeConnection.caiu);
+        if (connected) return;
+        _inicio?.stop();
+        _set(_manual ? BikeConnection.desconectada : BikeConnection.caiu);
       });
-      await _escutarAvisos(services);
-      final comecou = await _comecar(services);
+      await _escutarAvisos(services, g);
+      if (g != _geracao) return;
+      final comecou = await _comecar(services, g);
+      if (g != _geracao) return;
       _control = await _lerControle(services, comecou: comecou);
       final f = _control?.features;
       log?.add('controle: ${f == null ? 'não aceita' : [
@@ -120,8 +134,10 @@ class FtmsSource implements BikeSource {
   }
 
   /// Pede o controle e manda a bike começar. Sem isso, a Winnek manda tudo zerado (giro, potência
-  /// e até o tempo de pedal), como se ninguém estivesse pedalando. As respostas vão para o diário.
-  Future<bool> _comecar(List<BleService> services) async {
+  /// e até o tempo de pedal), como se ninguém estivesse pedalando. Recém-acordada, ela responde
+  /// “ok” mas o painel não obedece: o app insiste até ela avisar que começou ou os dados chegarem.
+  /// Devolve se a bike aceitou o último pedido. As respostas vão para o diário.
+  Future<bool> _comecar(List<BleService> services, int g) async {
     final ftms = services.firstWhere((s) => s.uuid.toLowerCase() == ftmsServiceUuid);
     if (!ftms.characteristics.any((c) => c.uuid.toLowerCase() == controlPointUuid)) {
       log?.add('sem Control Point: não dá para mandar começar');
@@ -130,27 +146,46 @@ class FtmsSource implements BikeSource {
     try {
       await _controlSub?.cancel();
       _controlSub = UniversalBle.characteristicValueStream(deviceId, controlPointUuid).listen((bytes) {
+        if (g != _geracao) return;
         final r = parseControlResponse(bytes);
         log?.add(r == null ? 'resposta crua ${emHex(bytes)}' : 'resposta: ${describeControlResponse(r)}');
         if (r != null && !_respostas.isClosed) _respostas.add(r);
       });
       await UniversalBle.subscribeIndications(deviceId, ftmsServiceUuid, controlPointUuid);
-      log?.add('pedindo para a bike começar');
-      final r = await startSession(
-        write: (c) => UniversalBle.write(deviceId, ftmsServiceUuid, controlPointUuid, c),
-        responses: _respostas.stream,
-      );
-      if (r == null) log?.add('a bike não respondeu ao começar');
-      return r?.ok ?? false;
     } catch (e) {
-      log?.add('erro ao mandar começar: $e');
+      log?.add('erro ao preparar o começar: $e');
       return false;
     }
+    var aceitou = false;
+    late final SessionStarter inicio;
+    inicio = SessionStarter(
+      send: () async {
+        if (g != _geracao) return inicio.stop();
+        log?.add(
+          inicio.tries == 1
+              ? 'pedindo para a bike começar'
+              : 'a bike ainda não confirmou: pedindo de novo (${inicio.tries}.ª vez)',
+        );
+        try {
+          final r = await startSession(
+            write: (c) => UniversalBle.write(deviceId, ftmsServiceUuid, controlPointUuid, c),
+            responses: _respostas.stream,
+          );
+          if (r == null) log?.add('a bike não respondeu ao começar');
+          aceitou = r?.ok ?? false;
+        } catch (e) {
+          if (g == _geracao) log?.add('erro ao mandar começar: $e');
+        }
+      },
+    );
+    _inicio = inicio;
+    await inicio.start();
+    return aceitou;
   }
 
   /// Só para o diário: os avisos de estado do FTMS e os canais próprios da FitShow (fff0 e ffe0),
   /// que é quem faz o Bluetooth da Winnek. Se o giro vier por lá, o diário mostra.
-  Future<void> _escutarAvisos(List<BleService> services) async {
+  Future<void> _escutarAvisos(List<BleService> services, int g) async {
     for (final s in _extras) {
       await s.cancel();
     }
@@ -168,7 +203,14 @@ class FtmsSource implements BikeSource {
         final avisa = c.properties.contains(CharacteristicProperty.notify);
         if (linha == null || !(avisa || c.properties.contains(CharacteristicProperty.indicate))) continue;
         try {
-          _extras.add(UniversalBle.characteristicValueStream(deviceId, c.uuid).listen((b) => log?.add(linha(b))));
+          _extras.add(
+            UniversalBle.characteristicValueStream(deviceId, c.uuid).listen((b) {
+              if (g != _geracao) return;
+              log?.add(linha(b));
+              // O painel avisou que começou: não precisa mais insistir.
+              if (ch == '2ada' && b.isNotEmpty && b[0] == 0x04) _inicio?.confirm();
+            }),
+          );
           if (avisa) {
             await UniversalBle.subscribeNotifications(deviceId, servico.uuid, c.uuid);
           } else {
@@ -208,6 +250,8 @@ class FtmsSource implements BikeSource {
     log?.packet(bytes);
     // A bike pode mandar uma leitura em pedaços (bit "More Data"): junta antes de usar.
     final d = _montador.add(parseIndoorBikeData(bytes), DateTime.now());
+    // Giro, potência ou velocidade chegando = a bike começou de verdade: não precisa insistir.
+    if ((d.cadence ?? 0) > 0 || (d.power ?? 0) > 0 || (d.speedKmh ?? 0) > 0) _inicio?.confirm();
     if (_readings.isClosed) return;
     _readings.add(BikeReading(
       cadence: d.cadence,
@@ -222,6 +266,9 @@ class FtmsSource implements BikeSource {
   @override
   Future<void> disconnect() async {
     _manual = true;
+    _geracao++;
+    _inicio?.stop();
+    _inicio = null;
     log?.add('desconectada pelo app');
     await _control?.release();
     _control = null;

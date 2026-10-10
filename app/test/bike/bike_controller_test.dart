@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
@@ -59,6 +61,19 @@ void main() {
     expect(estado().connected, isFalse);
     expect(estado().message, contains('pedale'));
     expect(estado().message, isNot(contains('133')));
+  });
+
+  test('tocar de novo enquanto a primeira conexão demora: a falha dela não apaga a nova', () async {
+    fake.hold = Completer<void>();
+    fake.failWith = Exception('Unknown Error 133');
+    final primeira = ctrl().useDevice('AA:BB', 'WINNEK BT-151');
+    await settle();
+    await ctrl().useSimulated();
+    fake.hold!.complete();
+    await primeira;
+    expect(estado().connected, isTrue);
+    expect(estado().source!.simulated, isTrue);
+    expect(estado().message, isNull);
   });
 
   test('queda: reconecta sozinho', () async {
