@@ -32,6 +32,9 @@ class FtmsSource implements BikeSource {
   final _readings = StreamController<BikeReading>.broadcast();
   final _connection = StreamController<BikeConnection>.broadcast();
   StreamSubscription<Uint8List>? _valueSub;
+  StreamSubscription<Uint8List>? _controlSub;
+  final _extras = <StreamSubscription<Uint8List>>[];
+  final _respostas = StreamController<ControlResponse>.broadcast();
   StreamSubscription<bool>? _connSub;
   BikeConnection _state = BikeConnection.desconectada;
   bool _manual = false;
@@ -90,7 +93,9 @@ class FtmsSource implements BikeSource {
       _connSub = UniversalBle.connectionStream(deviceId).listen((connected) {
         if (!connected) _set(_manual ? BikeConnection.desconectada : BikeConnection.caiu);
       });
-      _control = await _lerControle(services);
+      await _escutarAvisos(services);
+      final comecou = await _comecar(services);
+      _control = await _lerControle(services, comecou: comecou);
       final f = _control?.features;
       log?.add('controle: ${f == null ? 'não aceita' : [
           if (f.power) 'potência',
@@ -114,8 +119,71 @@ class FtmsSource implements BikeSource {
     return u.startsWith('0000') && u.endsWith('-0000-1000-8000-00805f9b34fb') ? u.substring(4, 8) : u;
   }
 
-  /// Lê o que a bike aceita de comandos. Qualquer falha = sem controle (só dados).
-  Future<FtmsControl?> _lerControle(List<BleService> services) async {
+  /// Pede o controle e manda a bike começar. Sem isso, a Winnek manda tudo zerado (giro, potência
+  /// e até o tempo de pedal), como se ninguém estivesse pedalando. As respostas vão para o diário.
+  Future<bool> _comecar(List<BleService> services) async {
+    final ftms = services.firstWhere((s) => s.uuid.toLowerCase() == ftmsServiceUuid);
+    if (!ftms.characteristics.any((c) => c.uuid.toLowerCase() == controlPointUuid)) {
+      log?.add('sem Control Point: não dá para mandar começar');
+      return false;
+    }
+    try {
+      await _controlSub?.cancel();
+      _controlSub = UniversalBle.characteristicValueStream(deviceId, controlPointUuid).listen((bytes) {
+        final r = parseControlResponse(bytes);
+        log?.add(r == null ? 'resposta crua ${emHex(bytes)}' : 'resposta: ${describeControlResponse(r)}');
+        if (r != null && !_respostas.isClosed) _respostas.add(r);
+      });
+      await UniversalBle.subscribeIndications(deviceId, ftmsServiceUuid, controlPointUuid);
+      log?.add('pedindo para a bike começar');
+      final r = await startSession(
+        write: (c) => UniversalBle.write(deviceId, ftmsServiceUuid, controlPointUuid, c),
+        responses: _respostas.stream,
+      );
+      if (r == null) log?.add('a bike não respondeu ao começar');
+      return r?.ok ?? false;
+    } catch (e) {
+      log?.add('erro ao mandar começar: $e');
+      return false;
+    }
+  }
+
+  /// Só para o diário: os avisos de estado do FTMS e os canais próprios da FitShow (fff0 e ffe0),
+  /// que é quem faz o Bluetooth da Winnek. Se o giro vier por lá, o diário mostra.
+  Future<void> _escutarAvisos(List<BleService> services) async {
+    for (final s in _extras) {
+      await s.cancel();
+    }
+    _extras.clear();
+    for (final servico in services) {
+      final s = _curto(servico.uuid);
+      for (final c in servico.characteristics) {
+        final ch = _curto(c.uuid);
+        final String Function(Uint8List)? linha = switch ((s, ch)) {
+          ('1826', '2ada') => (b) => 'estado da bike: ${describeMachineStatus(b)} (${emHex(b)})',
+          ('1826', '2ad3') => (b) => 'fase do treino no painel: ${emHex(b)}',
+          ('fff0' || 'ffe0', _) => (b) => 'fitshow $ch: ${emHex(b)}',
+          _ => null,
+        };
+        final avisa = c.properties.contains(CharacteristicProperty.notify);
+        if (linha == null || !(avisa || c.properties.contains(CharacteristicProperty.indicate))) continue;
+        try {
+          _extras.add(UniversalBle.characteristicValueStream(deviceId, c.uuid).listen((b) => log?.add(linha(b))));
+          if (avisa) {
+            await UniversalBle.subscribeNotifications(deviceId, servico.uuid, c.uuid);
+          } else {
+            await UniversalBle.subscribeIndications(deviceId, servico.uuid, c.uuid);
+          }
+        } catch (e) {
+          log?.add('não deu para escutar $s/$ch: $e');
+        }
+      }
+    }
+  }
+
+  /// Lê o que a bike aceita de comandos. Qualquer falha = sem controle (só dados). [comecou] = a bike
+  /// já aceitou o controle e o começar (não precisa pedir de novo antes do primeiro comando).
+  Future<FtmsControl?> _lerControle(List<BleService> services, {bool comecou = false}) async {
     try {
       final ftms = services.firstWhere((s) => s.uuid.toLowerCase() == ftmsServiceUuid);
       final caracts = ftms.characteristics.map((c) => c.uuid.toLowerCase()).toSet();
@@ -126,8 +194,10 @@ class FtmsSource implements BikeSource {
       if (recursos.resistance && caracts.contains(supportedResistanceRangeUuid)) {
         faixa = parseResistanceRange(await UniversalBle.read(deviceId, ftmsServiceUuid, supportedResistanceRangeUuid));
       }
-      await UniversalBle.subscribeIndications(deviceId, ftmsServiceUuid, controlPointUuid);
-      return FtmsControl(deviceId, recursos, faixa);
+      if (!UniversalBle.isSubscribed(deviceId, controlPointUuid)) {
+        await UniversalBle.subscribeIndications(deviceId, ftmsServiceUuid, controlPointUuid);
+      }
+      return FtmsControl(deviceId, recursos, faixa, comControle: comecou);
     } catch (e) {
       log?.add('controle: erro ao ler ($e)');
       return null;
@@ -157,6 +227,12 @@ class FtmsSource implements BikeSource {
     _control = null;
     await _valueSub?.cancel();
     _valueSub = null;
+    await _controlSub?.cancel();
+    _controlSub = null;
+    for (final s in _extras) {
+      await s.cancel();
+    }
+    _extras.clear();
     try {
       await UniversalBle.disconnect(deviceId);
     } catch (_) {
@@ -172,12 +248,13 @@ class FtmsSource implements BikeSource {
     await _connSub?.cancel();
     await _readings.close();
     await _connection.close();
+    await _respostas.close();
   }
 }
 
 /// Comandos FTMS pela característica Control Point: pede o controle uma vez e depois manda os alvos.
 class FtmsControl implements BikeControl {
-  FtmsControl(this._deviceId, this.features, this.resistanceRange);
+  FtmsControl(this._deviceId, this.features, this.resistanceRange, {this._comControle = false});
 
   final String _deviceId;
 
@@ -187,7 +264,7 @@ class FtmsControl implements BikeControl {
   @override
   final FtmsRange? resistanceRange;
 
-  bool _comControle = false;
+  bool _comControle;
 
   Future<bool> _send(Uint8List comando) async {
     try {

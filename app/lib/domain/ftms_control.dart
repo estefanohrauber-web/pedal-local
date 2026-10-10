@@ -6,6 +6,10 @@ const supportedResistanceRangeUuid = '00002ad6-0000-1000-8000-00805f9b34fb';
 const supportedPowerRangeUuid = '00002ad8-0000-1000-8000-00805f9b34fb';
 const controlPointUuid = '00002ad9-0000-1000-8000-00805f9b34fb';
 
+/// Avisos da bike: mudança de estado (começou, parou…) e fase do treino no painel.
+const machineStatusUuid = '00002ada-0000-1000-8000-00805f9b34fb';
+const trainingStatusUuid = '00002ad3-0000-1000-8000-00805f9b34fb';
+
 /// O que a bike aceita receber do app (Target Setting Features da característica 0x2ACC).
 class FtmsFeatures {
   const FtmsFeatures({this.power = false, this.resistance = false, this.simulation = false});
@@ -102,4 +106,62 @@ class ControlResponse {
 ControlResponse? parseControlResponse(Uint8List bytes) {
   if (bytes.length < 3 || bytes[0] != 0x80) return null;
   return ControlResponse(bytes[1], bytes[2]);
+}
+
+/// A resposta em palavras, para o diário da bike: “começar: ok”.
+String describeControlResponse(ControlResponse r) {
+  final comando = switch (r.opcode) {
+    0x00 => 'pedir controle',
+    0x01 => 'reiniciar',
+    0x04 => 'resistência alvo',
+    0x05 => 'potência alvo',
+    0x07 => 'começar',
+    0x08 => 'parar',
+    0x11 => 'simulação',
+    final o => 'comando 0x${o.toRadixString(16).padLeft(2, '0')}',
+  };
+  final resultado = switch (r.result) {
+    1 => 'ok',
+    2 => 'comando não aceito',
+    3 => 'valor inválido',
+    4 => 'falhou',
+    5 => 'sem permissão',
+    final c => 'código $c',
+  };
+  return '$comando: $resultado';
+}
+
+/// O aviso que a bike manda quando o estado dela muda (Fitness Machine Status, 0x2ADA).
+String describeMachineStatus(Uint8List bytes) {
+  if (bytes.isEmpty) return 'aviso vazio';
+  return switch (bytes[0]) {
+    0x01 => 'reiniciou',
+    0x02 => bytes.length > 1 && bytes[1] == 0x02 ? 'pausou' : 'parou',
+    0x04 => 'começou',
+    0xFF => 'o app perdeu o controle',
+    final o => 'aviso 0x${o.toRadixString(16).padLeft(2, '0')}',
+  };
+}
+
+/// Pede o controle e manda a bike começar (Request Control, depois Start or Resume). Muitas bikes
+/// só contam giro, potência e tempo depois desse comando; antes, mandam tudo zerado. Cada comando
+/// espera a resposta da bike por até [wait] antes de seguir. Devolve a resposta ao “começar”
+/// (null = a bike não respondeu).
+Future<ControlResponse?> startSession({
+  required Future<void> Function(Uint8List command) write,
+  required Stream<ControlResponse> responses,
+  Duration wait = const Duration(seconds: 3),
+}) async {
+  Future<ControlResponse?> enviar(Uint8List comando) async {
+    // Começa a escutar antes de mandar, para não perder uma resposta rápida.
+    final resposta = responses
+        .firstWhere((r) => r.opcode == comando[0])
+        .timeout(wait)
+        .then<ControlResponse?>((r) => r, onError: (_) => null);
+    await write(comando);
+    return resposta;
+  }
+
+  await enviar(requestControlCommand());
+  return enviar(startCommand());
 }

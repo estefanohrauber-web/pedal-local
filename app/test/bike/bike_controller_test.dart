@@ -53,6 +53,14 @@ void main() {
     expect(fake.disposed, isTrue);
   });
 
+  test('bike desligada (erro 133 do Android): explica que é só pedalar para acordar', () async {
+    fake.failWith = Exception('UniversalBleException: Code: UniversalBleErrorCode.unknownError, Message: Unknown Error 133');
+    await ctrl().useDevice('AA:BB', 'WINNEK BT-151');
+    expect(estado().connected, isFalse);
+    expect(estado().message, contains('pedale'));
+    expect(estado().message, isNot(contains('133')));
+  });
+
   test('queda: reconecta sozinho', () async {
     await ctrl().useDevice('AA:BB', 'FS-1234');
     fake.failNext = 1;

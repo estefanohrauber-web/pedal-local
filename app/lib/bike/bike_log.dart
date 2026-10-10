@@ -33,9 +33,7 @@ class BikeLog {
   }
 
   /// Pacote cru, em hexadecimal.
-  void packet(Uint8List bytes) => add(
-    'dados ${[for (final b in bytes) b.toRadixString(16).padLeft(2, '0')].join(' ')}',
-  );
+  void packet(Uint8List bytes) => add('dados ${emHex(bytes)}');
 
   /// Os últimos [n] pacotes crus (o mais novo por último).
   List<String> recentPackets(int n) {
@@ -74,6 +72,9 @@ class BikeLog {
     return '${d(t.month)}-${d(t.day)} ${d(t.hour)}:${d(t.minute)}:${d(t.second)}.${d(t.millisecond, 3)}';
   }
 }
+
+/// Bytes em hexadecimal, separados por espaço: “21 00 00 00”.
+String emHex(List<int> bytes) => [for (final b in bytes) b.toRadixString(16).padLeft(2, '0')].join(' ');
 
 /// Diário da bike, em `files/bike_log.txt` (dá para copiar pela tela “Dados da bike”).
 final bikeLogProvider = Provider<BikeLog>(

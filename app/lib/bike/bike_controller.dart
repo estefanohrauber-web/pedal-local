@@ -93,9 +93,14 @@ class BikeController extends Notifier<BikeState> {
     } catch (e) {
       await _drop(source);
       if (!ref.mounted) return;
-      state = BikeState(message: 'Não foi possível conectar: $e');
+      state = BikeState(message: _motivo(e));
     }
   }
+
+  /// O erro 133 do Android quase sempre é a bike dormindo: o painel desliga quando ela fica parada.
+  static String _motivo(Object e) => '$e'.contains('133')
+      ? 'Não achei a bike. Ela desliga quando fica parada: pedale um pouco para acordar o painel e tente de novo.'
+      : 'Não foi possível conectar: $e';
 
   Future<void> _drop(BikeSource source) async {
     await _sub?.cancel();
