@@ -1,6 +1,6 @@
 # Pedalaqui — resumo do projeto
 
-Atualizado em 9/10/2026. Este documento serve para continuar o projeto em outro computador
+Atualizado em 11/10/2026. Este documento serve para continuar o projeto em outro computador
 (ou numa conversa nova com o Claude) sem perder nada: o que é o app, o que já foi feito, como
 montar o computador, o jeito de trabalhar combinado e os próximos passos.
 
@@ -86,7 +86,7 @@ Faça na ordem. Tudo o que não está no GitHub vem no arquivo `.zip` da transfe
    e análise do banco (seção 8).
 7. **Conferir:**
    - `cd C:\dev\pedal-local\app` → `flutter pub get` → `flutter analyze` (sem avisos) →
-     `flutter test` (**343 testes** passando em 9/10).
+     `flutter test` (**357 testes** passando em 10/10).
    - Celular no cabo: ative a depuração USB e toque em **Permitir** na pergunta do computador novo.
      `adb devices` deve mostrar `RQ8R905CDWJ`.
    - `flutter build apk --debug` e depois
@@ -97,7 +97,7 @@ Faça na ordem. Tudo o que não está no GitHub vem no arquivo `.zip` da transfe
    do Windows bloqueia o `gen_snapshot.exe`, e só sai a versão de teste. Em casa, tente
    `flutter build apk --release`. Se funcionar, ela também é assinada com a chave de teste
    (`android/app/build.gradle.kts`) e instala por cima sem perder nada: o app abre bem mais rápido.
-   Para a Play Store, a assinatura é outra (seção 7.4).
+   Para a Play Store, a assinatura é outra (seção 7.5).
 
 **Começar no Claude em casa:** abra o Claude Code na pasta `C:\dev\pedal-local` e diga algo como:
 “leia o `docs/RESUMO-DO-PROJETO.md` e vamos começar a parte dos servidores”.
@@ -144,7 +144,7 @@ verdade é o Flutter.
   - em qualquer treino: pular bloco, +1 min e ±5 %.
 
 **Design e testes:** cada parte tem um documento de desenho em `docs/superpowers/specs/` e foi
-conferida no celular com fotos da tela. São 343 testes automáticos.
+conferida no celular com fotos da tela. São 357 testes automáticos (10/10).
 
 ## 5. Como o app é por dentro (para o Claude)
 
@@ -206,7 +206,7 @@ O usuário já tem conta no Supabase e conta de desenvolvedor no Google Play.
 1. **Conta e backup automático.** Login com Google; rotas, pedais (com amostras), treinos do usuário
    e ajustes sincronizados no Supabase (Postgres, com segurança por linha, RLS).
    - O usuário nunca perde nada e pode trocar de celular.
-   - Isso também resolve a troca da versão de teste pela da Play Store (7.4).
+   - Isso também resolve a troca da versão de teste pela da Play Store (7.5).
 2. **Compartilhar** rotas e treinos com amigos por link.
 3. **Strava**: enviar o pedal. A chave secreta do Strava fica numa função do Supabase (Edge Function).
 4. Depois: ranking do bairro e desafio do mês (o cartão “Comunidade — em breve” do Início),
@@ -218,22 +218,38 @@ O usuário já tem conta no Supabase e conta de desenvolvedor no Google Play.
   o Claude redige;
 - o plano grátis do Supabase pausa o projeto depois de uma semana sem uso.
 
-### 7.2 Teste real com a Winnek
-Ainda falta confirmar que os dados chegam num pedal de verdade.
-- No primeiro teste (8/10), giro e potência vieram zerados; já foi feita a correção dos pacotes em
-  pedaços.
-- Se ainda vier zero, ler o **diário da bike**: Ajustes › Ver o que a bike envia › Copiar o diário,
-  ou pelo cabo, com `adb -s RQ8R905CDWJ exec-out run-as com.pedallocal.app cat files/bike_log.txt`.
-- Próxima hipótese: mandar o comando FTMS de iniciar (0x00 e depois 0x07). Ver também por que ela
-  desconecta.
+### 7.2 Winnek: dados chegando (10/10)
+- **Funcionou em 10/10:** o app agora pede o controle e manda a bike começar ao conectar (FTMS 0x00
+  e depois 0x07). Sem isso, ela mandava tudo zerado e derrubava a conexão a cada 60 s. Vieram ao vivo
+  47–87 rpm e 100–264 W. Recém-acordada, ela diz “ok” mas não começa: o app insiste a cada 5 s até
+  o aviso “começou” ou os dados chegarem (falta confirmar isso num pedal).
+- **O que ela manda:** velocidade, giro, distância, watts, calorias e tempo (FC vem 0, sem cinta).
+  O nível de resistência vem sempre 0: ela **não sabe a posição do botão de peso**.
+- **Os watts são uma tabela fixa pelo giro** (70 rpm = 190 W, 80 rpm = 233 W, sempre) e a
+  velocidade é giro × 0,375. O botão de peso não entra na conta. Como o app usa os watts da bike
+  (modo automático), girar o botão hoje não muda nada no app. Ela também diz que aceita potência
+  alvo (ERG), mas o botão é manual: o app pode achar que ela ajusta sozinha e não guiar pela voz.
+- Diário da bike: Ajustes › Ver o que a bike envia › Copiar o diário, ou pelo cabo, com
+  `adb -s RQ8R905CDWJ exec-out run-as com.pedallocal.app cat files/bike_log.txt`.
 
-### 7.3 Melhorias já combinadas
+### 7.3 Ideias do usuário depois do pedal de 10/10 (para desenhar e priorizar)
+1. **Chegada:** símbolo de chegada no fim do trajeto; numa rota só de ida, o resumo oferece fazer a
+   volta.
+2. **Tempo e distância** maiores e visíveis na tela do pedal.
+3. **Conexão da bike:** mostrar claramente se os dados estão chegando (“hoje é um parto”).
+4. **Ajustes** a partir de qualquer aba, e reorganizar a tela (está confusa).
+5. **Histórico:** melhorar o design.
+6. **Calibrar o botão de peso:** do mais leve ao mais pesado, contando as voltas do botão; depois o
+   app guia (“gire 3 voltas”) e sabe a carga para estimar os watts.
+7. **Bikes sem controle de resistência:** guiar pela voz, pelos watts (“suba para 180 W”).
+
+### 7.4 Melhorias já combinadas
 - O pedal começa no primeiro giro, e pedais vazios ou de teste não são salvos.
 - Conferir no celular, com a bike, o pedal do treino com os botões novos (pular, +1 min, ±5 %),
   que só foi testado por testes automáticos.
 - Oferecer apagar os 2 pedais simulados de 08/10 (perguntar antes).
 
-### 7.4 Versão final e Play Store
+### 7.5 Versão final e Play Store
 - A versão final é mais rápida, menor e é a única aceita na Play Store.
 - Gerar no PC de casa (se o Windows deixar) ou nos servidores do GitHub (GitHub Actions).
 - **Assinatura da loja:** criar uma chave de envio (upload key) e usar a Assinatura de apps do
@@ -248,7 +264,7 @@ Ainda falta confirmar que os dados chegam num pedal de verdade.
 - Dá para ter as duas versões no celular, a da loja e uma “Pedalaqui Dev” para testes (outro
   `applicationId`).
 
-### 7.5 Extras (depois)
+### 7.6 Extras (depois)
 - Importar treinos do Zwift (`.zwo`); escrever o treino numa frase; usar os treinos do usuário nos
   planos; meta por frequência cardíaca.
 - Tema escuro; exportar para o Strava.
