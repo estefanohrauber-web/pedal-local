@@ -36,6 +36,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: '/ajustes', builder: (c, s) => const AjustesScreen()),
+      GoRoute(
+        path: '/ajustes/:assunto',
+        builder: (c, s) =>
+            AjustesAssuntoScreen(assunto: Assunto.values.byName(s.pathParameters['assunto']!)),
+      ),
       GoRoute(path: '/bike', builder: (c, s) => const ConectarBikeScreen()),
       GoRoute(path: '/criar-rota', builder: (c, s) => const CriarRotaScreen()),
       GoRoute(path: '/pedal-livre', builder: (c, s) => const PedalLivreScreen()),

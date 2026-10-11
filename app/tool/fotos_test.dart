@@ -399,5 +399,31 @@ void main() {
       },
     );
   });
+
+  testWidgets('ajustes por assunto', (tester) async {
+    await fotografar(
+      tester,
+      'ajustes',
+      '/ajustes',
+      ajustes: const AppSettings(nome: 'Estéfano', pesoKg: 78, metaSemanalKm: 20, ftp: 210, voltasBotao: 8, ultimaBikeId: 'AA', ultimaBikeNome: 'WINNEK BT-151'),
+      overrides: comBike(),
+    );
+  });
+
+  testWidgets('ajustes: sua bike', (tester) async {
+    await fotografar(
+      tester,
+      'ajustes_bike',
+      '/ajustes',
+      ajustes: const AppSettings(nome: 'Estéfano', voltasBotao: 8, ultimaBikeId: 'AA', ultimaBikeNome: 'WINNEK BT-151'),
+      overrides: comBike(),
+      depois: (tester, container) async {
+        await tester.tap(find.text('Sua bike'));
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+      },
+    );
+  });
 }
 

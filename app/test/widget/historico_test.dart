@@ -117,23 +117,36 @@ void main() {
     expect(find.text(nomeDoDia(agora)), findsOneWidget); // o dia pedalado, já escolhido
   });
 
-  testWidgets('Ajustes: nome, margem e avançado escondido', (tester) async {
+  testWidgets('Ajustes: lista por assunto; tudo se salva sozinho', (tester) async {
     final container = await _abrir(tester);
     await tester.tap(find.text('Você').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Ajustes'));
     await tester.pumpAndSettle();
-    expect(find.text('Margem para fechar a volta: 3%'), findsOneWidget);
-    expect(find.text('Base'), findsNothing);
-    await tester.enterText(find.widgetWithText(TextField, 'Seu nome'), 'Bia');
-    await tester.scrollUntilVisible(find.byKey(const Key('avancado')), 300, scrollable: _listaVertical);
-    await tester.tap(find.byKey(const Key('avancado')));
+    for (final assunto in ['Sua bike', 'Voz', 'Pedal e voltas', 'Treinos', 'Avançado']) {
+      expect(find.text(assunto), findsOneWidget);
+    }
+    expect(find.text('Salvar'), findsNothing);
+
+    // Você: o nome se salva enquanto digita e aparece na lista ao voltar.
+    await tester.tap(find.text('75 kg · meta 60 km'));
     await tester.pumpAndSettle();
-    expect(find.text('Base'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Salvar'), 300, scrollable: _listaVertical);
-    await tester.tap(find.text('Salvar'));
+    await tester.enterText(find.widgetWithText(TextField, 'Seu nome'), 'Bia');
     await tester.pumpAndSettle();
     expect((await container.read(settingsStoreProvider).load()).nome, 'Bia');
+    await tester.binding.handlePopRoute(); // o voltar do Android
+    await tester.pumpAndSettle();
+    expect(find.text('Bia · 75 kg · meta 60 km'), findsOneWidget);
+
+    await tester.tap(find.text('Pedal e voltas'));
+    await tester.pumpAndSettle();
+    expect(find.text('Margem para fechar a volta: 3%'), findsOneWidget);
+    await tester.binding.handlePopRoute(); // o voltar do Android
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Avançado'));
+    await tester.pumpAndSettle();
+    expect(find.text('Base'), findsOneWidget);
   });
 
   testWidgets('Ajustes: voz com exemplo e desligar', (tester) async {
@@ -144,29 +157,21 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Ajustes'));
     await tester.pumpAndSettle();
-    Future<void> mostrar(String texto) async {
-      await tester.scrollUntilVisible(find.text(texto), 100, scrollable: _listaVertical);
-      await tester.ensureVisible(find.text(texto));
-      await tester.pumpAndSettle();
-    }
+    await tester.tap(find.text('Voz'));
+    await tester.pumpAndSettle();
 
-    await mostrar('Avisos falados no pedal');
     await tester.tap(find.text('Avisos falados no pedal'));
     await tester.pump();
     // Escolhe outra voz e ouve com ela.
-    await mostrar('Automática (a mais natural)');
     await tester.tap(find.text('Automática (a mais natural)'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Samsung · voz 1').last);
     await tester.pumpAndSettle();
-    await mostrar('Ouvir um exemplo');
     await tester.tap(find.text('Ouvir um exemplo'));
     await tester.pump();
     final voz = container.read(voiceProvider) as FakeVoice;
     expect(voz.chosen.last, samsung.id);
     expect(voz.spoken, ['Subida de 6 por cento chegando. Aumente a carga da bike.']);
-    await tester.scrollUntilVisible(find.text('Salvar'), 300, scrollable: _listaVertical);
-    await tester.tap(find.text('Salvar'));
     await tester.pumpAndSettle();
     final salvo = await container.read(settingsStoreProvider).load();
     expect(salvo.voz, isFalse);
