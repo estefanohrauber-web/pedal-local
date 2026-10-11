@@ -86,7 +86,7 @@ Faça na ordem. Tudo o que não está no GitHub vem no arquivo `.zip` da transfe
    e análise do banco (seção 8).
 7. **Conferir:**
    - `cd C:\dev\pedal-local\app` → `flutter pub get` → `flutter analyze` (sem avisos) →
-     `flutter test` (**357 testes** passando em 10/10).
+     `flutter test` (**384 testes** passando em 11/10).
    - Celular no cabo: ative a depuração USB e toque em **Permitir** na pergunta do computador novo.
      `adb devices` deve mostrar `RQ8R905CDWJ`.
    - `flutter build apk --debug` e depois
@@ -143,8 +143,20 @@ verdade é o Flutter.
   - copiar e editar treinos prontos;
   - em qualquer treino: pular bloco, +1 min e ±5 %.
 
-**Design e testes:** cada parte tem um documento de desenho em `docs/superpowers/specs/` e foi
-conferida no celular com fotos da tela. São 357 testes automáticos (10/10).
+**10–11/10 (PC de casa):** Winnek funcionando (seção 7.2) e as 7 ideias do usuário (7.3), cada
+tela escolhida entre 3 versões desenhadas com a skill Impeccable:
+- **pedal na rota** com o mapa na tela inteira, o caminho em cima e o esforço embaixo (tempo e
+  km/h grandes, relevo pintado até onde já foi), “Mais dados” e o selo “ao vivo”;
+- **conectar a bike** como lista de verificação, com os números chegando ao vivo;
+- **calibrar o botão de peso** tocando a cada volta; no pedal, a voz diz “gire o botão mais 5
+  voltas” e os watts passam a contar o botão; nos treinos, a bike de botão manual é guiada pela voz;
+- **chegada** de uma ida com o mapa até a bandeira e “Fazer a volta”;
+- **histórico** em calendário do mês; **Ajustes** por assunto, salvando sozinhos, e a engrenagem
+  em todas as abas.
+
+**Design e testes:** cada parte tem um documento de desenho em `docs/superpowers/specs/` (as de
+10–11/10, em `.impeccable/surfaces/`, com o contexto do produto em `PRODUCT.md`) e foi conferida
+com fotos da tela. São 384 testes automáticos (11/10).
 
 ## 5. Como o app é por dentro (para o Claude)
 
@@ -226,13 +238,16 @@ O usuário já tem conta no Supabase e conta de desenvolvedor no Google Play.
 - **O que ela manda:** velocidade, giro, distância, watts, calorias e tempo (FC vem 0, sem cinta).
   O nível de resistência vem sempre 0: ela **não sabe a posição do botão de peso**.
 - **Os watts são uma tabela fixa pelo giro** (70 rpm = 190 W, 80 rpm = 233 W, sempre) e a
-  velocidade é giro × 0,375. O botão de peso não entra na conta. Como o app usa os watts da bike
-  (modo automático), girar o botão hoje não muda nada no app. Ela também diz que aceita potência
-  alvo (ERG), mas o botão é manual: o app pode achar que ela ajusta sozinha e não guiar pela voz.
-- Diário da bike: Ajustes › Ver o que a bike envia › Copiar o diário, ou pelo cabo, com
+  velocidade é giro × 0,375. O botão de peso não entra na conta. Ela também diz que aceita
+  potência alvo (ERG), mas o botão é manual. **Resolvido em 11/10:** com o botão calibrado
+  (Ajustes › Sua bike), o app estima os watts pelo botão e guia pela voz, sem mandar meta para a
+  bike. Falta testar num pedal de verdade.
+- Diário da bike: Ajustes › Avançado › Ver o que a bike envia › Copiar o diário, ou pelo cabo, com
   `adb -s RQ8R905CDWJ exec-out run-as com.pedallocal.app cat files/bike_log.txt`.
 
-### 7.3 Ideias do usuário depois do pedal de 10/10 (para desenhar e priorizar)
+### 7.3 Ideias do usuário depois do pedal de 10/10 (feitas em 11/10)
+Todas no app (seção 4); falta conferir no celular, com a bike, a tela nova do pedal, a conexão e a
+calibração do botão.
 1. **Chegada:** símbolo de chegada no fim do trajeto; numa rota só de ida, o resumo oferece fazer a
    volta.
 2. **Tempo e distância** maiores e visíveis na tela do pedal.
@@ -276,6 +291,9 @@ O usuário já tem conta no Supabase e conta de desenvolvedor no Google Play.
   `adb -s RQ8R905CDWJ exec-out run-as com.pedallocal.app cat databases/pedal_local.db > C:\dev\tmp\backup.db`
   e depois `node C:\dev\tmp\db_resumo.js C:\dev\tmp\backup.db` para ver versão, rotas e pedais.
 - **Foto da tela:** `bash C:\dev\tmp\tela.sh nome` → `C:\dev\tmp\nome.png`.
+- **Fotos das telas sem celular:** em `app/`, `flutter test tool/fotos_test.dart --update-goldens`
+  → `app/tool/fotos/*.png`, com a fonte de verdade. Precisa das fontes Plus Jakarta Sans em
+  `C:\dev\tmp\fontes` (baixadas do fonts.gstatic.com, os mesmos arquivos do app).
 - **Fotos da abertura em sequência:** `bash C:\dev\tmp\abertura_cap.sh 30`, depois
   `node C:\dev\tmp\raw2png.js C:\dev\tmp\cap` e `quadros.ps1`, `recorte.ps1` ou `juntar.ps1` para
   montar as tiras.
