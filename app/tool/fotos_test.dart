@@ -306,5 +306,45 @@ void main() {
       );
     });
   });
+
+  testWidgets('chegada de uma ida', (tester) async {
+    final pontos = rotaEntrePontes();
+    final rotas = MemoryRoutesStore();
+    await rotas.upsert(
+      RouteRecord(
+        id: 'r1',
+        name: 'Entre pontes',
+        createdAt: DateTime(2026, 10, 8),
+        waypoints: [pontos.first.geo, pontos.last.geo],
+        points: pontos,
+        distanceM: perfil.distance,
+        gainM: 28,
+        lossM: 22,
+      ),
+    );
+    final pedais = MemoryRidesStore();
+    await pedais.upsert(
+      RideRecord(
+        id: 'p1',
+        routeId: 'r1',
+        mode: RideMode.rota,
+        startedAt: DateTime(2026, 10, 10, 20, 41),
+        movingTimeS: 588,
+        distanceM: perfil.distance,
+        avgPowerW: 168,
+        avgSpeedKmh: 19.6,
+        gainM: 28,
+        kcal: 62,
+        completed: true,
+        laps: 1,
+        track: pontos,
+        samples: [
+          for (var t = 1; t <= 588; t++)
+            RideSample(t: t.toDouble(), distance: perfil.distance * t / 588, speedKmh: 19.6, power: 168, cadence: 72),
+        ],
+      ),
+    );
+    await fotografar(tester, 'chegada', '/resumo/p1?novo=1', pedais: pedais, rotas: rotas);
+  });
 }
 

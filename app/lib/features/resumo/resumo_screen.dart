@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_map.dart';
+import '../../core/widgets/bandeira.dart';
 import '../../core/widgets/common.dart';
 import '../../data/providers.dart';
 import '../../data/rides_store.dart';
@@ -110,13 +111,19 @@ class _ConteudoState extends ConsumerState<_Conteudo> {
     final metrica = metricas.contains(_metrica) ? _metrica : metricas.first;
     final todos = metricSeries(ride.samples, metrica, gradeAt: perfil == null ? null : grau);
     final (lo, hi) = colorRange(todos);
+    // Acabou de chegar ao fim de uma rota só de ida: a chegada (mapa até a bandeira e “Fazer a
+    // volta”) vem primeiro; a análise continua embaixo.
+    final chegada = widget.novo && ride.mode == RideMode.rota && !ride.loop && ride.laps >= 1 && perfil != null;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        _Cabecalho(ride: ride, nomeRota: rota?.name, perfil: perfil),
+        if (chegada)
+          _Chegada(ride: ride, perfil: perfil, nomeRota: rota?.name, cor: cor, fantasma: widget.ghostGap)
+        else
+          _Cabecalho(ride: ride, nomeRota: rota?.name, perfil: perfil),
         const SizedBox(height: 14),
-        if (widget.ghostGap != null) ...[
+        if (widget.ghostGap != null && !chegada) ...[
           _ResultadoFantasma(gapS: widget.ghostGap!),
           const SizedBox(height: 14),
         ],
@@ -164,7 +171,7 @@ class _ConteudoState extends ConsumerState<_Conteudo> {
           _Comparacao(ride: ride, routeId: routeId, cor: cor),
         ],
         const SizedBox(height: 20),
-        if (widget.novo)
+        if (widget.novo && !chegada)
           Row(
             children: [
               const Expanded(
@@ -327,6 +334,159 @@ class _ResultadoFantasma extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A chegada de uma rota só de ida: o mapa com o caminho inteiro, da saída até a bandeira, os
+/// números do pedal e a escolha entre fazer a volta (mesma rota, sentido contrário) e concluir.
+class _Chegada extends ConsumerWidget {
+  const _Chegada({required this.ride, required this.perfil, required this.nomeRota, required this.cor, this.fantasma});
+
+  final RideRecord ride;
+  final RouteProfile perfil;
+  final String? nomeRota;
+  final Color cor;
+
+  /// Segundos à frente do fantasma na chegada (null = sem fantasma).
+  final double? fantasma;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final linha = [for (final p in perfil.points) LatLng(p.lat, p.lon)];
+    final nome = rideName(ride, routeName: nomeRota);
+    final volta = ride.reversed ? '' : '?sentido=inverso';
+    Widget numero(String valor, String rotulo, double tamanho) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            valor,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: tamanho,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        Text(rotulo, style: AppText.suave),
+      ],
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: SizedBox(
+            height: 260,
+            child: Stack(
+              children: [
+                FlutterMap(
+                  key: const Key('mapa-chegada'),
+                  options: MapOptions(
+                    initialCenter: linha.last,
+                    initialZoom: 15,
+                    initialCameraFit: CameraFit.bounds(
+                      bounds: LatLngBounds.fromPoints(linha),
+                      padding: const EdgeInsets.fromLTRB(32, 100, 32, 28), // em cima: o selo e a bandeira
+                      maxZoom: 17,
+                    ),
+                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                  ),
+                  children: [
+                    ...baseMapLayers(ref),
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(points: linha, strokeWidth: 10, color: Colors.white),
+                        Polyline(points: linha, strokeWidth: 6, color: cor),
+                      ],
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(point: linha.first, width: 18, height: 18, child: const PontoDeSaida()),
+                        Marker(
+                          point: linha.last,
+                          width: 32,
+                          height: 36,
+                          alignment: const Alignment(0.75, -1),
+                          child: const BandeiraChegada(),
+                        ),
+                      ],
+                    ),
+                    mapAttribution,
+                  ],
+                ),
+                Positioned(
+                  left: 10,
+                  top: 10,
+                  right: 10,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(color: AppColors.escuro, borderRadius: BorderRadius.circular(999)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.flag, color: Colors.white, size: 16),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Chegada · $nome',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text('Rota concluída!', style: AppText.titulo.copyWith(fontSize: 24)),
+        Text(
+          [formatDateTime(ride.startedAt), if (ride.reversed) 'sentido invertido'].join(' · '),
+          style: AppText.subtitulo,
+        ),
+        const SizedBox(height: 14),
+        AppCard(
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: numero(formatTime(ride.movingTimeS), 'tempo', 30)),
+                  Expanded(child: numero(formatKm(ride.distanceM), 'distância', 30)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: numero('${formatNumber(ride.avgSpeedKmh, 1)} km/h', 'média', 22)),
+                  Expanded(child: numero('${formatNumber(ride.avgPowerW)} W', 'potência média', 22)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (fantasma != null) ...[const SizedBox(height: 14), _ResultadoFantasma(gapS: fantasma!)],
+        const SizedBox(height: 14),
+        FilledButton.icon(
+          key: const Key('fazer-a-volta'),
+          onPressed: () => context.go('/pedal-rota/${ride.routeId}$volta'),
+          icon: const Icon(Icons.u_turn_left),
+          label: Text('Fazer a volta · ${formatKm(perfil.distance)}'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton(onPressed: () => context.go('/inicio'), child: const Text('Concluir')),
+      ],
     );
   }
 }

@@ -11,6 +11,7 @@ import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/core/links.dart';
+import 'package:pedal_local/core/router/app_router.dart';
 import 'package:pedal_local/core/theme/app_theme.dart';
 import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
@@ -335,6 +336,11 @@ void main() {
     expect(pedal.routeId, 'r1');
     expect(pedal.completed, isTrue);
     expect(pedal.laps, 1);
+    // A chegada vem primeiro: o mapa até a bandeira e “Fazer a volta”; a análise, embaixo.
+    expect(find.byKey(const Key('mapa-chegada')), findsOneWidget);
+    expect(find.textContaining('Fazer a volta'), findsOneWidget);
+    final rolagem = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+    await tester.scrollUntilVisible(find.text('Velocidade'), 300, scrollable: rolagem);
     expect(find.byKey(const Key('mapa-pedal')), findsOneWidget);
     expect(find.text('Velocidade'), findsOneWidget);
 
@@ -345,11 +351,38 @@ void main() {
       await tester.pumpAndSettle();
     }
     expect(find.text('Primeira vez nesta rota neste sentido.'), findsOneWidget);
+    // Na chegada, o “Concluir” fica lá em cima, junto do “Fazer a volta”.
+    await tester.scrollUntilVisible(find.text('Concluir'), -300, scrollable: lista);
     await tester.tap(find.text('Concluir'));
     await tester.pumpAndSettle();
     expect(find.text('Último pedal'), findsOneWidget);
     // Cartão da rota no topo + pedal no histórico, ambos com o nome da rota.
     expect(find.text('Rua curta'), findsNWidgets(2));
+  });
+
+  testWidgets('na chegada de uma ida, "Fazer a volta" pedala a mesma rota no sentido contrário', (tester) async {
+    final routes = MemoryRoutesStore();
+    await routes.upsert(rotaDeTeste('r1', 'Rua curta', 7)); // 120 m
+    final container = await abrirApp(tester, routes: routes);
+    final bike = FakeBikeSource(name: 'FS-TESTE');
+    await container.read(bikeControllerProvider.notifier).useSource(bike);
+    container.read(appRouterProvider).go('/pedal-rota/r1');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    for (var i = 0; i < 120 && find.text('Rota concluída!').evaluate().isEmpty; i++) {
+      bike.emitReading(BikeReading(cadence: 85, power: 250, timestamp: clock.now()));
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('Chegada · Rua curta'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('fazer-a-volta')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    final onde = container.read(appRouterProvider).routerDelegate.currentConfiguration.uri.toString();
+    expect(onde, '/pedal-rota/r1?sentido=inverso');
+    expect(find.text('Rua curta'), findsOneWidget);
+    expect(find.text('Encerrar'), findsOneWidget);
   });
 
   testWidgets('pedalar contra o fantasma do recorde e ver quem ganhou', (tester) async {
