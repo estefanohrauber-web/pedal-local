@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-11T00:00:00-03:00",
+  "title": "Design System: Pedalaqui",
+  "extensions": {
+    "colorMeta": {
+      "destaque": { "role": "primary", "displayName": "Verde Pedalaqui", "canonical": "#138A52", "tonalRamp": ["#0B3D25", "#0E6B3F", "#138A52", "#1FB866", "#7CCB9E", "#B9E3CB", "#E3F4EA", "#F3FAF6"] },
+      "destaque-texto": { "role": "primary", "displayName": "Verde Fundo de Mata", "canonical": "#0E6B3F", "tonalRamp": ["#062A19", "#0B3D25", "#0E6B3F", "#138A52", "#4FA97A", "#9DD3B4", "#D2ECDD", "#EEF8F2"] },
+      "destaque-suave": { "role": "primary", "displayName": "Verde Orvalho", "canonical": "#E3F4EA", "tonalRamp": ["#0B3D25", "#138A52", "#7CCB9E", "#B9E3CB", "#D2ECDD", "#E3F4EA", "#EEF8F2", "#F3FAF6"] },
+      "aqui-amarelo": { "role": "secondary", "displayName": "Amarelo do Aqui", "canonical": "#F6C445", "tonalRamp": ["#4A3500", "#7A5A00", "#B38500", "#E0AA1A", "#F6C445", "#F9D67A", "#FCE8B3", "#FEF6E0"] },
+      "fundo": { "role": "neutral", "displayName": "Névoa Verde", "canonical": "#F4F6F5", "tonalRamp": ["#14201A", "#2A3832", "#5A6660", "#8A9690", "#B8C4BD", "#E1E6E3", "#F1F4F2", "#F4F6F5"] },
+      "superficie": { "role": "neutral", "displayName": "Branco", "canonical": "#FFFFFF" },
+      "borda": { "role": "neutral", "displayName": "Borda Líquen", "canonical": "#E1E6E3", "tonalRamp": ["#14201A", "#2A3832", "#5A6660", "#8A9690", "#B8C4BD", "#D5DCD8", "#E1E6E3", "#EEF1EF"] },
+      "borda-botao": { "role": "neutral", "displayName": "Borda do Botão", "canonical": "#D5DCD8" },
+      "divisoria": { "role": "neutral", "displayName": "Divisória", "canonical": "#EEF1EF" },
+      "neutro": { "role": "neutral", "displayName": "Cinza Neutro", "canonical": "#F1F4F2" },
+      "texto": { "role": "neutral", "displayName": "Tinta", "canonical": "#14201A", "tonalRamp": ["#14201A", "#2A3832", "#3F4C46", "#5A6660", "#8A9690", "#B8C4BD", "#E1E6E3", "#F4F6F5"] },
+      "texto-suave": { "role": "neutral", "displayName": "Grafite Suave", "canonical": "#5A6660" },
+      "escuro": { "role": "neutral", "displayName": "Escuro", "canonical": "#14201A" },
+      "posicao": { "role": "tertiary", "displayName": "Azul Você Está Aqui", "canonical": "#2F6FE4", "tonalRamp": ["#0B2559", "#13398A", "#1E5BD8", "#2F6FE4", "#6A97EC", "#A3BFF3", "#D3E1F9", "#EEF3FD"] },
+      "fantasma": { "role": "tertiary", "displayName": "Roxo Fantasma", "canonical": "#6D28D9", "tonalRamp": ["#2A0F57", "#451A8C", "#6D28D9", "#7B3FE4", "#A37BEC", "#C7B0F4", "#E4D8FA", "#F5F0FD"] },
+      "aviso-fundo": { "role": "tertiary", "displayName": "Âmbar de Aviso (fundo)", "canonical": "#FFF1E0" },
+      "aviso-texto": { "role": "tertiary", "displayName": "Âmbar de Aviso (texto)", "canonical": "#8A3C00", "tonalRamp": ["#3D1A00", "#5E2900", "#8A3C00", "#D35400", "#EA6A12", "#FFB27A", "#FFD9B8", "#FFF1E0"] },
+      "calendario-tom-1": { "role": "data", "displayName": "Calendário, pouco", "canonical": "#B9E3CB" },
+      "calendario-tom-2": { "role": "data", "displayName": "Calendário, médio", "canonical": "#7CCB9E" }
+    },
+    "typographyMeta": {
+      "contador": { "displayName": "Contador", "purpose": "Número de voltas no círculo da calibração; só em telas que são um contador." },
+      "numero-pedal": { "displayName": "Número do pedal", "purpose": "TEMPO e km/h no pedal; variantes 30, 26, 24, 22 e 17 pela mesma função estiloNumero." },
+      "titulo": { "displayName": "Título", "purpose": "Título de página no conteúdo." },
+      "numero-medio": { "displayName": "Número médio", "purpose": "km feitos no topo do pedal e MetricTile." },
+      "secao": { "displayName": "Seção", "purpose": "Títulos de seção." },
+      "corpo-forte": { "displayName": "Corpo forte", "purpose": "Nome de item e título de assunto." },
+      "subtitulo": { "displayName": "Subtítulo", "purpose": "Explicações sob títulos." },
+      "suave": { "displayName": "Suave", "purpose": "Resumos de linha e notas." },
+      "rotulo": { "displayName": "Rótulo", "purpose": "Rótulos e unidades junto dos números; selo ao vivo." },
+      "botao": { "displayName": "Botão", "purpose": "Texto dos botões, herdado do tema via labelLarge." },
+      "aba": { "displayName": "Aba", "purpose": "Rótulos da barra de abas; 700 quando ativa." }
+    },
+    "shadows": [
+      { "name": "brilho-pedalar", "value": "0 3px 12px rgba(19,138,82,0.4)", "purpose": "Material elevation 6 com sombra verde a 40 %; só o botão central de pedalar." },
+      { "name": "sobre-mapa", "value": "0 0 4px rgba(0,0,0,0.2)", "purpose": "Marcadores e controles flutuando sobre o mapa (elevation 2 a 8 no Material)." }
+    ],
+    "motion": [
+      { "name": "logo-traco", "value": "progresso 0 a 1 ao longo do traço, nome revelado pela ponta mais à direita", "purpose": "Abertura: a rota da logo se desenha e o nome acompanha." },
+      { "name": "logo-anel", "value": "anel de 9 a 33 no quadro de 200, opacidade 0.75 a 0", "purpose": "Sinal de 'você está aqui' saindo da bolinha amarela." }
+    ],
+    "breakpoints": [
+      { "name": "telefone", "value": "360dp" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Começar ou seguir; pílula verde de 52 dp em largura total.",
+      "html": "<button class=\"ds-btn-primary\">Pronto, pedalar</button>",
+      "css": ".ds-btn-primary { background: #138A52; color: #fff; min-height: 52px; padding: 0 24px; border: none; border-radius: 999px; font: 700 16px 'Plus Jakarta Sans', sans-serif; width: 100%; transition: filter 0.15s; } .ds-btn-primary:hover { filter: brightness(1.08); } .ds-btn-primary:active { filter: brightness(0.92); } .ds-btn-primary:focus-visible { outline: 3px solid #0E6B3F; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botão escuro",
+      "kind": "button",
+      "refersTo": "button-dark",
+      "description": "Pausar ou concluir dentro de uma tarefa.",
+      "html": "<button class=\"ds-btn-dark\">Pausar</button>",
+      "css": ".ds-btn-dark { background: #14201A; color: #fff; min-height: 52px; min-width: 116px; padding: 0 16px; border: none; border-radius: 999px; font: 700 16px 'Plus Jakarta Sans', sans-serif; transition: background 0.15s; } .ds-btn-dark:hover { background: #2A3832; } .ds-btn-dark:focus-visible { outline: 3px solid #138A52; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botão contornado",
+      "kind": "button",
+      "refersTo": "button-outlined",
+      "description": "Alternativa ao principal: Concluir, Mais dados, Encerrar.",
+      "html": "<button class=\"ds-btn-outlined\">Concluir</button>",
+      "css": ".ds-btn-outlined { background: transparent; color: #14201A; min-height: 52px; padding: 0 24px; border: 1px solid #D5DCD8; border-radius: 999px; font: 700 15px 'Plus Jakarta Sans', sans-serif; transition: background 0.15s; } .ds-btn-outlined:hover { background: #F1F4F2; } .ds-btn-outlined:focus-visible { outline: 3px solid #138A52; outline-offset: 2px; }"
+    },
+    {
+      "name": "Cartão com linhas de assunto",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Cartão branco de canto 20 com itens separados por divisória; cada linha diz o valor atual.",
+      "html": "<div class=\"ds-card\"><a class=\"ds-row\" href=\"#\"><span class=\"ds-tile\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M11 5 6 9H2v6h4l5 4V5z\"/><path d=\"M15.5 8.5a5 5 0 0 1 0 7\"/></svg></span><span class=\"ds-txt\"><b>Voz</b><small>Ligada · voz automática</small></span><span class=\"ds-chev\">&#8250;</span></a><a class=\"ds-row\" href=\"#\"><span class=\"ds-tile\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></span><span class=\"ds-txt\"><b>Treinos</b><small>FTP 210 W</small></span><span class=\"ds-chev\">&#8250;</span></a></div>",
+      "css": ".ds-card { background: #fff; border: 1px solid #E1E6E3; border-radius: 20px; overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif; } .ds-row { display: flex; align-items: center; gap: 12px; padding: 16px; color: #14201A; text-decoration: none; } .ds-row + .ds-row { border-top: 1px solid #EEF1EF; } .ds-row:hover { background: #F4F6F5; } .ds-row:focus-visible { outline: 3px solid #138A52; outline-offset: -3px; } .ds-tile { width: 44px; height: 44px; border-radius: 12px; background: #E3F4EA; color: #0E6B3F; display: grid; place-items: center; flex: none; } .ds-txt { flex: 1; display: flex; flex-direction: column; } .ds-txt b { font-weight: 700; font-size: 15px; } .ds-txt small { font-size: 13px; color: #5A6660; } .ds-chev { color: #5A6660; font-size: 24px; }"
+    },
+    {
+      "name": "Faixa de aviso",
+      "kind": "custom",
+      "refersTo": "banner-aviso",
+      "description": "Aviso durante o pedal: subida chegando, bike parada, pausa.",
+      "html": "<div class=\"ds-aviso\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\"><path d=\"M3 17l6-6 4 4 8-8\"/><path d=\"M14 7h7v7\"/></svg><span>Subida de 6% chegando: aumente a carga</span></div>",
+      "css": ".ds-aviso { display: flex; align-items: center; gap: 10px; padding: 10px 8px 10px 14px; background: #FFF1E0; color: #8A3C00; border-radius: 16px; font: 700 15px 'Plus Jakarta Sans', sans-serif; }"
+    },
+    {
+      "name": "Números do pedal",
+      "kind": "custom",
+      "refersTo": "card-map-overlay",
+      "description": "Cartão de baixo do pedal: TEMPO e km/h em ExtraBold tabular 40, velocidade em verde.",
+      "html": "<div class=\"ds-ride\"><div><small>TEMPO</small><strong>5:12</strong></div><div class=\"ds-r\"><small>km/h</small><strong class=\"ds-g\">24,5</strong></div><p><b>66</b> rpm <b>173</b> watts <b>4%</b> inclinação</p></div>",
+      "css": ".ds-ride { background: #fff; border: 1px solid #E1E6E3; border-radius: 18px; padding: 16px; display: grid; grid-template-columns: 1fr 1fr; font-family: 'Plus Jakarta Sans', sans-serif; color: #14201A; } .ds-ride small { display: block; font-size: 12px; font-weight: 700; color: #5A6660; } .ds-ride strong { font-size: 40px; font-weight: 800; line-height: 1.05; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; } .ds-r { text-align: right; } .ds-g { color: #138A52; } .ds-ride p { grid-column: 1 / -1; margin: 8px 0 0; font-size: 12px; font-weight: 700; color: #5A6660; } .ds-ride p b { font-size: 17px; font-weight: 800; color: #14201A; margin-left: 12px; } .ds-ride p b:first-child { margin-left: 0; }"
+    },
+    {
+      "name": "Barra de abas com botão de pedalar",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "Cinco posições iguais; o círculo verde central sobe 14 dp com brilho verde.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab\" href=\"#\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M3 11 12 4l9 7v9h-6v-6H9v6H3z\"/></svg>Início</a><a class=\"ds-tab\" href=\"#\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"m15 9-2 4-4 2 2-4z\"/></svg>Explorar</a><button class=\"ds-go\" aria-label=\"Pedalar\"><svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"#fff\"><path d=\"M8 5.5v13l10-6.5z\"/></svg></button><a class=\"ds-tab\" href=\"#\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><rect x=\"4\" y=\"10\" width=\"4\" height=\"10\" rx=\"2\"/><rect x=\"10\" y=\"4\" width=\"4\" height=\"16\" rx=\"2\"/><rect x=\"16\" y=\"13\" width=\"4\" height=\"7\" rx=\"2\"/></svg>Treinos</a><a class=\"ds-tab ds-on\" href=\"#\" aria-current=\"page\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 20c1-4 4-6 8-6s7 2 8 6\"/></svg>Você</a></nav>",
+      "css": ".ds-tabs { display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; background: #fff; border-top: 1px solid #E1E6E3; padding: 6px 0; font-family: 'Plus Jakarta Sans', sans-serif; } .ds-tab { min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 600; color: #5A6660; text-decoration: none; border-radius: 12px; } .ds-tab:hover { background: #F4F6F5; } .ds-tab:focus-visible { outline: 3px solid #138A52; } .ds-on { color: #138A52; font-weight: 700; } .ds-go { justify-self: center; width: 62px; height: 62px; border-radius: 50%; border: none; background: #138A52; transform: translateY(-14px); box-shadow: 0 3px 12px rgba(19,138,82,0.4); display: grid; place-items: center; cursor: pointer; } .ds-go:hover { filter: brightness(1.08); } .ds-go:focus-visible { outline: 3px solid #0E6B3F; outline-offset: 3px; }"
+    },
+    {
+      "name": "Selo escuro sobre o mapa",
+      "kind": "chip",
+      "refersTo": "chip-escuro",
+      "description": "Pílula escura por cima do mapa: chegada, diferença para o fantasma.",
+      "html": "<span class=\"ds-selo\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"#fff\"><path d=\"M5 3v18h2v-7h9l-1.5-3.5L16 7H7V3z\"/></svg>Chegada · Entre pontes</span>",
+      "css": ".ds-selo { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; background: #14201A; color: #fff; border-radius: 999px; font: 800 13px 'Plus Jakarta Sans', sans-serif; }"
+    },
+    {
+      "name": "Dias do calendário",
+      "kind": "custom",
+      "refersTo": "calendario-tom-1",
+      "description": "Dias pedalados em três tons de verde; escolhido com anel escuro.",
+      "html": "<div class=\"ds-cal\"><span class=\"ds-d t1\">5</span><span class=\"ds-d t2\">6</span><span class=\"ds-d\">7</span><span class=\"ds-d t3\">8</span><span class=\"ds-d\">9</span><span class=\"ds-d t1 sel\">10</span><span class=\"ds-d fut\">12</span></div>",
+      "css": ".ds-cal { display: grid; grid-template-columns: repeat(7, 44px); font: 600 13px 'Plus Jakarta Sans', sans-serif; } .ds-d { width: 34px; height: 34px; margin: 5px; border-radius: 50%; display: grid; place-items: center; color: #14201A; box-sizing: border-box; } .t1 { background: #B9E3CB; color: #0E6B3F; font-weight: 800; } .t2 { background: #7CCB9E; color: #0B3D25; font-weight: 800; } .t3 { background: #138A52; color: #fff; font-weight: 800; } .sel { border: 2px solid #14201A; } .fut { color: #B8C4BD; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "O bairro no guidão",
+    "overview": "Pedalaqui é um app claro e amigável para ser lido de relance, com o celular no suporte do guidão a uns 50 cm do rosto, à noite, por alguém suando. Tudo serve a essa leitura: um fundo verde-acinzentado muito claro, cartões brancos de borda fina, um único verde que carrega progresso, ação e \"está funcionando\", e números grandes em Plus Jakarta Sans ExtraBold com algarismos de largura fixa. O mapa do bairro é o protagonista sempre que há um; os cartões flutuam por cima dele em vez de espremê-lo.\n\nA densidade é baixa e os toques são grandes: botões de pílula com 52 dp de altura, alvos de 44 a 62 dp, um círculo de 220 dp quando a tela é um contador. Texto é português do Brasil simples; os rótulos dizem o valor atual (\"Ligada · voz automática\") em vez de pedir que a pessoa abra para descobrir.\n\nA marca é uma rota que vira um pino de mapa: um traço verde contínuo com uma bolinha amarela no lugar do \"aqui\". Esse vocabulário (linha de rota, ponto de saída, pino, bandeira de chegada) é o desenho próprio do app e reaparece no mapa, no resumo e no histórico.",
+    "keyCharacteristics": [
+      "Um só verde de ação (destaque) sobre neutros verdes-acinzentados; amarelo só na marca.",
+      "Números do pedal em ExtraBold tabular, o maior elemento da tela.",
+      "Cartões brancos planos com borda fina; sem sombras, exceto o botão de pedalar e o que flutua sobre o mapa.",
+      "Pílulas para tudo que se toca; cantos generosos (20 nos cartões, 24 nas folhas).",
+      "Desenhos próprios do mundo da rota: traço da logo, ponto de saída, bandeira quadriculada."
+    ],
+    "rules": [
+      { "name": "The Um Verde Rule", "body": "Só existe um verde de ação. Tudo que é tocável e principal, tudo que mostra progresso e tudo que diz \"está certo\" é destaque; texto verde pequeno usa destaque-texto.", "section": "colors" },
+      { "name": "The Amarelo é Marca Rule", "body": "O amarelo do \"aqui\" aparece só na logo e no ícone. Avisos são âmbar (aviso-fundo/aviso-texto), nunca o amarelo da marca.", "section": "colors" },
+      { "name": "The Escuro Confirma Rule", "body": "Dentro de uma tarefa em andamento, o botão que conclui ou pausa é escuro; o verde fica para começar e seguir (\"Pronto, pedalar\", \"Fazer a volta\").", "section": "colors" },
+      { "name": "The Número Tabular Rule", "body": "Todo número que muda durante o pedal é ExtraBold com algarismos tabulares e encolhe (FittedBox) em vez de quebrar linha. Unidade e rótulo vão menores e em texto-suave ao lado.", "section": "typography" },
+      { "name": "The Peso Antes do Tamanho Rule", "body": "Hierarquia vem primeiro do peso (800/700/400) e da cor (texto/texto-suave), depois do tamanho. Não há caixa-alta decorativa nem espaçamento largo de letras; o único rótulo em caixa-alta é \"TEMPO\", um rótulo de dado sobre o número, não um título.", "section": "typography" },
+      { "name": "The Plano Por Padrão Rule", "body": "Superfície sobre o fundo do app não tem sombra; usa branco e borda. Sombra é para o botão de pedalar e para o que precisa se destacar do mapa.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar `estiloNumero` (ExtraBold, tabular, -0.5) para todo número do pedal e `estiloRotulo` para o rótulo dele.",
+      "Do usar o verde destaque para começar e seguir, e o escuro para pausar ou concluir dentro de uma tarefa.",
+      "Do agrupar itens de lista num cartão branco de canto 20 com divisórias, e mostrar o valor atual em cada linha.",
+      "Do deixar o mapa ocupar a tela e flutuar cartões de canto 18 por cima dele.",
+      "Do usar faixas âmbar para aviso e verde-claro para sucesso, com texto Bold.",
+      "Do desenhar marcas de mapa e de chegada com os desenhos próprios (ponto de saída, bandeira, traço da logo).",
+      "Do manter alvos de toque de 44 dp ou mais e botões de 52 dp, com alturas que crescem com a fonte do sistema."
+    ],
+    "donts": [
+      "Don't usar o amarelo da marca em interface ou aviso.",
+      "Don't pôr sombra em cartões e folhas sobre o fundo do app; só o botão de pedalar e o que flutua sobre o mapa têm sombra.",
+      "Don't introduzir um segundo verde de ação, nem cores de dados (rotas, zonas, calor) como cor de interface.",
+      "Don't escrever setas, símbolos ou caracteres como ícone (por exemplo \"↑\" para subida); use ícones do Material ou desenhos próprios.",
+      "Don't pôr textos-rótulo em caixa-alta acima de títulos; a hierarquia vem do peso.",
+      "Don't usar negrito sintético para o nome Pedalaqui; use Plus Jakarta Sans ExtraBold real."
+    ]
+  }
+}
