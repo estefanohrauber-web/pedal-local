@@ -4,6 +4,19 @@ import '../../bike/sim_source.dart';
 import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 
+/// Números do pedal: ExtraBold, algarismos de largura igual (não pulam quando mudam).
+TextStyle estiloNumero(double tamanho, {Color cor = AppColors.texto}) => TextStyle(
+      fontSize: tamanho,
+      height: 1.05,
+      fontWeight: FontWeight.w800,
+      letterSpacing: -0.5,
+      color: cor,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+
+/// Rótulo pequeno em cima dos números (“TEMPO”, “km/h”).
+const estiloRotulo = TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textoSuave);
+
 /// Faixa de aviso no topo do pedal (queda da bike, subida chegando, pausa).
 class AvisoFaixa extends StatelessWidget {
   const AvisoFaixa({super.key, required this.texto, this.acao, this.onAcao, this.icone});
@@ -139,36 +152,7 @@ class RideControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.borda),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton.filledTonal(
-                  tooltip: 'Diminuir carga',
-                  onPressed: () => onLevel(-1),
-                  icon: const Icon(Icons.remove),
-                ),
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text('Carga $level', style: AppText.corpoForte),
-                  ),
-                ),
-                IconButton.filledTonal(
-                  tooltip: 'Aumentar carga',
-                  onPressed: () => onLevel(1),
-                  icon: const Icon(Icons.add),
-                ),
-              ],
-            ),
-          ),
-        ),
+        Expanded(child: CargaControle(rotulo: 'Carga $level', onLevel: onLevel)),
         const SizedBox(width: 10),
         FilledButton(
           style: FilledButton.styleFrom(
@@ -180,6 +164,46 @@ class RideControls extends StatelessWidget {
           child: Text(paused ? 'Continuar' : 'Pausar'),
         ),
       ],
+    );
+  }
+}
+
+/// Pílula com − e + para acompanhar a carga (ou o botão de peso) da bike.
+class CargaControle extends StatelessWidget {
+  const CargaControle({super.key, required this.rotulo, required this.onLevel});
+
+  final String rotulo;
+  final void Function(int delta) onLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.borda),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton.filledTonal(
+            tooltip: 'Diminuir carga',
+            onPressed: () => onLevel(-1),
+            icon: const Icon(Icons.remove),
+          ),
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(rotulo, style: AppText.corpoForte),
+            ),
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Aumentar carga',
+            onPressed: () => onLevel(1),
+            icon: const Icon(Icons.add),
+          ),
+        ],
+      ),
     );
   }
 }

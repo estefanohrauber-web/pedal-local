@@ -5,27 +5,30 @@ import 'package:flutter/material.dart';
 import '../../domain/route_profile.dart';
 import '../theme/app_theme.dart';
 
-/// Perfil de relevo da rota, com marcador opcional na distância percorrida.
+/// Perfil de relevo da rota, com marcador opcional na distância percorrida. Com [progress], vira
+/// barra de progresso: o que já foi pedalado fica verde e o resto, cinza (sem a faixa de altitude).
 class ElevationChart extends StatelessWidget {
-  const ElevationChart({super.key, required this.profile, this.marker});
+  const ElevationChart({super.key, required this.profile, this.marker, this.progress});
 
   final RouteProfile profile;
   final double? marker;
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       label: 'Perfil de relevo da rota',
-      child: CustomPaint(painter: _ElevationPainter(profile, marker), child: const SizedBox.expand()),
+      child: CustomPaint(painter: _ElevationPainter(profile, marker, progress), child: const SizedBox.expand()),
     );
   }
 }
 
 class _ElevationPainter extends CustomPainter {
-  _ElevationPainter(this.profile, this.marker);
+  _ElevationPainter(this.profile, this.marker, this.progress);
 
   final RouteProfile profile;
   final double? marker;
+  final double? progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -40,8 +43,9 @@ class _ElevationPainter extends CustomPainter {
     final meio = (altMin + altMax) / 2;
     final minimo = math.min(altMin, meio - 5);
     final maximo = math.max(altMax, meio + 5);
+    final feito = progress;
     const topo = 6.0;
-    final base = size.height - 16;
+    final base = feito == null ? size.height - 16 : size.height;
     double x(double d) => d / distance * size.width;
     double y(double a) => topo + (1 - (a - minimo) / (maximo - minimo)) * (base - topo);
 
@@ -53,6 +57,17 @@ class _ElevationPainter extends CustomPainter {
       ..lineTo(size.width, base)
       ..lineTo(0, base)
       ..close();
+
+    if (feito != null) {
+      final ate = x(feito.clamp(0, distance).toDouble());
+      canvas.drawPath(area, Paint()..color = AppColors.borda);
+      canvas.save();
+      canvas.clipRect(Rect.fromLTRB(0, 0, ate, size.height));
+      canvas.drawPath(area, Paint()..color = AppColors.destaque);
+      canvas.restore();
+      canvas.drawLine(Offset(ate, 0), Offset(ate, size.height), Paint()..color = AppColors.texto..strokeWidth = 2);
+      return;
+    }
     canvas.drawPath(area, Paint()..color = AppColors.destaque.withValues(alpha: 0.18));
     canvas.drawPath(
       linha,
@@ -90,5 +105,6 @@ class _ElevationPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ElevationPainter old) => old.profile != profile || old.marker != marker;
+  bool shouldRepaint(_ElevationPainter old) =>
+      old.profile != profile || old.marker != marker || old.progress != progress;
 }

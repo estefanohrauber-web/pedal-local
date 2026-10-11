@@ -86,6 +86,8 @@ ThemeData buildAppTheme({TextTheme? textTheme}) {
     textTheme: textTheme,
   );
   const pill = StadiumBorder();
+  // O texto dos botões com a fonte do tema (sem isso, sai na fonte padrão do Android).
+  final rotulo = base.textTheme.labelLarge ?? const TextStyle();
   return base.copyWith(
     cardTheme: CardThemeData(
       color: AppColors.superficie,
@@ -102,7 +104,7 @@ ThemeData buildAppTheme({TextTheme? textTheme}) {
         foregroundColor: Colors.white,
         minimumSize: const Size(48, 52),
         shape: pill,
-        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        textStyle: rotulo.copyWith(fontWeight: FontWeight.w700, fontSize: 16),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -111,7 +113,7 @@ ThemeData buildAppTheme({TextTheme? textTheme}) {
         minimumSize: const Size(48, 52),
         shape: pill,
         side: const BorderSide(color: Color(0xFFD5DCD8)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        textStyle: rotulo.copyWith(fontWeight: FontWeight.w700, fontSize: 15),
       ),
     ),
     appBarTheme: const AppBarTheme(

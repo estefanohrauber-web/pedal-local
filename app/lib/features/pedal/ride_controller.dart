@@ -112,6 +112,9 @@ class RideView {
     this.grade = 0,
     this.movingTime = 0,
     this.kcal = 0,
+    this.avgSpeedKmh = 0,
+    this.avgPower = 0,
+    this.climbed = 0,
     this.level = 4,
     this.estimating = false,
     this.pausedByBike = false,
@@ -147,6 +150,11 @@ class RideView {
   final double grade;
   final double movingTime;
   final double kcal;
+  final double avgSpeedKmh;
+  final double avgPower;
+
+  /// Metros subidos até agora.
+  final double climbed;
   final int level;
   final bool estimating;
   final bool pausedByBike;
@@ -679,6 +687,9 @@ class RideController extends Notifier<RideView> {
       grade: snap.grade,
       movingTime: snap.movingTime,
       kcal: snap.kcal,
+      avgSpeedKmh: snap.avgSpeedKmh,
+      avgPower: snap.avgPower,
+      climbed: snap.climbed,
       level: _level,
       estimating: _resolver?.effectiveMode == PowerMode.estimada,
       pausedByBike: _pausedByBike,

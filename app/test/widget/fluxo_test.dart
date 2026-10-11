@@ -64,11 +64,19 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Encerrar'), findsOneWidget);
-    expect(find.text('Carga 4'), findsOneWidget);
+    expect(find.text('TEMPO'), findsOneWidget);
+    expect(find.text('DISTÂNCIA'), findsOneWidget);
 
+    // A carga fica em “Mais dados”.
+    await tester.tap(find.text('Mais dados'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Carga 4'), findsOneWidget);
     await tester.tap(find.byTooltip('Aumentar carga'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Carga 5'), findsOneWidget);
+    Navigator.of(tester.element(find.text('Carga 5'))).pop();
+    await tester.pump(const Duration(milliseconds: 400));
 
     await tester.tap(find.text('Pausar'));
     await tester.pump(const Duration(milliseconds: 300));

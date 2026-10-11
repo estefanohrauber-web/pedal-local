@@ -3,15 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../bike/bike_controller.dart';
-import '../../bike/sim_source.dart';
 import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/power_chart.dart';
 import '../../domain/ride_session.dart';
+import '../bike/selo_ao_vivo.dart';
+import '../pedal/mais_dados_sheet.dart';
 import '../pedal/ride_controller.dart';
 import '../pedal/ride_widgets.dart';
 
+/// Pedal livre (sem rota): tempo e distância grandes, a velocidade em destaque, giro e watts, a
+/// potência dos últimos minutos; o resto em “Mais dados”.
 class PedalLivreScreen extends ConsumerStatefulWidget {
   const PedalLivreScreen({super.key});
 
@@ -25,7 +28,9 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(rideProvider(RideTarget.livre).notifier).start());
+    Future.microtask(
+      () => ref.read(rideProvider(RideTarget.livre).notifier).start(),
+    );
   }
 
   Future<void> _encerrar() async {
@@ -42,7 +47,6 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
   Widget build(BuildContext context) {
     final v = ref.watch(rideProvider(RideTarget.livre));
     final bike = ref.watch(bikeControllerProvider);
-    final source = bike.source;
     final ctrl = ref.read(rideProvider(RideTarget.livre).notifier);
     return PopScope(
       canPop: false,
@@ -58,60 +62,87 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
               children: [
                 Row(
                   children: [
-                    const Expanded(child: Text('Pedal livre', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800))),
-                    if (v.started) BotaoVoz(ligada: v.voiceOn, onTap: ctrl.toggleVoice),
-                    OutlinedButton(onPressed: _encerrar, child: const Text('Encerrar')),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pedal livre',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SeloAoVivo(),
+                        ],
+                      ),
+                    ),
+                    if (v.started)
+                      BotaoVoz(ligada: v.voiceOn, onTap: ctrl.toggleVoice),
+                    OutlinedButton(
+                      onPressed: _encerrar,
+                      child: const Text('Encerrar'),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 if (v.pausedByBike)
                   AvisoFaixa(
-                    texto: bike.message ?? 'A bike desconectou. Tentando reconectar…',
+                    texto:
+                        bike.message ??
+                        'A bike desconectou. Tentando reconectar…',
                     acao: 'Reconectar',
-                    onAcao: () => ref.read(bikeControllerProvider.notifier).reconnectNow(),
+                    onAcao: () => ref
+                        .read(bikeControllerProvider.notifier)
+                        .reconnectNow(),
                   )
                 else if (v.state == RideState.pausado)
-                  const AvisoFaixa(texto: 'Pedal pausado. Toque em Continuar para seguir.')
+                  const AvisoFaixa(
+                    texto: 'Pedal pausado. Toque em Continuar para seguir.',
+                  )
                 else if (v.estimating)
-                  const AvisoFaixa(texto: 'A bike não manda potência: estimando pela carga.'),
+                  const AvisoFaixa(
+                    texto: 'A bike não manda potência: estimando pela carga.',
+                  ),
                 AppCard(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: Column(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        formatNumber(v.speedKmh, 1),
-                        style: const TextStyle(
-                          fontSize: 64,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.destaque,
-                          fontFeatures: [FontFeature.tabularFigures()],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('TEMPO', style: estiloRotulo),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                formatTime(v.movingTime),
+                                style: estiloNumero(40),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const Text('km/h', style: AppText.suave),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                AppCard(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                  child: Column(
-                    children: [
-                      Row(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Expanded(child: MetricTile(value: formatNumber(v.power), label: 'watts')),
-                          Expanded(child: MetricTile(value: formatNumber(v.cadence), label: 'rpm')),
-                          Expanded(child: MetricTile(value: formatTime(v.movingTime), label: 'tempo')),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(child: MetricTile(value: formatNumber(v.distance / 1000, 2), label: 'km')),
-                          Expanded(child: MetricTile(value: formatNumber(v.kcal), label: 'kcal')),
-                          Expanded(
-                            child: MetricTile(
-                              value: v.heartRate == null ? '—' : formatNumber(v.heartRate!),
-                              label: 'bpm',
+                          const Text('DISTÂNCIA', style: estiloRotulo),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: formatNumber(v.distance / 1000, 2),
+                                  style: estiloNumero(40),
+                                ),
+                                const TextSpan(
+                                  text: ' km',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textoSuave,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -119,13 +150,59 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+                AppCard(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                formatNumber(v.speedKmh, 1),
+                                style: estiloNumero(
+                                  56,
+                                  cor: AppColors.destaque,
+                                ),
+                              ),
+                            ),
+                            const Text('km/h', style: estiloRotulo),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: MetricTile(
+                          value: formatNumber(v.cadence),
+                          label: 'rpm',
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: MetricTile(
+                          value: formatNumber(v.power),
+                          label: v.estimating ? 'watts (est.)' : 'watts',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Expanded(
                   child: AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Potência nos últimos minutos', style: AppText.suave),
+                        const Text(
+                          'Potência nos últimos minutos',
+                          style: AppText.suave,
+                        ),
                         const SizedBox(height: 8),
                         Expanded(child: PowerChart(values: v.powerHistory)),
                       ],
@@ -133,13 +210,31 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (source is SimSource) SimControls(source: source),
-                RideControls(
-                  level: v.level,
-                  paused: v.state == RideState.pausado,
-                  enabled: v.started,
-                  onLevel: ctrl.changeLevel,
-                  onPause: ctrl.togglePause,
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () =>
+                            mostrarMaisDados(context, RideTarget.livre),
+                        icon: const Icon(Icons.expand_less),
+                        label: const Text('Mais dados'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.escuro,
+                        minimumSize: const Size(116, 52),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      onPressed: v.started && !_encerrando
+                          ? ctrl.togglePause
+                          : null,
+                      child: Text(
+                        v.state == RideState.pausado ? 'Continuar' : 'Pausar',
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -158,8 +253,14 @@ Future<bool> confirmarEncerrar(BuildContext context) async {
       title: const Text('Encerrar o pedal?'),
       content: const Text('O pedal vai ser salvo no seu histórico.'),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Continuar pedalando')),
-        FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Encerrar')),
+        TextButton(
+          onPressed: () => Navigator.pop(c, false),
+          child: const Text('Continuar pedalando'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(c, true),
+          child: const Text('Encerrar'),
+        ),
       ],
     ),
   );
