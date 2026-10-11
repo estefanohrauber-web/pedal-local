@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -85,7 +83,8 @@ class _Contagem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pilulas = math.max(8, voltas + 1);
+    final pilulas =
+        voltas + 1; // as feitas e a próxima (o total, só o botão sabe)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

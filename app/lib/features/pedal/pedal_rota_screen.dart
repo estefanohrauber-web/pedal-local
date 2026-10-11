@@ -249,6 +249,10 @@ class _CartaoCaminho extends StatelessWidget {
     final temTotal = total.isFinite && total > 0;
     final fracao = temTotal ? (feito / total).clamp(0.0, 1.0) : 0.0;
     final falta = temTotal ? (total - feito).clamp(0.0, total) : 0.0;
+    // Na ida, quanto tempo falta para chegar, na velocidade média até aqui.
+    final chegaEm = !v.isLoop && falta > 0 && v.avgSpeedKmh > 1
+        ? ' · ${formatTime(falta / 1000 / v.avgSpeedKmh * 3600)}'
+        : '';
     return _Cartao(
       padding: const EdgeInsets.fromLTRB(14, 10, 10, 12),
       child: Column(
@@ -321,7 +325,7 @@ class _CartaoCaminho extends StatelessWidget {
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
-                    'faltam ${formatKm(falta)}',
+                    'faltam ${formatKm(falta)}$chegaEm',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
@@ -479,7 +483,10 @@ class _CartaoEsforco extends StatelessWidget {
                 valor: formatNumber(v.power),
                 rotulo: v.estimating ? 'watts (estimado)' : 'watts',
               ),
-              _Par(valor: '${formatNumber(v.grade * 100)}%', rotulo: 'agora'),
+              _Par(
+                valor: '${formatNumber(v.grade * 100)}%',
+                rotulo: 'inclinação',
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -546,8 +553,7 @@ class _Cartao extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: AppColors.superficie,
-    elevation: 2,
-    shadowColor: Colors.black26,
+    elevation: 0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(18),
       side: const BorderSide(color: AppColors.borda),

@@ -30,9 +30,6 @@ class MaisDados extends ConsumerWidget {
     final v = ref.watch(rideProvider(target));
     final ctrl = ref.read(rideProvider(target).notifier);
     final fonte = ref.watch(bikeControllerProvider).source;
-    final falta = v.isRoute && !v.isLoop && v.total.isFinite
-        ? v.total - v.distance
-        : null;
     final media = v.avgSpeedKmh;
     final dados = <(String, String)>[
       (formatNumber(v.kcal), 'calorias'),
@@ -41,8 +38,6 @@ class MaisDados extends ConsumerWidget {
       ('${formatNumber(v.climbed)} m', 'de subida'),
       (v.heartRate == null ? '—' : formatNumber(v.heartRate!), 'batimentos'),
       if (v.isRoute) ('${formatNumber(v.grade * 100, 1)}%', 'inclinação'),
-      if (falta != null && falta > 0 && media > 1)
-        (formatTime(falta / 1000 / media * 3600), 'para chegar'),
       if (v.isLoop)
         ('${v.lapsDone}', v.lapsDone == 1 ? 'volta feita' : 'voltas feitas'),
     ];

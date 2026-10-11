@@ -28,7 +28,7 @@ class RideTile extends ConsumerWidget {
     final titulo = ride.completed ? base : '$base · incompleto';
     final extras = [
       '${formatNumber(ride.avgPowerW)} W',
-      if (ride.gainM >= 1) '↑ ${formatNumber(ride.gainM)} m',
+      if (ride.gainM >= 1) '${formatNumber(ride.gainM)} m de subida',
       if (ride.loop && ride.laps >= 1) ride.laps == 1 ? '1 volta' : '${ride.laps} voltas',
     ];
     final track = ride.track;

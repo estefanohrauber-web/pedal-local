@@ -325,12 +325,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Rua curta'), findsOneWidget);
 
-    for (var i = 0; i < 120 && find.text('Rota concluída!').evaluate().isEmpty; i++) {
+    for (var i = 0; i < 120 && find.text('Pedal concluído').evaluate().isEmpty; i++) {
       bike.emitReading(BikeReading(cadence: 85, power: 250, timestamp: clock.now()));
       await tester.pump(const Duration(milliseconds: 500));
     }
     await tester.pumpAndSettle();
-    expect(find.text('Rota concluída!'), findsOneWidget);
+    expect(find.text('Pedal concluído'), findsOneWidget);
     final pedal = (await rides.recent()).single;
     expect(pedal.mode, RideMode.rota);
     expect(pedal.routeId, 'r1');
@@ -369,7 +369,7 @@ void main() {
     container.read(appRouterProvider).go('/pedal-rota/r1');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    for (var i = 0; i < 120 && find.text('Rota concluída!').evaluate().isEmpty; i++) {
+    for (var i = 0; i < 120 && find.text('Pedal concluído').evaluate().isEmpty; i++) {
       bike.emitReading(BikeReading(cadence: 85, power: 250, timestamp: clock.now()));
       await tester.pump(const Duration(milliseconds: 500));
     }
@@ -408,7 +408,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Lado a lado com o fantasma'), findsOneWidget);
 
-    for (var i = 0; i < 120 && find.text('Rota concluída!').evaluate().isEmpty; i++) {
+    for (var i = 0; i < 120 && find.text('Pedal concluído').evaluate().isEmpty; i++) {
       bike.emitReading(BikeReading(cadence: 85, power: 250, timestamp: clock.now()));
       await tester.pump(const Duration(milliseconds: 500));
       if (i == 8) {
@@ -417,7 +417,7 @@ void main() {
       }
     }
     await tester.pumpAndSettle();
-    expect(find.text('Rota concluída!'), findsOneWidget);
+    expect(find.text('Pedal concluído'), findsOneWidget);
     expect(find.text('Você venceu o fantasma!'), findsOneWidget);
   });
 

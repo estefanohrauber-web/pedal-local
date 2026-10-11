@@ -12,5 +12,5 @@ THESIS: o app conta as voltas por você: gire com uma mão, toque com a outra. R
 OWN-WORLD: mundo Pedalaqui; um círculo verde grande (220 dp) como alvo de toque com o número de voltas em ExtraBold 84; pílulas de progresso; botão escuro de confirmação.
 STORY: começa no mais leve, gira e toca a cada volta inteira, termina no mais pesado; depois o app guia "gire mais 2 voltas" nas subidas e conta o peso nos watts.
 FIRST VIEWPORT: título "Toque a cada volta completa", instrução curta, círculo-contador, pílulas, "Desfazer o último toque", botão "Cheguei no mais pesado".
-FORM: versão B (toque a cada volta) de 3 mostradas no chat, escolhida em 11/10/2026; sem concept-seed.
+FORM: versão B (toque a cada volta) de 3 mostradas no chat, escolhida em 11/10/2026; sem concept-seed: o dono pediu “me apresente 3 versões aqui no claude antes de executar no app”, e a escolha dele entre as 3 substituiu o sorteio.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

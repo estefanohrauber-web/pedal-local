@@ -115,13 +115,7 @@ class _ConteudoState extends ConsumerState<_Conteudo> {
     // volta”) vem primeiro; a análise continua embaixo.
     final chegada = widget.novo && ride.mode == RideMode.rota && !ride.loop && ride.laps >= 1 && perfil != null;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      children: [
-        if (chegada)
-          _Chegada(ride: ride, perfil: perfil, nomeRota: rota?.name, cor: cor, fantasma: widget.ghostGap)
-        else
-          _Cabecalho(ride: ride, nomeRota: rota?.name, perfil: perfil),
+    final resto = <Widget>[
         const SizedBox(height: 14),
         if (widget.ghostGap != null && !chegada) ...[
           _ResultadoFantasma(gapS: widget.ghostGap!),
@@ -194,6 +188,17 @@ class _ConteudoState extends ConsumerState<_Conteudo> {
             label: const Text('Apagar este pedal', style: TextStyle(color: AppColors.avisoTexto)),
           ),
         ),
+    ];
+    // Na chegada, o mapa vai de ponta a ponta; o resto mantém a margem de sempre.
+    return ListView(
+      padding: chegada ? const EdgeInsets.only(bottom: 24) : const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      children: [
+        if (chegada)
+          _Chegada(ride: ride, perfil: perfil, nomeRota: rota?.name, cor: cor, fantasma: widget.ghostGap)
+        else
+          _Cabecalho(ride: ride, nomeRota: rota?.name, perfil: perfil),
+        for (final w in resto)
+          chegada ? Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: w) : w,
       ],
     );
   }
@@ -375,117 +380,130 @@ class _Chegada extends ConsumerWidget {
         Text(rotulo, style: AppText.suave),
       ],
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    // O mapa de ponta a ponta na metade de cima; a folha branca sobe por cima da borda dele.
+    return Stack(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: SizedBox(
-            height: 260,
-            child: Stack(
-              children: [
-                FlutterMap(
-                  key: const Key('mapa-chegada'),
-                  options: MapOptions(
-                    initialCenter: linha.last,
-                    initialZoom: 15,
-                    initialCameraFit: CameraFit.bounds(
-                      bounds: LatLngBounds.fromPoints(linha),
-                      padding: const EdgeInsets.fromLTRB(32, 100, 32, 28), // em cima: o selo e a bandeira
-                      maxZoom: 17,
-                    ),
-                    interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+        SizedBox(
+          height: 360,
+          child: Stack(
+            children: [
+              FlutterMap(
+                key: const Key('mapa-chegada'),
+                options: MapOptions(
+                  initialCenter: linha.last,
+                  initialZoom: 15,
+                  initialCameraFit: CameraFit.bounds(
+                    bounds: LatLngBounds.fromPoints(linha),
+                    padding: const EdgeInsets.fromLTRB(
+                      32,
+                      100,
+                      32,
+                      60,
+                    ), // em cima: o selo e a bandeira; embaixo: a folha
+                    maxZoom: 17,
                   ),
-                  children: [
-                    ...baseMapLayers(ref),
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(points: linha, strokeWidth: 10, color: Colors.white),
-                        Polyline(points: linha, strokeWidth: 6, color: cor),
-                      ],
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(point: linha.first, width: 18, height: 18, child: const PontoDeSaida()),
-                        Marker(
-                          point: linha.last,
-                          width: 32,
-                          height: 36,
-                          alignment: const Alignment(0.75, -1),
-                          child: const BandeiraChegada(),
+                  interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                ),
+                children: [
+                  ...baseMapLayers(ref),
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(points: linha, strokeWidth: 10, color: Colors.white),
+                      Polyline(points: linha, strokeWidth: 6, color: cor),
+                    ],
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(point: linha.first, width: 18, height: 18, child: const PontoDeSaida()),
+                      Marker(
+                        point: linha.last,
+                        width: 32,
+                        height: 36,
+                        alignment: const Alignment(0.75, -1),
+                        child: const BandeiraChegada(),
+                      ),
+                    ],
+                  ),
+                  // Acima da folha que sobe por cima do mapa (o crédito precisa ficar à vista).
+                  const Padding(padding: EdgeInsets.only(bottom: 34), child: MapAttribution()),
+                ],
+              ),
+              Positioned(
+                left: 10,
+                top: 10,
+                right: 10,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(color: AppColors.escuro, borderRadius: BorderRadius.circular(999)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.flag, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Chegada · $nome',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                          ),
                         ),
                       ],
                     ),
-                    mapAttribution,
-                  ],
-                ),
-                Positioned(
-                  left: 10,
-                  top: 10,
-                  right: 10,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(color: AppColors.escuro, borderRadius: BorderRadius.circular(999)),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.flag, color: Colors.white, size: 16),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              'Chegada · $nome',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text('Rota concluída!', style: AppText.titulo.copyWith(fontSize: 24)),
-        Text(
-          [formatDateTime(ride.startedAt), if (ride.reversed) 'sentido invertido'].join(' · '),
-          style: AppText.subtitulo,
-        ),
-        const SizedBox(height: 14),
-        AppCard(
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(child: numero(formatTime(ride.movingTimeS), 'tempo', 30)),
-                  Expanded(child: numero(formatKm(ride.distanceM), 'distância', 30)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: numero('${formatNumber(ride.avgSpeedKmh, 1)} km/h', 'média', 22)),
-                  Expanded(child: numero('${formatNumber(ride.avgPowerW)} W', 'potência média', 22)),
-                ],
               ),
             ],
           ),
         ),
-        if (fantasma != null) ...[const SizedBox(height: 14), _ResultadoFantasma(gapS: fantasma!)],
-        const SizedBox(height: 14),
-        FilledButton.icon(
-          key: const Key('fazer-a-volta'),
-          onPressed: () => context.go('/pedal-rota/${ride.routeId}$volta'),
-          icon: const Icon(Icons.u_turn_left),
-          label: Text('Fazer a volta · ${formatKm(perfil.distance)}'),
+        Container(
+          margin: const EdgeInsets.only(top: 330),
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 4),
+          decoration: const BoxDecoration(
+            color: AppColors.superficie,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Pedal concluído', style: AppText.titulo.copyWith(fontSize: 24)),
+              Text(
+                [formatDateTime(ride.startedAt), if (ride.reversed) 'sentido invertido'].join(' · '),
+                style: AppText.subtitulo,
+              ),
+              const SizedBox(height: 16),
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: numero(formatTime(ride.movingTimeS), 'tempo', 30)),
+                      Expanded(child: numero(formatKm(ride.distanceM), 'distância', 30)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: numero('${formatNumber(ride.avgSpeedKmh, 1)} km/h', 'média', 22)),
+                      Expanded(child: numero('${formatNumber(ride.avgPowerW)} W', 'potência média', 22)),
+                    ],
+                  ),
+                ],
+              ),
+              if (fantasma != null) ...[const SizedBox(height: 14), _ResultadoFantasma(gapS: fantasma!)],
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                key: const Key('fazer-a-volta'),
+                onPressed: () => context.go('/pedal-rota/${ride.routeId}$volta'),
+                icon: const Icon(Icons.u_turn_left),
+                label: Text('Fazer a volta · ${formatKm(perfil.distance)}'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(onPressed: () => context.go('/inicio'), child: const Text('Concluir')),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        OutlinedButton(onPressed: () => context.go('/inicio'), child: const Text('Concluir')),
       ],
     );
   }

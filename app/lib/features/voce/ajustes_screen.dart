@@ -166,7 +166,7 @@ class _Linha extends StatelessWidget {
                   if (resumo.isNotEmpty)
                     Text(
                       resumo,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppText.suave,
                     ),
@@ -380,13 +380,15 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
         title: const Text(
-          'Deixar a bike ajustar a carga',
+          'A bike segura a meta sozinha',
           style: AppText.corpoForte,
         ),
         subtitle: Text(
           voltas == null
-              ? 'Nos treinos, se a bike aceitar comando (modo ERG), ela segura a meta sozinha.'
-              : 'Com o botão calibrado, a bike é de botão manual: o app guia pela voz.',
+              ? 'Ligado: nos treinos, o app manda a meta de watts e a bike ajusta a carga, se ela '
+                    'aceitar (modo ERG). Desligado: o app só guia pela voz.'
+              : 'Desligado porque o botão de peso está calibrado: a bike é de botão manual, então '
+                    'o app guia pela voz.',
           style: AppText.suave,
         ),
         value:
