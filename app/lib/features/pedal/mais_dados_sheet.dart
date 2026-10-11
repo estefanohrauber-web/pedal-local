@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../bike/bike_controller.dart';
 import '../../bike/sim_source.dart';
@@ -57,14 +58,27 @@ class MaisDados extends ConsumerWidget {
               const SizedBox(height: 12),
               // A carga em cima: é o que se mexe pedalando.
               CargaControle(
-                rotulo: 'Carga ${v.level}',
+                rotulo: v.knobTurns == null
+                    ? 'Carga ${v.level}'
+                    : 'Botão: volta ${v.level} de ${v.knobTurns}',
                 onLevel: ctrl.changeLevel,
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Acompanhe o botão da bike: entra na conta quando o app estima os watts.',
+              Text(
+                v.knobTurns == null
+                    ? 'Acompanhe o botão da bike: entra na conta quando o app estima os watts.'
+                    : 'O app conta as voltas que ele pede. Girou diferente? Corrija aqui.',
                 style: AppText.suave,
               ),
+              if (v.knobTurns == null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => context.push('/bike/botao'),
+                    icon: const Icon(Icons.tune),
+                    label: const Text('Calibrar o botão de peso'),
+                  ),
+                ),
               const SizedBox(height: 14),
               LayoutBuilder(
                 builder: (context, box) {

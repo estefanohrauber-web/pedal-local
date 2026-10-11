@@ -61,4 +61,26 @@ void main() {
     r.resolve(cadence: 80, power: null, timestamp: at(17000), level: 4);
     expect(r.switchedToEstimate, isTrue);
   });
+
+  group('botão de peso calibrado (preferEstimate)', () {
+    test('auto: estima pelo botão mesmo com a bike mandando watts (os dela saem só do giro)', () {
+      final r = PowerResolver(preferEstimate: true);
+      expect(r.effectiveMode, PowerMode.estimada);
+      // 80 rpm, carga 5,5 (volta 4 de 8) = 158 W, e não os 233 W da tabela da bike
+      expect(r.resolve(cadence: 80, power: 233, timestamp: at(0), level: 5.5), 158);
+    });
+
+    test('auto: a bike informou o nível do botão = ela mede o peso: usa os watts dela', () {
+      final r = PowerResolver(preferEstimate: true);
+      r.resolve(cadence: 80, power: 233, timestamp: at(0), level: 5.5);
+      expect(r.resolve(cadence: 80, power: 240, resistance: 6, timestamp: at(1000), level: 5.5), 240);
+      expect(r.effectiveMode, PowerMode.bike);
+      expect(r.resolve(cadence: 80, power: 250, timestamp: at(2000), level: 5.5), 250);
+    });
+
+    test('"da bike" escolhido nos ajustes continua da bike', () {
+      final r = PowerResolver(mode: PowerMode.bike, preferEstimate: true);
+      expect(r.resolve(cadence: 80, power: 233, timestamp: at(0), level: 5.5), 233);
+    });
+  });
 }

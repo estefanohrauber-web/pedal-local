@@ -40,6 +40,7 @@ class RideNarrator {
     required double distance,
     required double movingTime,
     RideAlert? alert,
+    String? alertHint,
     int? lapDone,
     double? lapTime,
     double? ghostGapS,
@@ -48,10 +49,13 @@ class RideNarrator {
     final frases = <String>[];
     final fantasma = ghostGapS == null ? '' : ' ${spokenGhost(ghostGapS)}';
 
+    // [alertHint]: o que fazer com o botão de peso (vazio = já está no lugar); null = o conselho
+    // de sempre.
     if (alert != null) {
-      frases.add(alert.kind == AlertKind.subida
-          ? 'Subida de ${(alert.grade * 100).round()} por cento chegando. Aumente a carga.'
-          : 'Descida chegando. Pode aliviar a carga.');
+      final subida = alert.kind == AlertKind.subida;
+      final aviso = subida ? 'Subida de ${(alert.grade * 100).round()} por cento chegando.' : 'Descida chegando.';
+      final conselho = alertHint ?? (subida ? 'Aumente a carga.' : 'Pode aliviar a carga.');
+      frases.add(conselho.isEmpty ? aviso : '$aviso $conselho');
     }
 
     final km = (distance / 1000 + 1e-9).floor();

@@ -168,6 +168,7 @@ class _TreinoPedalScreenState extends ConsumerState<TreinoPedalScreen> {
                 if (source is SimSource) SimControls(source: source),
                 RideControls(
                   level: v.level,
+                  knobTurns: v.knobTurns,
                   paused: v.state == RideState.pausado,
                   enabled: v.started && !_encerrando,
                   onLevel: ctrl.changeLevel,
@@ -331,7 +332,13 @@ class _Agora extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                sugerida == view.level ? 'Carga certa para a meta: $sugerida' : 'Carga sugerida para a meta: $sugerida (agora ${view.level})',
+                view.knobTurns != null
+                    ? (sugerida == view.level
+                        ? 'Botão certo para a meta: volta $sugerida de ${view.knobTurns}'
+                        : 'Botão para a meta: volta $sugerida (agora ${view.level})')
+                    : sugerida == view.level
+                    ? 'Carga certa para a meta: $sugerida'
+                    : 'Carga sugerida para a meta: $sugerida (agora ${view.level})',
                 style: AppText.suave.copyWith(fontWeight: FontWeight.w700),
               ),
             ),

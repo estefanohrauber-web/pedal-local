@@ -15,6 +15,7 @@ import '../../data/rides_store.dart';
 import '../../domain/geo.dart';
 import '../../domain/ghost.dart';
 import '../../domain/laps.dart';
+import '../../domain/botao_peso.dart';
 import '../../domain/power.dart';
 import '../../domain/ride_narrator.dart';
 import '../../domain/ride_session.dart';
@@ -136,6 +137,8 @@ class RideView {
     this.ftp = 0,
     this.bikeAdjusts = false,
     this.suggestedLevel,
+    this.knobTurns,
+    this.alertHint,
   });
 
   final bool started;
@@ -193,6 +196,13 @@ class RideView {
   /// Com a potência estimada: a carga que dá a meta a 85 rpm.
   final int? suggestedLevel;
 
+  /// Voltas do botão de peso calibrado (null = sem calibração). Com ele, [level] e
+  /// [suggestedLevel] são a posição do botão em voltas, a partir do mais leve.
+  final int? knobTurns;
+
+  /// O que fazer com o botão no aviso de subida ou descida (vazio = já está no lugar).
+  final String? alertHint;
+
   bool get isWorkout => workout != null;
 
   bool get hasGhost => ghostGapS != null;
@@ -221,6 +231,10 @@ class RideController extends Notifier<RideView> {
   WorkoutFrame? _frame;
   BikeControl? _controle;
   int? _alvoEnviado;
+
+  /// Botão de peso calibrado (null = sem calibração; a carga vai de 1 a 10).
+  BotaoPeso? _botao;
+  String? _alertHint;
 
   /// A meta mudou por um ajuste (mais leve, mais forte): vai para a bike mesmo se for pouco.
   bool _alvoMudou = false;
@@ -308,7 +322,10 @@ class RideController extends Notifier<RideView> {
       _runner = WorkoutRunner(treino, ftp: _ftp, intensity: settings.intensidade);
       _terrenoTreino = WorkoutTerrain();
       final controle = ref.read(bikeControllerProvider).source?.control;
-      _controle = settings.controleBike && controle != null && controle.features.any ? controle : null;
+      // Com o botão de peso calibrado, a bike é de botão manual: não segura meta sozinha, mesmo
+      // que diga que sim (a Winnek diz). Aí o app guia pela voz.
+      final manual = settings.voltasBotao != null;
+      _controle = settings.controleBike && !manual && controle != null && controle.features.any ? controle : null;
     }
     _calibracao = PowerCalibration(base: settings.base, factor: settings.fator);
     _margem = settings.margemVolta;
@@ -320,11 +337,16 @@ class RideController extends Notifier<RideView> {
     final relogio = ref.read(clockProvider);
     final Terrain terreno = _loop ?? _profile ?? _terrenoTreino ?? const FlatTerrain();
     _session = RideSession(terrain: terreno, riderMassKg: settings.pesoKg)..start();
+    final voltas = settings.voltasBotao;
+    _botao = voltas == null || voltas < 1 ? null : BotaoPeso(voltas);
     _resolver = PowerResolver(
       mode: settings.modoPotencia,
       calibration: PowerCalibration(base: settings.base, factor: settings.fator),
+      preferEstimate: _botao != null,
     );
-    _level = settings.cargaPadrao;
+    // Com o botão calibrado, o pedal sempre começa no mais leve, e o app conta as voltas dali.
+    _level = _botao == null ? settings.cargaPadrao : 0;
+    if (_botao != null) _falar(['Comece com o botão de peso no mais leve.']);
     _startedAt = relogio();
     _lastTick = _startedAt;
     _rideId = ref.read(rideIdProvider)();
@@ -345,7 +367,13 @@ class RideController extends Notifier<RideView> {
     final resolver = _resolver;
     if (session == null || resolver == null || !ref.mounted) return;
     _lastReading = ref.read(clockProvider)();
-    final watts = resolver.resolve(cadence: r.cadence, power: r.power, timestamp: r.timestamp, level: _level);
+    final watts = resolver.resolve(
+      cadence: r.cadence,
+      power: r.power,
+      resistance: r.resistance,
+      timestamp: r.timestamp,
+      level: _botao?.cargaEquivalente(_level) ?? _level,
+    );
     session.setInputs(powerW: watts.toDouble(), cadence: r.cadence ?? 0, heartRate: r.heartRate?.toDouble());
   }
 
@@ -377,9 +405,20 @@ class RideController extends Notifier<RideView> {
     final last = _lastReading;
     if (last == null || now.difference(last) > _staleAfter) session.setInputs(powerW: 0, cadence: 0);
     final alerts = session.advance(dt);
+    String? dica;
     if (alerts.isNotEmpty) {
       _alert = alerts.last;
       _alertAt = now;
+      // Botão calibrado: a subida (ou descida) pede uma posição do botão; o app diz quantas
+      // voltas girar e passa a contar o botão nela.
+      final botao = _botao;
+      if (botao != null) {
+        final alerta = alerts.last;
+        final alvo = alerta.kind == AlertKind.subida ? botao.posicaoPara(alerta.grade) : 0;
+        dica = BotaoPeso.instrucao(_level, alvo) ?? '';
+        _level = alvo;
+      }
+      _alertHint = dica;
     }
     final snap = session.snapshot();
     final loop = _loop;
@@ -410,6 +449,7 @@ class RideController extends Notifier<RideView> {
         distance: snap.distance,
         movingTime: snap.movingTime,
         alert: alerts.isEmpty ? null : alerts.last,
+        alertHint: dica,
         lapDone: novaVolta?.number,
         lapTime: novaVolta?.time,
         ghostGapS: ghost?.gapSeconds(snap.distance, snap.movingTime),
@@ -440,11 +480,23 @@ class RideController extends Notifier<RideView> {
     _frame = frame;
     _falar(List.of(runner.spoken));
     if (runner.stepChanged != null) _terrenoTreino?.grade = frame.step.grade;
+    _guiarBotao(frame, mudouPasso: runner.stepChanged != null);
     _mandarAlvo(frame, mudouPasso: runner.stepChanged != null);
     if (frame.done && !_treinoCompleto) {
       _treinoCompleto = true;
       session.finish();
     }
+  }
+
+  /// Treino numa bike de botão manual calibrado: a cada trecho novo, diz quantas voltas girar
+  /// para chegar na meta (a 85 rpm) e passa a contar o botão nela.
+  void _guiarBotao(WorkoutFrame frame, {required bool mudouPasso}) {
+    final botao = _botao;
+    if (botao == null || !mudouPasso || frame.step.free) return;
+    final alvo = botao.posicaoParaWatts(frame.targetWatts.toDouble(), 85, _calibracao);
+    final dica = BotaoPeso.instrucao(_level, alvo);
+    _level = alvo;
+    if (dica != null) _falar([dica]);
   }
 
   /// Manda a meta para a bike: potência (ERG) quando ela aceita; senão, a inclinação dos
@@ -526,7 +578,8 @@ class RideController extends Notifier<RideView> {
   }
 
   void changeLevel(int delta) {
-    _level = (_level + delta).clamp(1, 10);
+    final botao = _botao;
+    _level = botao == null ? (_level + delta).clamp(1, 10) : (_level + delta).clamp(0, botao.voltas);
     _publish();
   }
 
@@ -712,7 +765,11 @@ class RideController extends Notifier<RideView> {
       bikeAdjusts: _controle?.features.power ?? false,
       suggestedLevel: _frame == null || _resolver?.effectiveMode != PowerMode.estimada
           ? null
+          : _botao != null
+          ? _botao!.posicaoParaWatts(_frame!.targetWatts.toDouble(), 85, _calibracao)
           : ((_frame!.targetWatts / 85 - _calibracao.base) / _calibracao.factor).round().clamp(1, 10),
+      knobTurns: _botao?.voltas,
+      alertHint: _alertHint,
     );
   }
 }

@@ -560,6 +560,52 @@ void main() {
       expect(view(alvo).suggestedLevel, 7); // 200 W
     });
 
+    group('botão de peso calibrado', () {
+      test('rota: começa no mais leve, diz quantas voltas girar na subida e estima pelo botão', () async {
+        await container.read(settingsStoreProvider).save(const AppSettings(voltasBotao: 8));
+        await routes.upsert(rotaDeTeste('r', [for (var i = 0; i < 31; i++) i < 15 ? 760.0 : 760.0 + (i - 15) * 2]));
+        await ctrl('r').start();
+        expect(voz.spoken, contains('Comece com o botão de peso no mais leve.'));
+        expect(view('r').knobTurns, 8);
+        expect(view('r').level, 0);
+        await pedalar('r', 1, power: 233);
+        expect(view('r').estimating, isTrue); // os watts da bike saem só do giro
+        for (var i = 0; i < 120 && view('r').distance < 250; i++) {
+          await pedalar('r', 1, power: 233);
+        }
+        expect(voz.spoken, contains('Subida de 10 por cento chegando. Gire o botão mais 8 voltas.'));
+        expect(view('r').level, 8);
+        expect(view('r').alertHint, 'Gire o botão mais 8 voltas.');
+      });
+
+      test('treino: não confia no "ajusto sozinha" da bike e guia o botão pela meta', () async {
+        await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200, voltasBotao: 8));
+        final controle = FakeBikeControl();
+        bike.control = controle;
+        const alvo = RideTarget.treino('curto');
+        await ctrl(alvo).start();
+        expect(view(alvo).bikeAdjusts, isFalse);
+        await pedalar(alvo, 1);
+        expect(controle.powers, isEmpty);
+        expect(voz.spoken, contains('Gire o botão mais uma volta.')); // 100 W a 85 rpm = volta 1
+        expect(view(alvo).suggestedLevel, 1);
+        await pedalar(alvo, 10);
+        expect(voz.spoken, contains('Gire o botão mais 4 voltas.')); // 200 W = volta 5
+        expect(view(alvo).level, 5);
+      });
+
+      test('o − e o + andam de volta em volta, entre o mais leve e o mais pesado', () async {
+        await container.read(settingsStoreProvider).save(const AppSettings(voltasBotao: 3));
+        await ctrl(null).start();
+        ctrl(null).changeLevel(-1);
+        expect(view(null).level, 0);
+        for (var i = 0; i < 5; i++) {
+          ctrl(null).changeLevel(1);
+        }
+        expect(view(null).level, 3);
+      });
+    });
+
     test('treino que não existe', () async {
       const alvo = RideTarget.treino('nada');
       await ctrl(alvo).start();

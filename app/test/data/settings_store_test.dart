@@ -68,6 +68,15 @@ void main() {
     expect(semPlano.ftp, 187);
   });
 
+  test('botão de peso: voltas guardadas e apagadas', () async {
+    final store = SqliteSettingsStore(db);
+    expect((await store.load()).voltasBotao, isNull);
+    await store.save(const AppSettings().copyWith(voltasBotao: 8));
+    expect((await store.load()).voltasBotao, 8);
+    await store.save((await store.load()).copyWith(semBotao: true));
+    expect((await store.load()).voltasBotao, isNull);
+  });
+
   test('voz escolhida; automática = nenhuma', () async {
     final store = SqliteSettingsStore(db);
     expect((await store.load()).vozId, isNull);

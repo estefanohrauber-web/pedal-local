@@ -28,6 +28,29 @@ void main() {
     expect(n.update(distance: 30, movingTime: 7), isEmpty);
   });
 
+  test('com o botão de peso calibrado, diz quantas voltas girar', () {
+    final n = RideNarrator();
+    expect(
+        n.update(
+          distance: 10,
+          movingTime: 5,
+          alert: const RideAlert(AlertKind.subida, 0.062),
+          alertHint: 'Gire o botão mais 5 voltas.',
+        ),
+        ['Subida de 6 por cento chegando. Gire o botão mais 5 voltas.']);
+    expect(
+        n.update(
+          distance: 20,
+          movingTime: 10,
+          alert: const RideAlert(AlertKind.descida, -0.05),
+          alertHint: 'Volte o botão 5 voltas.',
+        ),
+        ['Descida chegando. Volte o botão 5 voltas.']);
+    // O botão já está no lugar: só avisa.
+    expect(n.update(distance: 30, movingTime: 15, alert: const RideAlert(AlertKind.subida, 0.06), alertHint: ''),
+        ['Subida de 6 por cento chegando.']);
+  });
+
   test('cada quilômetro, uma vez, com o tempo e o fantasma', () {
     final n = RideNarrator();
     expect(n.update(distance: 999, movingTime: 170), isEmpty);

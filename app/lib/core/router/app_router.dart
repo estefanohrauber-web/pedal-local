@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/bike/calibrar_botao_screen.dart';
 import '../../features/bike/conectar_bike_screen.dart';
 import '../../features/bike/dados_bike_screen.dart';
 import '../../features/criar_rota/criar_rota_screen.dart';
@@ -39,6 +40,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/criar-rota', builder: (c, s) => const CriarRotaScreen()),
       GoRoute(path: '/pedal-livre', builder: (c, s) => const PedalLivreScreen()),
       GoRoute(path: '/bike/dados', builder: (c, s) => const DadosBikeScreen()),
+      GoRoute(path: '/bike/botao', builder: (c, s) => const CalibrarBotaoScreen()),
       GoRoute(path: '/treino/:id', builder: (c, s) => TreinoScreen(workoutId: s.pathParameters['id']!)),
       GoRoute(path: '/treino-novo', builder: (c, s) => EditorTreinoScreen(fromId: s.uri.queryParameters['de'])),
       GoRoute(path: '/treino-editar/:id', builder: (c, s) => EditorTreinoScreen(editId: s.pathParameters['id'])),

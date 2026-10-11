@@ -259,5 +259,52 @@ void main() {
       overrides: comBike(),
     );
   });
+
+  testWidgets('calibrar o botão', (tester) async {
+    await fotografar(
+      tester,
+      'calibrar_botao',
+      '/bike/botao',
+      depois: (tester, container) async {
+        for (var i = 0; i < 5; i++) {
+          await tester.tap(find.byKey(const Key('contar-volta')));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        await tester.pump(const Duration(milliseconds: 600));
+      },
+    );
+  });
+
+  testWidgets('pedal na rota com o botão calibrado', (tester) async {
+    await withClock(Clock.fixed(DateTime(2026, 10, 11, 20, 41)), () async {
+      final v = RideView(
+        started: true,
+        state: RideState.pedalando,
+        speedKmh: 18.2,
+        power: 196,
+        cadence: 71,
+        distance: 1840,
+        total: perfil.distance,
+        grade: 0.05,
+        movingTime: 312,
+        estimating: true,
+        routeName: 'Entre pontes',
+        position: perfil.positionAt(1840),
+        profile: perfil,
+        alert: const RideAlert(AlertKind.subida, 0.06),
+        alertAt: DateTime(2026, 10, 11, 20, 41),
+        alertHint: 'Gire o botão mais 5 voltas.',
+        level: 5,
+        knobTurns: 8,
+        voiceOn: true,
+      );
+      await fotografar(
+        tester,
+        'pedal_rota_botao',
+        '/pedal-rota/r1',
+        overrides: [...comBike(), rideProvider(const RideTarget(routeId: 'r1')).overrideWith(() => _PedalFixo(const RideTarget(routeId: 'r1'), v))],
+      );
+    });
+  });
 }
 

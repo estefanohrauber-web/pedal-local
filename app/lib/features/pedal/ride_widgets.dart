@@ -136,6 +136,7 @@ class RideControls extends StatelessWidget {
   const RideControls({
     super.key,
     required this.level,
+    this.knobTurns,
     required this.paused,
     required this.enabled,
     required this.onLevel,
@@ -143,6 +144,9 @@ class RideControls extends StatelessWidget {
   });
 
   final int level;
+
+  /// Voltas do botão de peso calibrado (null = carga de 1 a 10).
+  final int? knobTurns;
   final bool paused;
   final bool enabled;
   final void Function(int delta) onLevel;
@@ -152,7 +156,12 @@ class RideControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: CargaControle(rotulo: 'Carga $level', onLevel: onLevel)),
+        Expanded(
+          child: CargaControle(
+            rotulo: knobTurns == null ? 'Carga $level' : 'Botão: volta $level de $knobTurns',
+            onLevel: onLevel,
+          ),
+        ),
         const SizedBox(width: 10),
         FilledButton(
           style: FilledButton.styleFrom(

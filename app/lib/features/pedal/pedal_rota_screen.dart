@@ -382,13 +382,20 @@ class _Aviso extends ConsumerWidget {
     if (alerta != null &&
         quando != null &&
         agora.difference(quando) < _alertaVisivel) {
+      final subida = alerta.kind == AlertKind.subida;
+      final aviso = subida
+          ? 'Subida de ${formatNumber(alerta.grade * 100)}% chegando'
+          : 'Descida chegando';
+      // Com o botão calibrado, diz as voltas (“gire o botão mais 5 voltas”).
+      final dica = v.alertHint;
+      final conselho = dica == null
+          ? (subida ? 'aumente a carga' : 'pode aliviar')
+          : dica.isEmpty
+          ? ''
+          : dica[0].toLowerCase() + dica.substring(1).replaceAll('.', '');
       return AvisoFaixa(
-        icone: alerta.kind == AlertKind.subida
-            ? Icons.trending_up
-            : Icons.trending_down,
-        texto: alerta.kind == AlertKind.subida
-            ? 'Subida de ${formatNumber(alerta.grade * 100)}% chegando: aumente a carga'
-            : 'Descida chegando: pode aliviar',
+        icone: subida ? Icons.trending_up : Icons.trending_down,
+        texto: conselho.isEmpty ? aviso : '$aviso: $conselho',
       );
     }
     if (v.state == RideState.pausado) {

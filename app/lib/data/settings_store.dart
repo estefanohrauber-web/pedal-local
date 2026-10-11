@@ -21,6 +21,7 @@ class AppSettings {
     this.planoInicio,
     this.intensidade = 1,
     this.controleBike = true,
+    this.voltasBotao,
   });
 
   final double pesoKg;
@@ -57,6 +58,9 @@ class AppSettings {
   /// Deixar a bike ajustar a carga sozinha nos treinos, quando ela aceita.
   final bool controleBike;
 
+  /// Voltas do botão de peso, do mais leve ao mais pesado (calibração); null = não calibrado.
+  final int? voltasBotao;
+
   AppSettings copyWith({
     double? pesoKg,
     PowerMode? modoPotencia,
@@ -77,6 +81,8 @@ class AppSettings {
     bool semPlano = false,
     double? intensidade,
     bool? controleBike,
+    int? voltasBotao,
+    bool semBotao = false,
   }) =>
       AppSettings(
         pesoKg: pesoKg ?? this.pesoKg,
@@ -96,6 +102,7 @@ class AppSettings {
         planoInicio: semPlano ? null : (planoInicio ?? this.planoInicio),
         intensidade: intensidade ?? this.intensidade,
         controleBike: controleBike ?? this.controleBike,
+        voltasBotao: semBotao ? null : (voltasBotao ?? this.voltasBotao),
       );
 
   Map<String, String> toMap() => {
@@ -116,6 +123,7 @@ class AppSettings {
         'planoInicio': ?planoInicio?.millisecondsSinceEpoch.toString(),
         'intensidade': '$intensidade',
         'controleBike': controleBike ? '1' : '0',
+        'voltasBotao': ?voltasBotao?.toString(),
       };
 
   factory AppSettings.fromMap(Map<String, String> m) {
@@ -141,6 +149,7 @@ class AppSettings {
           : DateTime.fromMillisecondsSinceEpoch(int.parse(m['planoInicio']!)),
       intensidade: dbl('intensidade', d.intensidade),
       controleBike: m['controleBike'] != '0',
+      voltasBotao: int.tryParse(m['voltasBotao'] ?? ''),
     );
   }
 }
