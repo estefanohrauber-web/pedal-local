@@ -346,5 +346,58 @@ void main() {
     );
     await fotografar(tester, 'chegada', '/resumo/p1?novo=1', pedais: pedais, rotas: rotas);
   });
+
+  testWidgets('histórico em calendário', (tester) async {
+    final pontos = rotaEntrePontes();
+    final rotas = MemoryRoutesStore();
+    await rotas.upsert(
+      RouteRecord(
+        id: 'r1',
+        name: 'Entre pontes',
+        createdAt: DateTime(2026, 10, 1),
+        waypoints: [pontos.first.geo, pontos.last.geo],
+        points: pontos,
+        distanceM: perfil.distance,
+        gainM: 28,
+        lossM: 22,
+      ),
+    );
+    final pedais = MemoryRidesStore();
+    final agora = DateTime.now();
+    var n = 0;
+    for (final (dia, km) in [(-6, 2.0), (-5, 4.5), (-3, 9.6), (-1, 2.9)]) {
+      final quando = DateTime(agora.year, agora.month, agora.day + dia, 20, 41);
+      await pedais.upsert(
+        RideRecord(
+          id: 'p${n++}',
+          routeId: 'r1',
+          mode: RideMode.rota,
+          startedAt: quando,
+          movingTimeS: km * 200,
+          distanceM: km * 1000,
+          avgPowerW: 160,
+          avgSpeedKmh: 18,
+          gainM: 20,
+          kcal: 40,
+          completed: true,
+          laps: 1,
+          track: pontos,
+        ),
+      );
+    }
+    await fotografar(
+      tester,
+      'historico',
+      '/voce',
+      pedais: pedais,
+      rotas: rotas,
+      depois: (tester, container) async {
+        await tester.drag(find.byType(ListView).first, const Offset(0, -520));
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+      },
+    );
+  });
 }
 

@@ -196,6 +196,9 @@ abstract class RidesStore {
   Future<void> upsert(RideRecord ride);
   Future<RideRecord?> byId(String id);
   Future<List<RideRecord>> recent({int limit = 50});
+
+  /// Pedais que começaram de [de] até antes de [ate], mais novo primeiro, sem as amostras.
+  Future<List<RideRecord>> between(DateTime de, DateTime ate);
   Future<void> delete(String id);
 
   /// Pedais de uma rota, mais novo primeiro; as amostras só com [withSamples] (para o fantasma).
@@ -235,6 +238,16 @@ class SqliteRidesStore implements RidesStore {
   @override
   Future<List<RideRecord>> recent({int limit = 50}) async {
     final rows = await _db.query('rides', columns: _listColumns, orderBy: 'started_at DESC', limit: limit);
+    return rows.map(RideRecord.fromRow).toList();
+  }
+
+  @override
+  Future<List<RideRecord>> between(DateTime de, DateTime ate) async {
+    final rows = await _db.query('rides',
+        columns: _listColumns,
+        where: 'started_at >= ? AND started_at < ?',
+        whereArgs: [de.millisecondsSinceEpoch, ate.millisecondsSinceEpoch],
+        orderBy: 'started_at DESC');
     return rows.map(RideRecord.fromRow).toList();
   }
 
@@ -294,6 +307,12 @@ class MemoryRidesStore implements RidesStore {
     final lista = _rides.values.toList()..sort((a, b) => b.startedAt.compareTo(a.startedAt));
     return lista.take(limit).toList();
   }
+
+  @override
+  Future<List<RideRecord>> between(DateTime de, DateTime ate) async => [
+        for (final r in await recent(limit: 1 << 30))
+          if (!r.startedAt.isBefore(de) && r.startedAt.isBefore(ate)) r,
+      ];
 
   @override
   Future<void> delete(String id) async => _rides.remove(id);

@@ -10,7 +10,7 @@ import '../../core/widgets/botao_ajustes.dart';
 import '../../data/providers.dart';
 import '../../data/settings_store.dart';
 import '../../domain/stats.dart';
-import 'ride_tile.dart';
+import 'historico_calendario.dart';
 
 class VoceScreen extends ConsumerWidget {
   const VoceScreen({super.key});
@@ -28,7 +28,6 @@ class VoceScreen extends ConsumerWidget {
           loading: () => const <RideStat>[],
           error: (e, st) => const <RideStat>[],
         );
-    final rides = ref.watch(recentRidesProvider);
     final agora = DateTime.now();
     final nome = settings.nome?.trim() ?? '';
     return Scaffold(
@@ -84,31 +83,14 @@ class VoceScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             _Totais(resumo: summarize(stats)),
             const SizedBox(height: 20),
-            ...rides.when(
-              data: (lista) => lista.isEmpty
-                  ? const [
-                      SectionTitle('Histórico'),
-                      Text('Nenhum pedal ainda. Que tal um pedal livre?', style: AppText.suave),
-                    ]
-                  : [
-                      const SectionTitle('Histórico'),
-                      for (final grupo in groupByWeek(lista, now: agora)) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8, top: 4),
-                          child: Row(
-                            children: [
-                              Expanded(child: Text(grupo.label, style: AppText.secao)),
-                              Text(formatKm(grupo.distanceM), style: AppText.suave),
-                            ],
-                          ),
-                        ),
-                        for (final r in grupo.items) ...[RideTile(ride: r), const SizedBox(height: 10)],
-                        const SizedBox(height: 6),
-                      ],
-                    ],
-              loading: () => const [Center(child: CircularProgressIndicator())],
-              error: (e, st) => [Text('Não consegui ler o histórico: $e', style: AppText.suave)],
-            ),
+            const SectionTitle('Histórico'),
+            // O histórico como calendário do mês (os pedais do dia escolhido embaixo).
+            if (!ref.watch(rideStatsProvider).hasValue)
+              const Center(child: CircularProgressIndicator())
+            else if (stats.isEmpty)
+              const Text('Nenhum pedal ainda. Que tal um pedal livre?', style: AppText.suave)
+            else
+              HistoricoCalendario(pedais: stats, hoje: agora),
           ],
         ),
       ),

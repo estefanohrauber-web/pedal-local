@@ -78,6 +78,17 @@ void main() {
     expect(lista.first.samples, isEmpty);
   });
 
+  test('between: os pedais de um dia, mais novo primeiro (no banco e na memória)', () async {
+    for (final store in <RidesStore>[SqliteRidesStore(db), MemoryRidesStore()]) {
+      await store.upsert(pedal('ontem', DateTime(2026, 10, 9, 23, 50)));
+      await store.upsert(pedal('manha', DateTime(2026, 10, 10, 7)));
+      await store.upsert(pedal('noite', DateTime(2026, 10, 10, 20, 41)));
+      await store.upsert(pedal('amanha', DateTime(2026, 10, 11, 0, 5)));
+      final dia = await store.between(DateTime(2026, 10, 10), DateTime(2026, 10, 11));
+      expect(dia.map((r) => r.id), ['noite', 'manha']);
+    }
+  });
+
   test('apaga', () async {
     final store = SqliteRidesStore(db);
     await store.upsert(pedal('a', DateTime(2026, 10, 7)));

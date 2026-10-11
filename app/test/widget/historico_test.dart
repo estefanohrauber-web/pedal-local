@@ -17,9 +17,9 @@ import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/routes_store.dart';
 import 'package:pedal_local/data/services/location_service.dart';
 import 'package:pedal_local/data/settings_store.dart';
+import 'package:pedal_local/domain/calendario.dart';
 import 'package:pedal_local/domain/ride_session.dart';
 import 'package:pedal_local/domain/route_profile.dart';
-import 'package:pedal_local/domain/stats.dart';
 
 import '../support/fakes.dart';
 import '../support/geo_helpers.dart';
@@ -95,10 +95,11 @@ Finder get _listaVertical =>
     find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
 
 void main() {
-  testWidgets('Você: nome, semana com a meta, totais e histórico por semana', (tester) async {
+  testWidgets('Você: nome, semana com a meta, totais e histórico em calendário', (tester) async {
     final rides = MemoryRidesStore();
     final agora = DateTime.now();
-    await rides.upsert(_pedalVoltas('a', weekStart(agora).add(const Duration(seconds: 1))));
+    // Hoje à meia-noite: sempre nesta semana e neste mês (o calendário abre no mês atual).
+    await rides.upsert(_pedalVoltas('a', DateTime(agora.year, agora.month, agora.day)));
     await rides.upsert(_pedalVoltas('b', agora.subtract(const Duration(days: 14))));
     final routes = MemoryRoutesStore();
     await routes.upsert(_rotaVolta());
@@ -112,6 +113,8 @@ void main() {
     expect(find.text('Desde o começo'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Volta da praça').first, 300, scrollable: _listaVertical);
     expect(find.textContaining('2 voltas'), findsWidgets);
+    expect(find.text(nomeDoMes(agora.year, agora.month)), findsOneWidget);
+    expect(find.text(nomeDoDia(agora)), findsOneWidget); // o dia pedalado, já escolhido
   });
 
   testWidgets('Ajustes: nome, margem e avançado escondido', (tester) async {

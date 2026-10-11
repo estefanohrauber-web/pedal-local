@@ -42,6 +42,13 @@ final recentRidesProvider = FutureProvider<List<RideRecord>>((ref) => ref.watch(
 /// Números de todos os pedais (totais e semana da aba Você).
 final rideStatsProvider = FutureProvider<List<RideStat>>((ref) => ref.watch(ridesStoreProvider).stats());
 
+/// Pedais de um dia (o calendário do histórico). Lê de novo quando os números mudam (pedal novo
+/// ou apagado).
+final ridesOnDayProvider = FutureProvider.autoDispose.family<List<RideRecord>, DateTime>((ref, dia) {
+  ref.watch(rideStatsProvider);
+  return ref.watch(ridesStoreProvider).between(dia, DateTime(dia.year, dia.month, dia.day + 1));
+});
+
 /// Pedais de uma rota (comparação no resumo). Lido de novo a cada abertura.
 final ridesForRouteProvider = FutureProvider.autoDispose.family<List<RideRecord>, String>(
   (ref, routeId) => ref.watch(ridesStoreProvider).forRoute(routeId),
