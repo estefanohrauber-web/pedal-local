@@ -8,6 +8,7 @@ import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_map.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/botao_ajustes.dart';
 import '../../data/providers.dart';
 import '../../data/routes_store.dart';
 import 'route_tile.dart';
@@ -52,12 +53,20 @@ class _ExplorarScreenState extends ConsumerState<ExplorarScreen> {
           children: [
             Row(
               children: [
-                const Expanded(child: Text('Explorar', style: AppText.titulo)),
+                // Encolhe em vez de quebrar quando a fonte do sistema é grande.
+                const Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text('Explorar', style: AppText.titulo, maxLines: 1),
+                  ),
+                ),
                 FilledButton.icon(
                   onPressed: () => context.push('/criar-rota'),
                   icon: const Icon(Icons.add),
                   label: const Text('Criar rota'),
                 ),
+                const BotaoAjustes(),
               ],
             ),
             const SizedBox(height: 16),

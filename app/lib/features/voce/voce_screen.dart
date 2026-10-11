@@ -6,6 +6,7 @@ import '../../bike/bike_controller.dart';
 import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/botao_ajustes.dart';
 import '../../data/providers.dart';
 import '../../data/settings_store.dart';
 import '../../domain/stats.dart';
@@ -74,11 +75,7 @@ class VoceScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Ajustes',
-                    onPressed: () => context.push('/ajustes'),
-                    icon: const Icon(Icons.tune),
-                  ),
+                  const BotaoAjustes(),
                 ],
               ),
             ),

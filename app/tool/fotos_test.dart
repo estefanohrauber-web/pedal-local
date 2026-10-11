@@ -13,11 +13,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/bike/bike_live.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
+import 'package:pedal_local/bike/bike_scanner.dart';
 import 'package:pedal_local/core/router/app_router.dart';
 import 'package:pedal_local/core/theme/app_theme.dart';
 import 'package:pedal_local/core/voice.dart';
@@ -45,6 +45,19 @@ List<ProfilePoint> rotaEntrePontes() => [
       760 + 24 * math.exp(-math.pow((i - 100) / 18, 2)) - 6 * math.exp(-math.pow((i - 40) / 20, 2)),
     ),
 ];
+
+/// Scanner que sempre acha as bikes dadas, sem Bluetooth.
+class _ScannerFixo extends BikeScanner {
+  _ScannerFixo(this.bikes);
+
+  final List<FoundDevice> bikes;
+
+  @override
+  Future<BleProblem?> check() async => null;
+
+  @override
+  Stream<List<FoundDevice>> scan({Duration duration = const Duration(seconds: 12)}) => Stream.value(bikes);
+}
 
 /// Pedal com valores fixos (sem relógio nem bike).
 class _PedalFixo extends RideController {
@@ -218,8 +231,33 @@ void main() {
       );
     });
   });
+
+  testWidgets('conectar: dados chegando', (tester) async {
+    await fotografar(
+      tester,
+      'conectar',
+      '/bike',
+      ajustes: const AppSettings(nome: 'Estéfano', ultimaBikeId: 'AA', ultimaBikeNome: 'WINNEK BT-151'),
+      overrides: [
+        ...comBike(),
+        bikeScannerProvider.overrideWithValue(
+          _ScannerFixo(const [
+            FoundDevice(id: 'AA', name: 'WINNEK BT-151', likelyBike: true),
+            FoundDevice(id: 'BB', name: 'FS-A3021', likelyBike: true),
+          ]),
+        ),
+      ],
+    );
+  });
+
+  testWidgets('início com a engrenagem', (tester) async {
+    await fotografar(
+      tester,
+      'inicio',
+      '/inicio',
+      ajustes: const AppSettings(nome: 'Estéfano', ultimaBikeId: 'AA', ultimaBikeNome: 'WINNEK BT-151'),
+      overrides: comBike(),
+    );
+  });
 }
 
-// Mantém o import do go_router usado (rotas por nome nas próximas fotos).
-// ignore: unused_element
-typedef _Rota = GoRouter;

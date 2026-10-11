@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../bike/bike_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/botao_ajustes.dart';
 import '../../data/providers.dart';
 import '../bike/bike_chip.dart';
 import '../explorar/route_tile.dart';
@@ -24,26 +25,23 @@ class InicioScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
           children: [
+            // Saudação, bike e engrenagem numa linha; o título com a linha toda (não quebra
+            // ao lado do nome da bike).
             Row(
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        nome.isEmpty ? 'Olá!' : 'Olá, $nome!',
-                        style: AppText.subtitulo,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      const Text('Bora pedalar?', style: AppText.titulo),
-                    ],
+                  child: Text(
+                    nome.isEmpty ? 'Olá!' : 'Olá, $nome!',
+                    style: AppText.subtitulo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 BikeChip(state: bike),
+                const BotaoAjustes(),
               ],
             ),
+            const Text('Bora pedalar?', style: AppText.titulo),
             const SizedBox(height: 16),
             if (!bike.connected) ...[
               AppCard(
