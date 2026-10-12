@@ -94,6 +94,6 @@ void main() {
 
     await tester.tap(find.text('Concluir'));
     await tester.pumpAndSettle();
-    expect(find.text('Último pedal'), findsOneWidget);
+    expect(find.text('Bora pedalar?'), findsOneWidget);
   });
 }

@@ -1,16 +1,16 @@
 ---
-version: 1
+version: 2
 slug: "app-lib-features-voce-voce-screen-dart"
 primary_target: "app/lib/features/voce/voce_screen.dart"
-related_targets: []
+related_targets: ["app/lib/features/voce/historico_calendario.dart"]
 ---
 
-Escopo: histórico de pedais na aba Você. Modo: Operate/Read leve.
+Escopo: aba Você: recordes, calendário do mês e todos os pedais. Modo: Operate/Read leve.
 
 ## Direction contract
-THESIS: o histórico é um calendário que mostra a constância; os pedais de um dia ficam a um toque. Recusa a lista longa de cartões iguais.
-OWN-WORLD: mundo Pedalaqui; grade do mês num cartão branco, dias pedalados em círculos verdes em 3 tons (mais escuro = mais km), dia escolhido com anel escuro, números ExtraBold.
-STORY: a pessoa vê de relance quantos dias pedalou no mês, os km e a sequência; toca num dia e vê os pedais dele para abrir o resumo.
-FIRST VIEWPORT: cartão do mês com setas, iniciais dos dias, grade, linha "pedais · km · dias seguidos"; abaixo, título do dia escolhido e a lista dos pedais dele.
-FORM: versão C (calendário do mês) de 3 mostradas no chat, escolhida em 11/10/2026; sem concept-seed: o dono pediu “me apresente 3 versões aqui no claude antes de executar no app”, e a escolha dele entre as 3 substituiu o sorteio.
+THESIS: a aba Você mostra do que você já foi capaz (recordes) e a constância (calendário); a lista de todos os pedais fica embaixo e o calendário a filtra. Recusa o "desde o começo" de três números soltos.
+OWN-WORLD: mundo Pedalaqui; cartão branco "Seus recordes" com os totais numa linha ExtraBold e quatro linhas de recorde (quadrado de ícone verde-claro, título, de onde veio, número tabular à direita); grade do mês com dias em 3 tons de verde; dia escolhido com anel escuro; selo escuro com X para o filtro.
+STORY: a pessoa vê os totais e os recordes, toca num recorde para abrir o pedal; no calendário toca num dia verde e a lista mostra só aquele dia; toca de novo, no X ou fora e a lista volta a ter todos.
+FIRST VIEWPORT: cabeçalho com nome; cartão "Seus recordes" (km · pedais · tempo · m de subida; mais longe, mais subida, mais tempo, melhor semana); "Histórico" com o cartão do mês; "Todos os pedais" agrupados por dia.
+FORM: versão B (recordes) de 3 mostradas no chat em 11/10/2026; o calendário (versão C de antes) fica; sem concept-seed: o dono pediu “me apresente 3 versões aqui no claude antes de executar no app”, e a escolha dele entre as 3 substituiu o sorteio.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

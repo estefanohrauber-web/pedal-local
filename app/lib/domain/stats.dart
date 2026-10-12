@@ -69,23 +69,24 @@ List<WeekGroup<T>> groupByWeek<T extends RideStat>(List<T> rides, {required Date
   ];
 }
 
-const _montanhas = [('Pico da Bandeira', 2892), ('Pico da Neblina', 2995)];
+/// Os melhores pedais e a semana com mais km.
+class Recordes<T extends RideStat> {
+  const Recordes({required this.maisLonge, required this.maisSubida, required this.maisTempo, required this.melhorSemana});
 
-String _milhar(int m) => m >= 1000 ? '${m ~/ 1000}.${(m % 1000).toString().padLeft(3, '0')}' : '$m';
+  final T maisLonge;
+  final T maisSubida;
+  final T maisTempo;
+  final WeekGroup<T> melhorSemana;
+}
 
-/// Quanto o total subido equivale às montanhas mais altas do Brasil.
-String? mountainText(double gainM) {
-  if (gainM <= 0) return null;
-  final (bandeira, altB) = _montanhas[0];
-  final (neblina, altN) = _montanhas[1];
-  if (gainM < altB) return '${(gainM / altB * 100).round()}% do $bandeira (${_milhar(altB)} m)';
-  if (gainM < altN) return '${(gainM / altN * 100).round()}% do $neblina (${_milhar(altN)} m)';
-  final xB = gainM / altB;
-  final xN = gainM / altN;
-  final usaB = (xB - xB.round()).abs() <= (xN - xN.round()).abs();
-  final (nome, alt) = usaB ? _montanhas[0] : _montanhas[1];
-  final vezes = gainM / alt;
-  final arred = (vezes * 10).round() / 10;
-  final texto = arred == arred.roundToDouble() ? '${arred.round()}' : arred.toStringAsFixed(1).replaceAll('.', ',');
-  return '$texto ${arred == 1 ? 'vez' : 'vezes'} o $nome (${_milhar(alt)} m)';
+/// Os recordes de [pedais] (null = nenhum pedal ainda).
+Recordes<T>? recordes<T extends RideStat>(List<T> pedais, {required DateTime now}) {
+  if (pedais.isEmpty) return null;
+  T maior(double Function(T) valor) => pedais.reduce((a, b) => valor(b) > valor(a) ? b : a);
+  return Recordes(
+    maisLonge: maior((r) => r.distanceM),
+    maisSubida: maior((r) => r.gainM),
+    maisTempo: maior((r) => r.movingTimeS),
+    melhorSemana: groupByWeek(pedais, now: now).reduce((a, b) => b.distanceM > a.distanceM ? b : a),
+  );
 }

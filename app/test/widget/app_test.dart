@@ -54,7 +54,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Você').last);
     await tester.pumpAndSettle();
-    expect(find.text('Histórico'), findsOneWidget);
-    expect(find.textContaining('8,40 km'), findsWidgets); // total da semana e o cartão
+    expect(find.text('Seus recordes'), findsOneWidget);
+    expect(find.textContaining('8,40 km'), findsWidgets); // o mais longe e a melhor semana
   });
 }

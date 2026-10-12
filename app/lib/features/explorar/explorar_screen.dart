@@ -8,7 +8,6 @@ import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_map.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/botao_ajustes.dart';
 import '../../data/providers.dart';
 import '../../data/routes_store.dart';
 import 'route_tile.dart';
@@ -66,7 +65,6 @@ class _ExplorarScreenState extends ConsumerState<ExplorarScreen> {
                   icon: const Icon(Icons.add),
                   label: const Text('Criar rota'),
                 ),
-                const BotaoAjustes(),
               ],
             ),
             const SizedBox(height: 16),

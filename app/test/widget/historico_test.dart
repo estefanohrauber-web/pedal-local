@@ -20,6 +20,7 @@ import 'package:pedal_local/data/settings_store.dart';
 import 'package:pedal_local/domain/calendario.dart';
 import 'package:pedal_local/domain/ride_session.dart';
 import 'package:pedal_local/domain/route_profile.dart';
+import 'package:pedal_local/features/voce/historico_calendario.dart';
 
 import '../support/fakes.dart';
 import '../support/geo_helpers.dart';
@@ -95,26 +96,60 @@ Finder get _listaVertical =>
     find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
 
 void main() {
-  testWidgets('Você: nome, semana com a meta, totais e histórico em calendário', (tester) async {
+  testWidgets('Você: recordes, calendário e todos os pedais; o dia filtra a lista', (tester) async {
     final rides = MemoryRidesStore();
     final agora = DateTime.now();
+    final hoje = DateTime(agora.year, agora.month, agora.day);
+    final antes = hoje.subtract(const Duration(days: 14));
     // Hoje à meia-noite: sempre nesta semana e neste mês (o calendário abre no mês atual).
-    await rides.upsert(_pedalVoltas('a', DateTime(agora.year, agora.month, agora.day)));
-    await rides.upsert(_pedalVoltas('b', agora.subtract(const Duration(days: 14))));
+    await rides.upsert(_pedalVoltas('a', hoje));
+    await rides.upsert(_pedalVoltas('b', antes, segundos: 250)); // o mais longe: 2 km
     final routes = MemoryRoutesStore();
     await routes.upsert(_rotaVolta());
     await _abrir(tester, rides: rides, routes: routes, settings: const AppSettings(nome: 'Ana', metaSemanalKm: 10));
     expect(find.text('Olá, Ana!'), findsOneWidget); // Início
+    expect(find.text('1,0 de 10 km'), findsOneWidget); // a meta da semana no Início
     await tester.tap(find.text('Você').last);
     await tester.pumpAndSettle();
     expect(find.text('Olá, Ana'), findsOneWidget);
-    expect(find.text('Esta semana'), findsWidgets);
-    expect(find.text('10% da meta'), findsOneWidget); // 1 km de 10 km
-    expect(find.text('Desde o começo'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Volta da praça').first, 300, scrollable: _listaVertical);
-    expect(find.textContaining('2 voltas'), findsWidgets);
+    expect(find.text('Seus recordes'), findsOneWidget);
+    expect(find.text('Mais longe'), findsOneWidget);
+    expect(find.text('2,00 km'), findsOneWidget); // o mais longe
+    expect(find.text('2,0 km'), findsOneWidget); // a melhor semana
+
+    await tester.scrollUntilVisible(find.text('Todos os pedais'), 300, scrollable: _listaVertical);
     expect(find.text(nomeDoMes(agora.year, agora.month)), findsOneWidget);
-    expect(find.text(nomeDoDia(agora)), findsOneWidget); // o dia pedalado, já escolhido
+    await tester.scrollUntilVisible(find.text(nomeDoDia(antes)), 300, scrollable: _listaVertical);
+    expect(find.textContaining('2 voltas'), findsWidgets);
+
+    // Toca no dia de hoje: só ele na lista, com o selo do filtro.
+    await tester.scrollUntilVisible(find.text(nomeDoMes(agora.year, agora.month)), -300, scrollable: _listaVertical);
+    final diaDeHoje = find.descendant(of: find.byType(HistoricoCalendario), matching: find.text('${agora.day}'));
+    await tester.tap(diaDeHoje.first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tirar-filtro')), findsOneWidget);
+    expect(find.text('Todos os pedais'), findsNothing);
+    expect(find.text(nomeDoDia(antes), skipOffstage: false), findsNothing);
+
+    // O X mostra todos de novo.
+    await tester.tap(find.byKey(const Key('tirar-filtro')));
+    await tester.pumpAndSettle();
+    expect(find.text('Todos os pedais'), findsOneWidget);
+
+    // Tocar no dia de novo solta; tocar fora (no título dos recordes) também.
+    await tester.tap(diaDeHoje.first);
+    await tester.pumpAndSettle();
+    await tester.tap(diaDeHoje.first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tirar-filtro')), findsNothing);
+    await tester.tap(diaDeHoje.first);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Seus recordes'), -300, scrollable: _listaVertical);
+    await tester.ensureVisible(find.text('Seus recordes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Seus recordes'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('tirar-filtro')), findsNothing);
   });
 
   testWidgets('Ajustes: lista por assunto; tudo se salva sozinho', (tester) async {

@@ -51,11 +51,16 @@ void main() {
     expect(grupos.first.distanceM, 20000);
   });
 
-  test('comparação com montanhas', () {
-    expect(mountainText(0), isNull);
-    expect(mountainText(1446), '50% do Pico da Bandeira (2.892 m)');
-    expect(mountainText(2966), '99% do Pico da Neblina (2.995 m)');
-    expect(mountainText(5784), '2 vezes o Pico da Bandeira (2.892 m)');
-    expect(mountainText(8985), '3 vezes o Pico da Neblina (2.995 m)');
+  test('recordes: mais longe, mais subida, mais tempo e a semana com mais km', () {
+    final longe = pedal(DateTime(2026, 10, 8, 13), km: 9.62, min: 20, subida: 341);
+    final demorado = pedal(DateTime(2026, 10, 10, 20), km: 9.61, min: 33, subida: 339);
+    final curto = pedal(DateTime(2026, 9, 30, 18), km: 3.2, min: 6, subida: 81);
+    final r = recordes([demorado, longe, curto], now: agora)!;
+    expect(r.maisLonge, same(longe));
+    expect(r.maisSubida, same(longe));
+    expect(r.maisTempo, same(demorado));
+    expect(r.melhorSemana.label, 'Esta semana');
+    expect(r.melhorSemana.distanceM, closeTo(19230, 1e-6));
+    expect(recordes(const <RideStat>[], now: agora), isNull);
   });
 }

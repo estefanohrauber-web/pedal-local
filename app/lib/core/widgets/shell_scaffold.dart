@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/bike/bike_chip.dart';
 import '../../features/escolher_pedal/escolher_pedal_sheet.dart';
 import '../theme/app_theme.dart';
+import 'botao_ajustes.dart';
+import 'pedalaqui_logo.dart';
 
-/// Barra de 5 abas: Início · Explorar · (Pedalar) · Treinos · Você.
+/// Barra fixa no topo (marca, bike e Ajustes) e barra de 5 abas embaixo:
+/// Início · Explorar · (Pedalar) · Treinos · Você.
 class ShellScaffold extends StatelessWidget {
   const ShellScaffold({super.key, required this.shell});
 
@@ -15,6 +20,22 @@ class ShellScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Fixa em todas as abas: a bike e os Ajustes sempre a um toque, sem repetir em cada tela.
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        titleSpacing: 20,
+        backgroundColor: AppColors.fundo,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        shape: const Border(bottom: BorderSide(color: AppColors.borda)),
+        title: Consumer(
+          builder: (context, ref, _) => Semantics(
+            header: true,
+            child: PedalaquiWordmark(fontSize: 22, style: ref.watch(brandTextStyleProvider)),
+          ),
+        ),
+        actions: const [BikeChip(), SizedBox(width: 2), BotaoAjustes(), SizedBox(width: 6)],
+      ),
       body: shell,
       bottomNavigationBar: DecoratedBox(
         decoration: const BoxDecoration(

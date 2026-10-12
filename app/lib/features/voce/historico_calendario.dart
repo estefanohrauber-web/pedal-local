@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
-import '../../data/providers.dart';
+import '../../data/rides_store.dart';
 import '../../domain/calendario.dart';
-import '../../domain/stats.dart';
 import 'ride_tile.dart';
 
 /// Tons de verde dos dias pedalados (1 = pouco, 3 = o dia que mais pedalou no mês).
@@ -18,24 +16,28 @@ const _textoDosTons = [
 ];
 
 /// O histórico como calendário do mês: os dias pedalados pintados de verde (mais escuro quando
-/// pedalou mais), os números do mês e, embaixo, os pedais do dia escolhido.
-class HistoricoCalendario extends ConsumerStatefulWidget {
-  const HistoricoCalendario({super.key, required this.pedais, this.hoje});
+/// pedalou mais) e os números do mês; embaixo, todos os pedais, ou só os do [dia] escolhido.
+class HistoricoCalendario extends StatefulWidget {
+  const HistoricoCalendario({super.key, required this.pedais, required this.dia, required this.onDia, this.hoje});
 
-  /// Números de todos os pedais.
-  final List<RideStat> pedais;
+  /// Todos os pedais, do mais novo ao mais velho.
+  final List<RideRecord> pedais;
+
+  /// O dia que filtra a lista (null = todos).
+  final DateTime? dia;
+
+  /// Tocar num dia pedalado escolhe (ou solta, se já era ele); trocar de mês solta.
+  final ValueChanged<DateTime?> onDia;
 
   /// Hoje (nos testes, um dia fixo).
   final DateTime? hoje;
 
   @override
-  ConsumerState<HistoricoCalendario> createState() =>
-      _HistoricoCalendarioState();
+  State<HistoricoCalendario> createState() => _HistoricoCalendarioState();
 }
 
-class _HistoricoCalendarioState extends ConsumerState<HistoricoCalendario> {
+class _HistoricoCalendarioState extends State<HistoricoCalendario> {
   late DateTime _mes;
-  DateTime? _dia;
 
   DateTime get _hoje => widget.hoje ?? DateTime.now();
 
@@ -45,23 +47,10 @@ class _HistoricoCalendarioState extends ConsumerState<HistoricoCalendario> {
     _mes = DateTime(_hoje.year, _hoje.month);
   }
 
-  /// O dia escolhido; sem escolha, o último dia pedalado do mês (ou hoje, no mês atual).
-  DateTime? _diaMostrado(Map<int, double> km) {
-    final escolhido = _dia;
-    if (escolhido != null &&
-        escolhido.year == _mes.year &&
-        escolhido.month == _mes.month) {
-      return escolhido;
-    }
-    if (km.isEmpty) return null;
-    final ultimo = km.keys.reduce((a, b) => a > b ? a : b);
-    return DateTime(_mes.year, _mes.month, ultimo);
+  void _mudarMes(int delta) {
+    setState(() => _mes = DateTime(_mes.year, _mes.month + delta));
+    widget.onDia(null);
   }
-
-  void _mudarMes(int delta) => setState(() {
-    _mes = DateTime(_mes.year, _mes.month + delta);
-    _dia = null;
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +63,7 @@ class _HistoricoCalendarioState extends ConsumerState<HistoricoCalendario> {
         )
         .length;
     final seguidos = diasSeguidos(widget.pedais, _hoje);
-    final dia = _diaMostrado(km);
+    final dia = widget.dia;
     final mesAtual = _mes.year == _hoje.year && _mes.month == _hoje.month;
     final hoje = DateTime(_hoje.year, _hoje.month, _hoje.day);
     return Column(
@@ -129,7 +118,7 @@ class _HistoricoCalendarioState extends ConsumerState<HistoricoCalendario> {
                 maior: maior,
                 escolhido: dia,
                 hoje: hoje,
-                onDia: (d) => setState(() => _dia = d),
+                onDia: (d) => widget.onDia(d == dia ? null : d),
               ),
               const Divider(height: 22, color: Color(0xFFEEF1EF)),
               Row(
@@ -159,14 +148,21 @@ class _HistoricoCalendarioState extends ConsumerState<HistoricoCalendario> {
           'Quanto mais escuro o dia, mais você pedalou.',
           style: AppText.suave,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         if (dia == null)
-          const Text('Nenhum pedal neste mês.', style: AppText.suave)
-        else ...[
-          Text(nomeDoDia(dia), style: AppText.secao),
-          const SizedBox(height: 8),
-          _PedaisDoDia(dia: dia),
-        ],
+          const Text('Todos os pedais', style: AppText.secao)
+        else
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _Filtro(dia: dia, onTirar: () => widget.onDia(null)),
+          ),
+        _ListaDePedais(
+          comDias: dia == null, // filtrada, o selo já diz o dia
+          pedais: [
+            for (final p in widget.pedais)
+              if (dia == null || _mesmoDia(p.startedAt, dia)) p,
+          ],
+        ),
       ],
     );
   }
@@ -208,7 +204,7 @@ class _Grade extends StatelessWidget {
                           tom: tomDoDia(km[d.day] ?? 0, maior),
                           escolhido: d == escolhido,
                           futuro: d.isAfter(hoje),
-                          onTap: () => onDia(d),
+                          onTap: km.containsKey(d.day) ? () => onDia(d) : null,
                         ),
                 ),
             ],
@@ -231,7 +227,9 @@ class _Dia extends StatelessWidget {
   final int tom;
   final bool escolhido;
   final bool futuro;
-  final VoidCallback onTap;
+
+  /// Só nos dias pedalados (os outros não têm o que mostrar).
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -240,12 +238,12 @@ class _Dia extends StatelessWidget {
         ? (futuro ? const Color(0xFFB8C4BD) : AppColors.texto)
         : _textoDosTons[tom - 1];
     return Semantics(
-      button: true,
+      button: onTap != null,
       selected: escolhido,
       label: '${nomeDoDia(dia)}${tom == 0 ? '' : ', com pedal'}',
       excludeSemantics: true,
       child: InkResponse(
-        onTap: futuro ? null : onTap,
+        onTap: onTap,
         radius: 22,
         child: SizedBox(
           height: 44,
@@ -289,29 +287,82 @@ class _Numero extends StatelessWidget {
   );
 }
 
-class _PedaisDoDia extends ConsumerWidget {
-  const _PedaisDoDia({required this.dia});
+bool _mesmoDia(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+
+/// O selo escuro do filtro: o dia escolhido e o X que volta a mostrar todos.
+class _Filtro extends StatelessWidget {
+  const _Filtro({required this.dia, required this.onTirar});
 
   final DateTime dia;
+  final VoidCallback onTirar;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ref
-        .watch(ridesOnDayProvider(dia))
-        .when(
-          loading: () => const SizedBox(height: 70),
-          error: (e, s) =>
-              Text('Não consegui ler os pedais: $e', style: AppText.suave),
-          data: (lista) => lista.isEmpty
-              ? const Text('Nenhum pedal neste dia.', style: AppText.suave)
-              : Column(
-                  children: [
-                    for (final r in lista) ...[
-                      RideTile(ride: r),
-                      const SizedBox(height: 10),
-                    ],
-                  ],
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Só ${nomeDoDia(dia)}. Tocar mostra todos os pedais.',
+      excludeSemantics: true,
+      child: Material(
+        color: AppColors.escuro,
+        shape: const StadiumBorder(),
+        child: InkWell(
+          key: const Key('tirar-filtro'),
+          customBorder: const StadiumBorder(),
+          onTap: onTirar,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.only(left: 14, right: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    nomeDoDia(dia),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white),
+                  ),
                 ),
+                const SizedBox(width: 6),
+                const Icon(Icons.close, size: 18, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Os pedais agrupados por dia, do mais novo ao mais velho.
+class _ListaDePedais extends StatelessWidget {
+  const _ListaDePedais({required this.pedais, required this.comDias});
+
+  final List<RideRecord> pedais;
+  final bool comDias;
+
+  @override
+  Widget build(BuildContext context) {
+    final filhos = <Widget>[];
+    DateTime? diaAtual;
+    for (final p in pedais) {
+      final d = DateTime(p.startedAt.year, p.startedAt.month, p.startedAt.day);
+      if (d != diaAtual && comDias) {
+        diaAtual = d;
+        filhos.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 14, bottom: 8),
+            child: Text(
+              nomeDoDia(d),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textoSuave),
+            ),
+          ),
         );
+      } else {
+        filhos.add(SizedBox(height: filhos.isEmpty ? 12 : 10));
+      }
+      filhos.add(RideTile(ride: p));
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: filhos);
   }
 }

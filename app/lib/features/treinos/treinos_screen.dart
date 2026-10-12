@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/botao_ajustes.dart';
 import '../../data/providers.dart';
 import '../../data/settings_store.dart';
 import '../../domain/training.dart';
@@ -30,12 +29,7 @@ class TreinosScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
           children: [
-            const Row(
-              children: [
-                Expanded(child: Text('Treinos', style: AppText.titulo)),
-                BotaoAjustes(),
-              ],
-            ),
+            const Text('Treinos', style: AppText.titulo),
             const SizedBox(height: 16),
             CondicionamentoCard(settings: s),
             const SizedBox(height: 20),

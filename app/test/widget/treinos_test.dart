@@ -67,6 +67,13 @@ Future<ProviderContainer> _abrir(
 
 Finder get _lista => find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
 
+/// Rola até [alvo] aparecer e o leva para o alto, longe do botão de pedalar (que sobe sobre a lista).
+Future<void> _rolarAte(WidgetTester tester, Finder alvo) async {
+  await tester.scrollUntilVisible(alvo, 200, scrollable: _lista);
+  await tester.ensureVisible(alvo);
+  await tester.pumpAndSettle();
+}
+
 /// Pedala até [fim] aparecer (no máximo [segundos] de pedal), com a bike mandando [watts].
 Future<void> _pedalarAte(WidgetTester tester, FakeBikeSource bike, Finder fim, {int segundos = 120, int watts = 150}) async {
   for (var i = 0; i < segundos * 2 && fim.evaluate().isEmpty; i++) {
@@ -84,7 +91,7 @@ void main() {
     expect(find.text('150 W'), findsOneWidget);
     expect(find.text('FTP estimado pelo seu peso'), findsOneWidget);
     expect(find.text('Fazer o teste de rampa · 20 min'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Começando · 4 semanas'), 200, scrollable: _lista);
+    await _rolarAte(tester, find.text('Começando · 4 semanas'));
     await tester.tap(find.text('Começando · 4 semanas'));
     await tester.pumpAndSettle();
     expect(find.text('Semana 1'), findsOneWidget);
@@ -206,7 +213,7 @@ void main() {
     await tester.tap(find.text('Treinos').last);
     await tester.pumpAndSettle();
     expect(find.text('Meus treinos'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Criar treino'), 200, scrollable: _lista);
+    await _rolarAte(tester, find.text('Criar treino'));
     await tester.tap(find.text('Criar treino'));
     await tester.pumpAndSettle();
     expect(find.text('Novo treino'), findsOneWidget);
