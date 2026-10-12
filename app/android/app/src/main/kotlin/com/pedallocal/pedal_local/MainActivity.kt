@@ -1,13 +1,18 @@
 package com.pedallocal.pedal_local
 
 import android.annotation.TargetApi
+import android.app.PictureInPictureParams
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Rational
 import android.window.SplashScreenView
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.time.Duration
 import java.time.Instant
@@ -18,7 +23,58 @@ private const val CANAL = "pedalaqui/abertura"
 /** Prazo para a abertura em Dart responder; depois disso a tela de carregamento sai mesmo assim. */
 private const val PRAZO_MS = 1000L
 
+/** Canal da miniatura do pedal (igual ao de `Miniatura` em Dart). */
+private const val CANAL_MINIATURA = "pedalaqui/miniatura"
+
 class MainActivity : FlutterActivity() {
+    /** Durante o pedal na rota: sair do app vira a janela flutuante com o mapa. */
+    private var miniaturaPermitida = false
+    private var canalMiniatura: MethodChannel? = null
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        canalMiniatura = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CANAL_MINIATURA).also {
+            it.setMethodCallHandler { chamada, resultado ->
+                if (chamada.method == "permitir") {
+                    permitirMiniatura(chamada.arguments == true)
+                    resultado.success(null)
+                } else {
+                    resultado.notImplemented()
+                }
+            }
+        }
+    }
+
+    private fun temMiniatura() =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
+    /** Janela deitada, do jeito de um vídeo; no Android 12+ entra sozinha ao sair do app. */
+    @TargetApi(Build.VERSION_CODES.O)
+    private fun parametros(): PictureInPictureParams {
+        val p = PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) p.setAutoEnterEnabled(miniaturaPermitida)
+        return p.build()
+    }
+
+    private fun permitirMiniatura(sim: Boolean) {
+        miniaturaPermitida = sim
+        if (temMiniatura()) setPictureInPictureParams(parametros())
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // Android 8 a 11 (no 12+ o autoEnter já faz isso, com a animação do sistema).
+        if (miniaturaPermitida && temMiniatura() && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            enterPictureInPictureMode(parametros())
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(naMiniatura: Boolean, novaConfig: Configuration) {
+        super.onPictureInPictureModeChanged(naMiniatura, novaConfig)
+        canalMiniatura?.invokeMethod("mudou", naMiniatura)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

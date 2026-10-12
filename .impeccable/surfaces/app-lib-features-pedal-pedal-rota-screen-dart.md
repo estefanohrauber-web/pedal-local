@@ -13,4 +13,5 @@ OWN-WORLD: o mundo Pedalaqui de hoje: fundo #F4F6F5, cartões brancos com borda 
 STORY: em uma olhada a pessoa sabe onde está, quanto falta, há quanto tempo pedala e se está no ritmo; o resto fica em "Mais dados".
 FIRST VIEWPORT: mapa em tela cheia; cartão no topo com nome, "ao vivo", voz, Encerrar, "1,84 de 3,20 km", "faltam" e barra; aviso de subida flutuando; cartão de baixo com relevo preenchido até onde já foi, TEMPO e km/h grandes (40), linha rpm · watts · inclinação, "Mais dados" e Pausar.
 FORM: versão C (mapa protagonista) de 3 mostradas no chat; escolhida pelo dono em 11/10/2026; sem concept-seed: o dono pediu “me apresente 3 versões aqui no claude antes de executar no app”, e a escolha dele entre as 3 substituiu o sorteio.
+MINIATURA: ao sair do app durante o pedal, a tela vira uma janela flutuante deitada (16:9) só com o mapa: rota, ponto azul, selo escuro com a velocidade e a barra de progresso fina embaixo; versão A de 3 mostradas no chat em 11/10/2026.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

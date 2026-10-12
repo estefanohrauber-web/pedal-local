@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../bike/bike_controller.dart';
 import '../../core/format/format.dart';
+import '../../core/miniatura.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_map.dart';
 import '../../core/widgets/bandeira.dart';
@@ -33,6 +34,7 @@ class PedalRotaScreen extends ConsumerStatefulWidget {
 
 class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
   final _map = MapController();
+  late final Miniatura _miniatura = ref.read(miniaturaProvider.notifier);
   bool _mapaPronto = false;
   bool _encerrando = false;
 
@@ -42,6 +44,14 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
     Future.microtask(
       () => ref.read(rideProvider(widget.target).notifier).start(),
     );
+    // Sair do app pedalando vira a miniatura do mapa, por cima dos outros apps.
+    _miniatura.permitir(true);
+  }
+
+  @override
+  void dispose() {
+    _miniatura.permitir(false);
+    super.dispose();
   }
 
   Future<void> _finalizar() async {
@@ -66,7 +76,8 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
     final v = ref.watch(provider);
     ref.listen(provider, (anterior, proximo) {
       final chegou = proximo.state == RideState.concluido;
-      if (chegou && anterior?.state != RideState.concluido) _finalizar();
+      // Na miniatura, o resumo espera a pessoa voltar ao app (não abre na janela pequena).
+      if (chegou && anterior?.state != RideState.concluido && !ref.read(miniaturaProvider)) _finalizar();
       final pos = proximo.position;
       if (pos != null && _mapaPronto) {
         _map.move(toLatLng(pos), _map.camera.zoom);
@@ -83,6 +94,14 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
     }
 
     final perfil = v.profile;
+    final miniatura = ref.watch(miniaturaProvider);
+    // Na janela pequena, o mapa mais afastado mostra mais do caminho.
+    ref.listen(miniaturaProvider, (_, mini) {
+      final agora = ref.read(provider);
+      if (!mini && agora.state == RideState.concluido) _finalizar(); // chegou enquanto estava fora
+      final pos = agora.position;
+      if (pos != null && _mapaPronto) _map.move(toLatLng(pos), mini ? 15 : 16);
+    });
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -100,47 +119,91 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
                       onReady: () => _mapaPronto = true,
                     ),
                   ),
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _CartaoCaminho(
-                            v: v,
-                            onEncerrar: _encerrar,
-                            onVoz: ref.read(provider.notifier).toggleVoice,
-                          ),
-                          const SizedBox(height: 8),
-                          if (v.ghostGapS != null)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Center(
-                                child: FantasmaChip(gapS: v.ghostGapS!),
-                              ),
+                  if (miniatura)
+                    ..._miniaturaPorCima(v)
+                  else
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _CartaoCaminho(
+                              v: v,
+                              onEncerrar: _encerrar,
+                              onVoz: ref.read(provider.notifier).toggleVoice,
                             ),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: _Aviso(v: v),
-                          ),
-                          const Spacer(),
-                          const MapAttribution(),
-                          _CartaoEsforco(
-                            v: v,
-                            enabled: v.started && !_encerrando,
-                            onPause: ref.read(provider.notifier).togglePause,
-                            onMais: () =>
-                                mostrarMaisDados(context, widget.target),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            if (v.ghostGapS != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Center(
+                                  child: FantasmaChip(gapS: v.ghostGapS!),
+                                ),
+                              ),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: _Aviso(v: v),
+                            ),
+                            const Spacer(),
+                            const MapAttribution(),
+                            _CartaoEsforco(
+                              v: v,
+                              enabled: v.started && !_encerrando,
+                              onPause: ref.read(provider.notifier).togglePause,
+                              onMais: () =>
+                                  mostrarMaisDados(context, widget.target),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
       ),
     );
   }
+}
+
+/// Na miniatura, só o mapa: a velocidade num selo e a barra de quanto já foi, fina, embaixo.
+List<Widget> _miniaturaPorCima(RideView v) {
+  final total = v.isLoop ? v.lapLength! : v.total;
+  final feito = v.isLoop ? v.lapDistance : v.distance;
+  final fracao = total.isFinite && total > 0 ? (feito / total).clamp(0.0, 1.0) : 0.0;
+  return [
+    Positioned(
+      left: 6,
+      top: 6,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(color: AppColors.escuro, borderRadius: BorderRadius.circular(999)),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: formatNumber(v.speedKmh, 1), style: estiloNumero(14, cor: Colors.white)),
+              const TextSpan(
+                text: ' km/h',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    // O crédito do mapa (regra do OpenStreetMap), logo acima da barra.
+    const Positioned.fill(bottom: 4, child: MapAttribution()),
+    Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: LinearProgressIndicator(
+        value: fracao,
+        minHeight: 4,
+        backgroundColor: AppColors.destaqueSuave,
+        color: AppColors.destaque,
+      ),
+    ),
+  ];
 }
 
 class _Mapa extends ConsumerWidget {

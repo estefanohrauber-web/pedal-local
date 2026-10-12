@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,6 +30,7 @@ import 'package:pedal_local/data/services/routing_service.dart';
 import 'package:pedal_local/data/settings_store.dart';
 import 'package:pedal_local/domain/geo.dart';
 import 'package:pedal_local/domain/ride_session.dart';
+import 'package:pedal_local/features/pedal/ride_controller.dart';
 
 import '../support/fake_valhalla.dart';
 import '../support/fakes.dart';
@@ -355,9 +357,10 @@ void main() {
     await tester.scrollUntilVisible(find.text('Concluir'), -300, scrollable: lista);
     await tester.tap(find.text('Concluir'));
     await tester.pumpAndSettle();
-    expect(find.text('Último pedal'), findsOneWidget);
-    // Cartão da rota no topo + pedal no histórico, ambos com o nome da rota.
-    expect(find.text('Rua curta'), findsNWidgets(2));
+    // O Início chama para pedalar de novo a rota que acabou de fazer, contra o recorde.
+    expect(find.text('Rua curta'), findsOneWidget);
+    expect(find.text('Pedalar de novo'), findsOneWidget);
+    expect(find.textContaining('Seu recorde:'), findsOneWidget);
   });
 
   testWidgets('na chegada de uma ida, "Fazer a volta" pedala a mesma rota no sentido contrário', (tester) async {
@@ -444,6 +447,55 @@ void main() {
     await tester.tap(find.byTooltip('Desligar a voz'));
     await tester.pump();
     expect(find.byTooltip('Ligar a voz'), findsOneWidget);
+  });
+
+  testWidgets('ao sair do app pedalando, a tela vira a miniatura só com o mapa', (tester) async {
+    const canal = MethodChannel('pedalaqui/miniatura');
+    final pedidos = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(canal, (c) async {
+      if (c.method == 'permitir') pedidos.add(c.arguments);
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(canal, null));
+    Future<void> android(bool naMiniatura) async {
+      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+        canal.name,
+        const StandardMethodCodec().encodeMethodCall(MethodCall('mudou', naMiniatura)),
+        (_) {},
+      );
+      await tester.pump();
+    }
+
+    final routes = MemoryRoutesStore();
+    await routes.upsert(rotaDeTeste('r1', 'Rua curta', 7));
+    final container = await abrirApp(tester, routes: routes);
+    final bike = FakeBikeSource();
+    await container.read(bikeControllerProvider.notifier).useSource(bike);
+    container.read(appRouterProvider).push('/pedal-rota/r1');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(pedidos, [true]); // durante o pedal, sair do app vira miniatura
+    expect(find.text('Encerrar'), findsOneWidget);
+
+    await android(true);
+    expect(find.text('Encerrar'), findsNothing);
+    expect(find.textContaining('km/h'), findsOneWidget);
+    expect(find.byType(FlutterMap), findsOneWidget);
+
+    await android(false);
+    expect(find.text('Encerrar'), findsOneWidget);
+
+    // Chegou ao fim com a miniatura aberta: o resumo espera a volta ao app.
+    await android(true);
+    for (var i = 0; i < 240 && container.read(rideProvider(const RideTarget(routeId: 'r1'))).state != RideState.concluido; i++) {
+      bike.emitReading(BikeReading(cadence: 85, power: 250, timestamp: clock.now()));
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+    expect(container.read(rideProvider(const RideTarget(routeId: 'r1'))).state, RideState.concluido);
+    expect(find.text('Pedal concluído'), findsNothing);
+    await android(false);
+    await tester.pumpAndSettle();
+    expect(find.text('Pedal concluído'), findsOneWidget);
   });
 
   testWidgets('gerar volta: escolhe a distância, toca numa volta e salva', (tester) async {
