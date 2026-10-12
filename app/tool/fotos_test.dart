@@ -2,8 +2,7 @@
 //
 //   flutter test tool/fotos_test.dart --update-goldens
 //
-// Salva em tool/fotos/*.png (fora do git). Precisa das fontes em C:\dev\tmp\fontes
-// (PlusJakartaSans-400.ttf … -800.ttf) ou na pasta da variável FONTES_PEDALAQUI.
+// Salva em tool/fotos/*.png (fora do git), com as fontes do próprio app (assets/fonts).
 // O mapa sai sem as ruas (sem internet nos testes): só a rota, os marcadores e o fundo.
 import 'dart:io';
 import 'dart:math' as math;
@@ -90,7 +89,7 @@ class _AoVivoFixo extends BikeLiveController {
 }
 
 Future<void> _carregarFontes() async {
-  final pasta = Platform.environment['FONTES_PEDALAQUI'] ?? r'C:\dev\tmp\fontes';
+  const pasta = 'assets/fonts';
   Future<ByteData> ler(String caminho) async => ByteData.sublistView(await File(caminho).readAsBytes());
   final jakarta = FontLoader('Plus Jakarta Sans');
   for (final peso in [400, 500, 600, 700, 800]) {

@@ -41,7 +41,6 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.6
   wakelock_plus: 1.8.0
-  google_fonts: 8.0.0
   intl: ^0.20.3
   flutter_localizations:
     sdk: flutter
@@ -75,6 +74,21 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Plus Jakarta Sans (licença SIL Open Font License 1.1, copyright The Plus Jakarta Sans Project
+  # Authors): dentro do app, para o negrito existir no celular e a fonte valer até sem internet.
+  fonts:
+    - family: Plus Jakarta Sans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-400.ttf
+        - asset: assets/fonts/PlusJakartaSans-500.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-600.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-700.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-800.ttf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:

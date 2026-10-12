@@ -136,6 +136,9 @@ ThemeData buildAppTheme({TextTheme? textTheme}) {
   );
 }
 
+/// A fonte do app (em assets/fonts, declarada no pubspec.yaml).
+const appFontFamily = 'Plus Jakarta Sans';
+
 /// Sobrescrito no main() com a fonte Plus Jakarta Sans; os testes usam a fonte padrão.
 final appThemeProvider = Provider<ThemeData>((ref) => buildAppTheme());
 
