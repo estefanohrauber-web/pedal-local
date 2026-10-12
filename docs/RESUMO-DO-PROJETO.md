@@ -284,13 +284,14 @@ Depois de pedalar o Entre pontes com o botão calibrado (13 voltas), o usuário 
   do mapa por cima de outros apps, calibração guiada pedalando a 60 rpm. Tudo feito (seção 4).
 - **Falta conferir no celular:** o Início com o mapa (a foto do PC trava na captura), a miniatura e
   a calibração guiada com a bike.
-- Os recordes da aba Você contam os 2 pedais simulados de 08/10 (item abaixo).
+- **12/10:** os 2 pedais simulados de 08/10 foram apagados a pedido do usuário (cópia do banco antes em
+  `C:dev	mppedal_local_1210_antes.db`). Sobraram 3 pedais reais e as 2 rotas.
+- O Início mostra o recorde da ida inteira ou, se a rota só tem voltas fechadas, a melhor volta.
 
 ### 7.5 Melhorias já combinadas
 - O pedal começa no primeiro giro, e pedais vazios ou de teste não são salvos.
 - Conferir no celular, com a bike, o pedal do treino com os botões novos (pular, +1 min, ±5 %),
   que só foi testado por testes automáticos.
-- Oferecer apagar os 2 pedais simulados de 08/10 (perguntar antes).
 
 ### 7.6 Versão final e Play Store
 - A versão final é mais rápida, menor e é a única aceita na Play Store.

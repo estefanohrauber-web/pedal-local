@@ -109,6 +109,9 @@ void main() {
     await _abrir(tester, rides: rides, routes: routes, settings: const AppSettings(nome: 'Ana', metaSemanalKm: 10));
     expect(find.text('Olá, Ana!'), findsOneWidget); // Início
     expect(find.text('1,0 de 10 km'), findsOneWidget); // a meta da semana no Início
+    // Só voltas fechadas nesta rota: o Início chama para bater a melhor volta (uns 50 s).
+    expect(find.textContaining('Sua melhor volta: 0:4'), findsOneWidget);
+    expect(find.text('Pedalar de novo'), findsOneWidget);
     await tester.tap(find.text('Você').last);
     await tester.pumpAndSettle();
     expect(find.text('Olá, Ana'), findsOneWidget);

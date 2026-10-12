@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,7 @@ import '../../data/providers.dart';
 import '../../data/routes_store.dart';
 import '../../data/settings_store.dart';
 import '../../domain/stats.dart';
+import '../pedal/ghost_options.dart';
 import '../pedal/ride_widgets.dart';
 
 /// Início: o pedal de hoje. A última rota pedalada com o recorde para bater, a meta da semana e o
@@ -82,12 +85,25 @@ class _PedalarDeNovo extends ConsumerWidget {
     }
     final ultima = pedais.where((p) => p.routeId != null).firstOrNull?.routeId;
     final rota = rotas.where((r) => r.id == ultima).firstOrNull ?? rotas.first;
-    final idas = ref.watch(ridesForRouteProvider(rota.id)).value ?? const [];
-    final tempos = [
-      for (final p in idas)
+    // O fantasma a bater: o recorde da ida inteira ou, só com voltas fechadas, a melhor volta.
+    final feitos = ref.watch(ghostRidesProvider(rota.id)).value ?? const [];
+    final idas = [
+      for (final p in feitos)
         if (p.completed && !p.loop && !p.reversed) p.movingTimeS,
     ];
-    final recorde = tempos.isEmpty ? null : tempos.reduce((a, b) => a < b ? a : b);
+    final voltas = [
+      for (final sentido in [false, true])
+        for (final o in ghostOptions(feitos, reversed: sentido, lapLength: rota.distanceM))
+          if (o.kind == GhostKind.recorde) o.time,
+    ];
+    double? melhor(List<double> tempos) => tempos.isEmpty ? null : tempos.reduce(math.min);
+    final recorde = melhor(idas);
+    final melhorVolta = melhor(voltas);
+    final fantasma = recorde != null
+        ? 'Seu recorde: ${formatTime(recorde)}. Bora bater?'
+        : melhorVolta != null
+            ? 'Sua melhor volta: ${formatTime(melhorVolta)}. Bora bater?'
+            : 'Pedale a rota inteira e o fantasma corre junto na próxima.';
     final cor = routeColor(rota.colorIndex);
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -122,12 +138,7 @@ class _PedalarDeNovo extends ConsumerWidget {
                     const FantasmaPonto(tamanho: 14),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        recorde == null
-                            ? 'Pedale uma vez e o fantasma corre junto na próxima.'
-                            : 'Seu recorde: ${formatTime(recorde)}. Bora bater?',
-                        style: AppText.suave,
-                      ),
+                      child: Text(fantasma, style: AppText.suave),
                     ),
                   ],
                 ),
@@ -135,7 +146,7 @@ class _PedalarDeNovo extends ConsumerWidget {
                 FilledButton.icon(
                   onPressed: () => context.push('/rota/${rota.id}/preparar'),
                   icon: const Icon(Icons.play_arrow_rounded),
-                  label: Text(recorde == null ? 'Pedalar esta rota' : 'Pedalar de novo'),
+                  label: Text(feitos.isEmpty ? 'Pedalar esta rota' : 'Pedalar de novo'),
                 ),
               ],
             ),
