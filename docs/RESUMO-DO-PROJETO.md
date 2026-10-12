@@ -86,7 +86,7 @@ Faça na ordem. Tudo o que não está no GitHub vem no arquivo `.zip` da transfe
    e análise do banco (seção 8).
 7. **Conferir:**
    - `cd C:\dev\pedal-local\app` → `flutter pub get` → `flutter analyze` (sem avisos) →
-     `flutter test` (**392 testes** passando em 11/10).
+     `flutter test` (**401 testes** passando em 12/10).
    - Celular no cabo: ative a depuração USB e toque em **Permitir** na pergunta do computador novo.
      `adb devices` deve mostrar `RQ8R905CDWJ`.
    - `flutter build apk --debug` e depois
@@ -97,7 +97,7 @@ Faça na ordem. Tudo o que não está no GitHub vem no arquivo `.zip` da transfe
    do Windows bloqueia o `gen_snapshot.exe`, e só sai a versão de teste. Em casa, tente
    `flutter build apk --release`. Se funcionar, ela também é assinada com a chave de teste
    (`android/app/build.gradle.kts`) e instala por cima sem perder nada: o app abre bem mais rápido.
-   Para a Play Store, a assinatura é outra (seção 7.6).
+   Para a Play Store, a assinatura é outra (seção 7.7).
 
 **Começar no Claude em casa:** abra o Claude Code na pasta `C:\dev\pedal-local` e diga algo como:
 “leia o `docs/RESUMO-DO-PROJETO.md` e vamos começar a parte dos servidores”.
@@ -170,12 +170,14 @@ de cada tela escolhidas pelo usuário:
 
 **Design e testes:** cada parte tem um documento de desenho em `docs/superpowers/specs/` (as de
 10–11/10, em `.impeccable/surfaces/`, com o contexto do produto em `PRODUCT.md`) e foi conferida
-com fotos da tela. São 392 testes automáticos (11/10).
+com fotos da tela. São 401 testes automáticos (12/10).
 
 ## 5. Como o app é por dentro (para o Claude)
 
 - **Flutter 3.47 / Dart 3.13.** Pacotes principais: Riverpod 3, go_router, sqflite, universal_ble
-  (Bluetooth), flutter_map, geolocator, flutter_tts, google_fonts, wakelock_plus.
+  (Bluetooth), flutter_map, geolocator, flutter_tts, wakelock_plus. A fonte Plus Jakarta Sans fica
+  dentro do app (`assets/fonts`, todos os pesos); o google_fonts saiu em 12/10 porque só baixava o
+  peso normal e o negrito não aparecia no celular.
 - **`app/lib/`:**
   - `domain/`: regras sem tela, com testes: física, FTMS, rotas, relevo, voltas, fantasma, narrador
     da voz, treinos, blocos do editor (`workout_blocks.dart`) e o condutor do treino
@@ -233,7 +235,7 @@ O usuário já tem conta no Supabase e conta de desenvolvedor no Google Play.
 1. **Conta e backup automático.** Login com Google; rotas, pedais (com amostras), treinos do usuário
    e ajustes sincronizados no Supabase (Postgres, com segurança por linha, RLS).
    - O usuário nunca perde nada e pode trocar de celular.
-   - Isso também resolve a troca da versão de teste pela da Play Store (7.6).
+   - Isso também resolve a troca da versão de teste pela da Play Store (7.7).
 2. **Compartilhar** rotas e treinos com amigos por link.
 3. **Strava**: enviar o pedal. A chave secreta do Strava fica numa função do Supabase (Edge Function).
 4. Depois: ranking do bairro e desafio do mês (o cartão “Comunidade — em breve” saiu do Início em
@@ -288,12 +290,32 @@ Depois de pedalar o Entre pontes com o botão calibrado (13 voltas), o usuário 
   `C:dev	mppedal_local_1210_antes.db`). Sobraram 3 pedais reais e as 2 rotas.
 - O Início mostra o recorde da ida inteira ou, se a rota só tem voltas fechadas, a melhor volta.
 
-### 7.5 Melhorias já combinadas
+### 7.5 Avaliação cega de 12/10 e o que já foi corrigido
+Dois avaliadores independentes viram só as fotos das telas e o código (sem os documentos de
+desenho nem o histórico). Relatórios na pasta avaliacao, dentro de C:/dev/tmp (fora do git).
+- **Notas:** design e uso 28/40 (melhores: calibrar o botão 33 e conectar 31; piores: o botão
+  verde do meio 25 e a miniatura 25); técnica 26/40 (regras 36, testes 32, parte Android 22).
+- **Corrigido em 12/10 (bloco "confiabilidade"):** fonte com negrito dentro do app; encerrar
+  enquanto o pedal abre não trava mais; pedal com menos de 30 s andando (sem chegar ao fim) não
+  vai para o histórico e nada é gravado antes de andar; a chegada fica salva na hora (mesmo se a
+  miniatura for fechada); durante o pedal a reconexão não desiste e os erros saem sem texto
+  técnico; a meta do ERG vai de novo depois de uma queda ou de um envio que falhou; banco que não
+  abre mostra uma tela de aviso; a tela de conectar não abre uma segunda conexão enquanto o app
+  já reconecta; um passo que falha no meio da conexão solta a ligação.
+- **Falta (por ordem de peso):** leitura no guidão (números secundários maiores, aviso de subida
+  até a subida começar, tema escuro nas telas de pedal); fluxos confusos (o botão verde do meio
+  não começa nenhum pedal, "volta" e "carga" com vários sentidos, pedal do treino com botões
+  demais, criar rota que perde o trabalho, bike simulada à vista); salvar uma cópia dos dados e
+  restaurar; histórico que monta todos os pedais de uma vez; diário da bike regravado a cada 5 s;
+  pedal cortado (app fechado no meio) que fica "incompleto"; alvos de toque de 44 dp; abertura
+  que ignora "remover animações". O usuário pediu para deixar os Treinos como estão.
+
+### 7.6 Melhorias já combinadas
 - O pedal começa no primeiro giro, e pedais vazios ou de teste não são salvos.
 - Conferir no celular, com a bike, o pedal do treino com os botões novos (pular, +1 min, ±5 %),
   que só foi testado por testes automáticos.
 
-### 7.6 Versão final e Play Store
+### 7.7 Versão final e Play Store
 - A versão final é mais rápida, menor e é a única aceita na Play Store.
 - Gerar no PC de casa (se o Windows deixar) ou nos servidores do GitHub (GitHub Actions).
 - **Assinatura da loja:** criar uma chave de envio (upload key) e usar a Assinatura de apps do
@@ -308,7 +330,7 @@ Depois de pedalar o Entre pontes com o botão calibrado (13 voltas), o usuário 
 - Dá para ter as duas versões no celular, a da loja e uma “Pedalaqui Dev” para testes (outro
   `applicationId`).
 
-### 7.7 Extras (depois)
+### 7.8 Extras (depois)
 - Importar treinos do Zwift (`.zwo`); escrever o treino numa frase; usar os treinos do usuário nos
   planos; meta por frequência cardíaca.
 - Tema escuro; exportar para o Strava.
