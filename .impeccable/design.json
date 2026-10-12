@@ -25,8 +25,7 @@
       "calendario-tom-2": { "role": "data", "displayName": "Calendário, médio", "canonical": "#7CCB9E" }
     },
     "typographyMeta": {
-      "contador": { "displayName": "Contador", "purpose": "Número de voltas no círculo da calibração; só em telas que são um contador." },
-      "numero-pedal": { "displayName": "Número do pedal", "purpose": "TEMPO e km/h no pedal; variantes 30, 26, 24, 22 e 17 pela mesma função estiloNumero." },
+      "numero-pedal": { "displayName": "Número do pedal", "purpose": "TEMPO e km/h no pedal; variantes 64, 56, 34, 30, 26, 24, 22, 17 e 14 pela mesma função estiloNumero." },
       "titulo": { "displayName": "Título", "purpose": "Título de página no conteúdo." },
       "numero-medio": { "displayName": "Número médio", "purpose": "km feitos no topo do pedal e MetricTile." },
       "secao": { "displayName": "Seção", "purpose": "Títulos de seção." },
@@ -62,7 +61,7 @@
       "name": "Botão escuro",
       "kind": "button",
       "refersTo": "button-dark",
-      "description": "Pausar ou concluir dentro de uma tarefa.",
+      "description": "Pausar ou concluir dentro de uma tarefa: Pausar, O botão não gira mais, Salvar.",
       "html": "<button class=\"ds-btn-dark\">Pausar</button>",
       "css": ".ds-btn-dark { background: #14201A; color: #fff; min-height: 52px; min-width: 116px; padding: 0 16px; border: none; border-radius: 999px; font: 700 16px 'Plus Jakarta Sans', sans-serif; transition: background 0.15s; } .ds-btn-dark:hover { background: #2A3832; } .ds-btn-dark:focus-visible { outline: 3px solid #138A52; outline-offset: 2px; }"
     },
@@ -115,6 +114,14 @@
       "css": ".ds-selo { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; background: #14201A; color: #fff; border-radius: 999px; font: 800 13px 'Plus Jakarta Sans', sans-serif; }"
     },
     {
+      "name": "Selo da bike no topo",
+      "kind": "chip",
+      "refersTo": "borda-botao",
+      "description": "Pílula branca na barra fixa: bolinha do estado e nome da bike, ou bluetooth e Conectar.",
+      "html": "<button class=\"ds-bike\"><span class=\"ds-dot\"></span>Winnek</button> <button class=\"ds-bike ds-off\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"m7 7 10 10-5 5V2l5 5L7 17\"/></svg>Conectar</button>",
+      "css": ".ds-bike { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; max-width: 160px; padding: 0 12px; background: #fff; border: 1px solid #D5DCD8; border-radius: 999px; font: 800 13px 'Plus Jakarta Sans', sans-serif; color: #14201A; cursor: pointer; } .ds-bike:hover { background: #F4F6F5; } .ds-bike:focus-visible { outline: 3px solid #138A52; outline-offset: 2px; } .ds-dot { width: 8px; height: 8px; border-radius: 50%; background: #1FB866; } .ds-off { color: #0E6B3F; }"
+    },
+    {
       "name": "Dias do calendário",
       "kind": "custom",
       "refersTo": "calendario-tom-1",
@@ -125,7 +132,7 @@
   ],
   "narrative": {
     "northStar": "O bairro no guidão",
-    "overview": "Pedalaqui é um app claro e amigável para ser lido de relance, com o celular no suporte do guidão a uns 50 cm do rosto, à noite, por alguém suando. Tudo serve a essa leitura: um fundo verde-acinzentado muito claro, cartões brancos de borda fina, um único verde que carrega progresso, ação e \"está funcionando\", e números grandes em Plus Jakarta Sans ExtraBold com algarismos de largura fixa. O mapa do bairro é o protagonista sempre que há um; os cartões flutuam por cima dele em vez de espremê-lo.\n\nA densidade é baixa e os toques são grandes: botões de pílula com 52 dp de altura, alvos de 44 a 62 dp, um círculo de 220 dp quando a tela é um contador. Texto é português do Brasil simples; os rótulos dizem o valor atual (\"Ligada · voz automática\") em vez de pedir que a pessoa abra para descobrir.\n\nA marca é uma rota que vira um pino de mapa: um traço verde contínuo com uma bolinha amarela no lugar do \"aqui\". Esse vocabulário (linha de rota, ponto de saída, pino, bandeira de chegada) é o desenho próprio do app e reaparece no mapa, no resumo e no histórico.",
+    "overview": "Pedalaqui é um app claro e amigável para ser lido de relance, com o celular no suporte do guidão a uns 50 cm do rosto, à noite, por alguém suando. Tudo serve a essa leitura: um fundo verde-acinzentado muito claro, cartões brancos de borda fina, um único verde que carrega progresso, ação e \"está funcionando\", e números grandes em Plus Jakarta Sans ExtraBold com algarismos de largura fixa. O mapa do bairro é o protagonista sempre que há um; os cartões flutuam por cima dele em vez de espremê-lo.\n\nA densidade é baixa e os toques são grandes: botões de pílula com 52 dp de altura, alvos de 44 a 62 dp, um medidor de giro de 220 dp quando a tela é uma calibração. Texto é português do Brasil simples; os rótulos dizem o valor atual (\"Ligada · voz automática\") em vez de pedir que a pessoa abra para descobrir.\n\nA marca é uma rota que vira um pino de mapa: um traço verde contínuo com uma bolinha amarela no lugar do \"aqui\". Esse vocabulário (linha de rota, ponto de saída, pino, bandeira de chegada) é o desenho próprio do app e reaparece no mapa, no resumo e no histórico.",
     "keyCharacteristics": [
       "Um só verde de ação (destaque) sobre neutros verdes-acinzentados; amarelo só na marca.",
       "Números do pedal em ExtraBold tabular, o maior elemento da tela.",
@@ -136,7 +143,7 @@
     "rules": [
       { "name": "The Um Verde Rule", "body": "Só existe um verde de ação. Tudo que é tocável e principal, tudo que mostra progresso e tudo que diz \"está certo\" é destaque; texto verde pequeno usa destaque-texto.", "section": "colors" },
       { "name": "The Amarelo é Marca Rule", "body": "O amarelo do \"aqui\" aparece só na logo e no ícone. Avisos são âmbar (aviso-fundo/aviso-texto), nunca o amarelo da marca.", "section": "colors" },
-      { "name": "The Escuro Confirma Rule", "body": "Dentro de uma tarefa em andamento, o botão que conclui ou pausa é escuro; o verde fica para começar e seguir (\"Pronto, pedalar\", \"Fazer a volta\").", "section": "colors" },
+      { "name": "The Escuro Confirma Rule", "body": "Dentro de uma tarefa em andamento, o botão que conclui ou pausa é escuro (\"Pausar\", \"O botão não gira mais\", \"Salvar\"); o verde fica para começar e seguir (\"Pronto, pedalar\", \"Fazer a volta\", \"Começar\").", "section": "colors" },
       { "name": "The Número Tabular Rule", "body": "Todo número que muda durante o pedal é ExtraBold com algarismos tabulares e encolhe (FittedBox) em vez de quebrar linha. Unidade e rótulo vão menores e em texto-suave ao lado.", "section": "typography" },
       { "name": "The Peso Antes do Tamanho Rule", "body": "Hierarquia vem primeiro do peso (800/700/400) e da cor (texto/texto-suave), depois do tamanho. Não há caixa-alta decorativa nem espaçamento largo de letras; o único rótulo em caixa-alta é \"TEMPO\", um rótulo de dado sobre o número, não um título.", "section": "typography" },
       { "name": "The Plano Por Padrão Rule", "body": "Superfície sobre o fundo do app não tem sombra; usa branco e borda. Sombra é para o botão de pedalar e para o que precisa se destacar do mapa.", "section": "elevation" }

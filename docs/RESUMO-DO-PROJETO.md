@@ -86,7 +86,7 @@ Faça na ordem. Tudo o que não está no GitHub vem no arquivo `.zip` da transfe
    e análise do banco (seção 8).
 7. **Conferir:**
    - `cd C:\dev\pedal-local\app` → `flutter pub get` → `flutter analyze` (sem avisos) →
-     `flutter test` (**384 testes** passando em 11/10).
+     `flutter test` (**392 testes** passando em 11/10).
    - Celular no cabo: ative a depuração USB e toque em **Permitir** na pergunta do computador novo.
      `adb devices` deve mostrar `RQ8R905CDWJ`.
    - `flutter build apk --debug` e depois
@@ -97,7 +97,7 @@ Faça na ordem. Tudo o que não está no GitHub vem no arquivo `.zip` da transfe
    do Windows bloqueia o `gen_snapshot.exe`, e só sai a versão de teste. Em casa, tente
    `flutter build apk --release`. Se funcionar, ela também é assinada com a chave de teste
    (`android/app/build.gradle.kts`) e instala por cima sem perder nada: o app abre bem mais rápido.
-   Para a Play Store, a assinatura é outra (seção 7.5).
+   Para a Play Store, a assinatura é outra (seção 7.6).
 
 **Começar no Claude em casa:** abra o Claude Code na pasta `C:\dev\pedal-local` e diga algo como:
 “leia o `docs/RESUMO-DO-PROJETO.md` e vamos começar a parte dos servidores”.
@@ -154,9 +154,23 @@ tela escolhida entre 3 versões desenhadas com a skill Impeccable:
 - **histórico** em calendário do mês; **Ajustes** por assunto, salvando sozinhos, e a engrenagem
   em todas as abas.
 
+**11/10 à noite (seção 7.4):** depois do primeiro pedal com o botão calibrado, de novo com 3 versões
+de cada tela escolhidas pelo usuário:
+- **barra fixa no topo** de todas as abas (marca, selo da bike e engrenagem) e o **Início “Hoje”**:
+  a última rota pedalada com o mapa e o recorde para bater, a meta da semana e o pedal livre;
+- **aba Você** com **Seus recordes** (totais, mais longe, mais subida, mais tempo, melhor semana),
+  o calendário e **todos os pedais** embaixo; tocar num dia filtra a lista;
+- **calibração do botão guiada pela voz**: a pessoa pedala perto de 60 rpm e a cada 10 s a voz pede
+  mais uma volta; o app conta, anota o giro e descobre até que volta dá para pedalar e se a bike
+  sente o botão nos watts;
+- **conta nova das voltas** nas subidas: usa a média da subida (não o pedaço mais íngreme) e só a
+  parte do botão que dá para pedalar (na ponte do Entre pontes, 4 voltas em vez de 8);
+- **miniatura do pedal**: ao sair do app pedalando, o mapa vira uma janela flutuante por cima dos
+  outros apps (picture-in-picture do Android).
+
 **Design e testes:** cada parte tem um documento de desenho em `docs/superpowers/specs/` (as de
 10–11/10, em `.impeccable/surfaces/`, com o contexto do produto em `PRODUCT.md`) e foi conferida
-com fotos da tela. São 384 testes automáticos (11/10).
+com fotos da tela. São 392 testes automáticos (11/10).
 
 ## 5. Como o app é por dentro (para o Claude)
 
@@ -176,7 +190,8 @@ com fotos da tela. São 384 testes automáticos (11/10).
   incremental em `data/db/app_database.dart`: **nunca apaga dados**.
 - **Android:**
   - `MainActivity.kt`: passa a abertura da tela de carregamento para o Dart pelo canal
-    `pedalaqui/abertura`;
+    `pedalaqui/abertura`; e a miniatura do pedal (picture-in-picture) pelo canal
+    `pedalaqui/miniatura` (`core/miniatura.dart`): o pedal na rota liga ao abrir e desliga ao sair;
   - `res/drawable/splash_logo.xml`: a animação da tela de carregamento;
   - o app fica só em pé (retrato).
 - **Testes:** `flutter test` em `app/`; `node --test` na raiz (protótipo). Os testes de tela usam
@@ -218,11 +233,11 @@ O usuário já tem conta no Supabase e conta de desenvolvedor no Google Play.
 1. **Conta e backup automático.** Login com Google; rotas, pedais (com amostras), treinos do usuário
    e ajustes sincronizados no Supabase (Postgres, com segurança por linha, RLS).
    - O usuário nunca perde nada e pode trocar de celular.
-   - Isso também resolve a troca da versão de teste pela da Play Store (7.5).
+   - Isso também resolve a troca da versão de teste pela da Play Store (7.6).
 2. **Compartilhar** rotas e treinos com amigos por link.
 3. **Strava**: enviar o pedal. A chave secreta do Strava fica numa função do Supabase (Edge Function).
-4. Depois: ranking do bairro e desafio do mês (o cartão “Comunidade — em breve” do Início),
-   fantasma de amigos.
+4. Depois: ranking do bairro e desafio do mês (o cartão “Comunidade — em breve” saiu do Início em
+   11/10; volta quando existir), fantasma de amigos.
 
 **Cuidados:**
 - no app vai só a chave pública (*anon*); a *service_role* **nunca** vai no app nem no chat;
@@ -258,13 +273,26 @@ calibração do botão.
    app guia (“gire 3 voltas”) e sabe a carga para estimar os watts.
 7. **Bikes sem controle de resistência:** guiar pela voz, pelos watts (“suba para 180 W”).
 
-### 7.4 Melhorias já combinadas
+### 7.4 Pedido de 11/10 à noite (feito)
+Depois de pedalar o Entre pontes com o botão calibrado (13 voltas), o usuário contou:
+- **A voz pedia +8 e −8 voltas nas pontes.** A conta usava o pedaço de 100 m mais íngreme (6,4 %) e
+  supunha que as 13 voltas equivaliam a 10 %. Agora usa os 200 m mais fortes (a média da subida) e
+  o **limite pedalável** (`limiteBotao`, medido na calibração; sem medida, 70 % das voltas).
+- **A bike devolve mais watts com o botão mais pesado?** Não: no pedal de 11/10 foram 994 pacotes de
+  32 a 68 rpm e cada giro deu sempre os mesmos watts (60 rpm = 149 W), mesmo girando 8 voltas.
+- Ideias: aba Você mais forte com todos os pedais, linha fixa no topo, repensar o Início, miniatura
+  do mapa por cima de outros apps, calibração guiada pedalando a 60 rpm. Tudo feito (seção 4).
+- **Falta conferir no celular:** o Início com o mapa (a foto do PC trava na captura), a miniatura e
+  a calibração guiada com a bike.
+- Os recordes da aba Você contam os 2 pedais simulados de 08/10 (item abaixo).
+
+### 7.5 Melhorias já combinadas
 - O pedal começa no primeiro giro, e pedais vazios ou de teste não são salvos.
 - Conferir no celular, com a bike, o pedal do treino com os botões novos (pular, +1 min, ±5 %),
   que só foi testado por testes automáticos.
 - Oferecer apagar os 2 pedais simulados de 08/10 (perguntar antes).
 
-### 7.5 Versão final e Play Store
+### 7.6 Versão final e Play Store
 - A versão final é mais rápida, menor e é a única aceita na Play Store.
 - Gerar no PC de casa (se o Windows deixar) ou nos servidores do GitHub (GitHub Actions).
 - **Assinatura da loja:** criar uma chave de envio (upload key) e usar a Assinatura de apps do
@@ -279,7 +307,7 @@ calibração do botão.
 - Dá para ter as duas versões no celular, a da loja e uma “Pedalaqui Dev” para testes (outro
   `applicationId`).
 
-### 7.6 Extras (depois)
+### 7.7 Extras (depois)
 - Importar treinos do Zwift (`.zwo`); escrever o treino numa frase; usar os treinos do usuário nos
   planos; meta por frequência cardíaca.
 - Tema escuro; exportar para o Strava.

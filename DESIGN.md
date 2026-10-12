@@ -22,12 +22,6 @@ colors:
   calendario-tom-1: "#B9E3CB"
   calendario-tom-2: "#7CCB9E"
 typography:
-  contador:
-    fontFamily: "Plus Jakarta Sans, sans-serif"
-    fontSize: "84px"
-    fontWeight: 800
-    lineHeight: 1.05
-    fontFeature: "tnum"
   numero-pedal:
     fontFamily: "Plus Jakarta Sans, sans-serif"
     fontSize: "40px"
@@ -170,7 +164,7 @@ components:
 
 Pedalaqui é um app claro e amigável para ser lido de relance, com o celular no suporte do guidão a uns 50 cm do rosto, à noite, por alguém suando. Tudo serve a essa leitura: um fundo verde-acinzentado muito claro, cartões brancos de borda fina, um único verde que carrega progresso, ação e "está funcionando", e números grandes em Plus Jakarta Sans ExtraBold com algarismos de largura fixa. O mapa do bairro é o protagonista sempre que há um; os cartões flutuam por cima dele em vez de espremê-lo.
 
-A densidade é baixa e os toques são grandes: botões de pílula com 52 dp de altura, alvos de 44 a 62 dp, um círculo de 220 dp quando a tela é um contador. Texto é português do Brasil simples; os rótulos dizem o valor atual ("Ligada · voz automática") em vez de pedir que a pessoa abra para descobrir.
+A densidade é baixa e os toques são grandes: botões de pílula com 52 dp de altura, alvos de 44 a 62 dp, um medidor de giro de 220 dp quando a tela é uma calibração. Texto é português do Brasil simples; os rótulos dizem o valor atual ("Ligada · voz automática") em vez de pedir que a pessoa abra para descobrir.
 
 A marca é uma rota que vira um pino de mapa: um traço verde contínuo com uma bolinha amarela no lugar do "aqui". Esse vocabulário (linha de rota, ponto de saída, pino, bandeira de chegada) é o desenho próprio do app e reaparece no mapa, no resumo e no histórico.
 
@@ -188,7 +182,7 @@ Neutros frios levemente esverdeados, um verde de ação com três intensidades e
 ### Primary
 - **Verde Pedalaqui** (destaque): botões principais, barra de progresso, velocidade no pedal, aba ativa, botão de pedalar, checks concluídos, linha da rota no mapa e fundo do ícone do app.
 - **Verde Fundo de Mata** (destaque-texto): texto verde sobre fundos claros ("faltam 1,07 km", "ao vivo", faixa de sucesso, ícones dos quadrados de Ajustes). É o verde que passa contraste em texto pequeno.
-- **Verde Orvalho** (destaque-suave): faixa de sucesso, quadrados de ícone, trilho da barra de progresso, halo do contador de calibração.
+- **Verde Orvalho** (destaque-suave): faixa de sucesso, quadrados de ícone, trilho da barra de progresso, faixa da voz na calibração.
 
 ### Secondary
 - **Amarelo do Aqui** (aqui-amarelo): exclusivo da marca, a bolinha do pino na logo e o anel que se espalha dela. Não é cor de interface.
@@ -199,14 +193,14 @@ Neutros frios levemente esverdeados, um verde de ação com três intensidades e
 - **Âmbar de Aviso** (aviso-fundo com aviso-texto): faixas de aviso (subida chegando, bike parada, pausa), ações destrutivas leves ("Apagar este pedal").
 
 ### Neutral
-- **Névoa Verde** (fundo): fundo de toda tela e da barra do topo.
+- **Névoa Verde** (fundo): fundo de toda tela e da barra fixa do topo.
 - **Branco** (superficie): cartões, folhas, barra de abas.
-- **Borda Liquen** (borda): borda de 1 px dos cartões, da barra de abas, dos campos e do controle de carga.
-- **Borda do Botão** (borda-botao): contorno dos botões contornados, um tom mais escuro que a borda de cartão.
-- **Divisória** (divisoria): linhas entre itens dentro de um mesmo cartão (etapas de conexão, assuntos de Ajustes, rodapé do calendário).
+- **Borda Liquen** (borda): borda de 1 px dos cartões, da barra de abas, da base da barra do topo, dos campos e do controle de carga.
+- **Borda do Botão** (borda-botao): contorno dos botões contornados e do selo da bike no topo, um tom mais escuro que a borda de cartão.
+- **Divisória** (divisoria): linhas entre itens dentro de um mesmo cartão (etapas de conexão, assuntos de Ajustes, linhas de recorde, rodapé do calendário).
 - **Cinza Neutro** (neutro): quadrados de ícone de coisas secundárias (Avançado, "em breve"), selo "em breve", blocos de número em "Mais dados".
 - **Tinta** (texto) e **Grafite Suave** (texto-suave): texto principal e secundário, rótulos de números, abas inativas.
-- **Escuro** (escuro): o botão de confirmar dentro de uma tarefa (Pausar, "Cheguei no mais pesado"), selos por cima do mapa, anel do dia escolhido, bandeira de chegada.
+- **Escuro** (escuro): o botão que conclui dentro de uma tarefa (Pausar, "O botão não gira mais", "Salvar"), selos por cima do mapa e da miniatura, selo do dia filtrado no histórico, anel do dia escolhido, bandeira de chegada.
 
 ### Escalas de dados (fora da paleta de interface)
 Cores de rota (seis, uma por rota salva, escuras o bastante para aparecer sobre o mapa), zonas de esforço 1 a 7 (cinza, azul, verde, amarelo, laranja, vermelho, roxo) e a escala de calor azul-ciano-verde-amarelo-vermelho do mapa e dos gráficos vivem em `app_theme.dart` (`AppColors.rotas`, `zoneColors`, `heatStops`) e só pintam dados. O calendário usa três tons de verde crescentes (calendario-tom-1, calendario-tom-2, destaque) para "mais km".
@@ -216,7 +210,7 @@ Cores de rota (seis, uma por rota salva, escuras o bastante para aparecer sobre 
 
 **The Amarelo é Marca Rule.** O amarelo do "aqui" aparece só na logo e no ícone. Avisos são âmbar (aviso-fundo/aviso-texto), nunca o amarelo da marca.
 
-**The Escuro Confirma Rule.** Dentro de uma tarefa em andamento, o botão que conclui ou pausa é escuro; o verde fica para começar e seguir ("Pronto, pedalar", "Fazer a volta").
+**The Escuro Confirma Rule.** Dentro de uma tarefa em andamento, o botão que conclui ou pausa é escuro ("Pausar", "O botão não gira mais", "Salvar"); o verde fica para começar e seguir ("Pronto, pedalar", "Fazer a volta", "Começar").
 
 ## Typography
 
@@ -227,10 +221,9 @@ Cores de rota (seis, uma por rota salva, escuras o bastante para aparecer sobre 
 **Character:** Uma família só, geométrica e cordial. O peso faz a hierarquia: ExtraBold (800) para números, títulos e o nome Pedalaqui; Bold (700) para rótulos e corpo forte; Regular para explicações.
 
 ### Hierarchy
-- **Contador** (800, 84 px, 1.05): o número de voltas dentro do círculo da calibração. Só para uma tela que é um contador.
-- **Número do pedal** (800, 40 px, 1.05, -0.5 px, tabular): TEMPO e km/h no cartão de baixo do pedal. Variantes da mesma regra: 30 (tempo e distância na chegada), 26 (km feitos no topo do pedal, MetricTile), 24 (números ao vivo da conexão), 22 (média e potência na chegada, blocos de "Mais dados"), 17 (linha rpm · watts · inclinação). Todos via `estiloNumero`.
-- **Título** (800, 26 px, -0.4 px): título de página no conteúdo ("Toque a cada volta completa", "Pedal concluído" a 24).
-- **Seção** (800, 16 px): títulos de seção ("Histórico", "Outras bikes por perto").
+- **Número do pedal** (800, 40 px, 1.05, -0.5 px, tabular): TEMPO e km/h no cartão de baixo do pedal. Variantes da mesma regra: 64 (voltas do botão no resultado da calibração), 56 (giro no medidor da calibração), 34 (volta atual da calibração), 30 (tempo e distância na chegada), 26 (km feitos no topo do pedal, MetricTile), 24 (números ao vivo da conexão), 22 (média e potência na chegada, blocos de "Mais dados"), 17 (linha rpm · watts · inclinação), 14 (velocidade no selo da miniatura). Todos via `estiloNumero`.
+- **Título** (800, 26 px, -0.4 px): título de página no conteúdo ("Bora pedalar?"; "Ensine o botão ao app" e "Pedal concluído" a 24).
+- **Seção** (800, 16 px): títulos de seção ("Seus recordes", "Outras bikes por perto"). Títulos de dia na lista de pedais vão a 13 em ExtraBold texto-suave.
 - **Corpo forte** (700, 15 px): nome de item em lista, título de assunto em Ajustes, rótulo do controle de carga.
 - **Subtítulo** (400, 15 px) e **Suave** (400, 13 px): explicações e resumos de linha, em texto-suave.
 - **Rótulo** (700, 12 px): rótulos ao lado ou acima dos números ("TEMPO", "km/h", "rpm"), selo ao vivo (800).
@@ -248,7 +241,9 @@ O nome **Pedalaqui** é sempre ExtraBold real (não negrito sintético), letterS
 
 Coluna única em retrato, pensada para 360 dp de largura. Margem lateral de tela de 20 dp (folhas: 20, 20, 20, 24 na base); cartões com 16 dp de padding interno; espaços de 8, 10 e 12 dp entre elementos e 4 dp entre título e resumo. Itens de lista ficam juntos num mesmo cartão, separados por divisórias de 1 px, em vez de um cartão por item; grupos de natureza diferente (Avançado) vão num cartão à parte.
 
-Quando há mapa, ele ocupa a tela inteira (pedal) ou a metade de cima (chegada), e o conteúdo flutua: cartões a 18 dp de canto no topo e na base do pedal, folha branca de canto 24 subindo sobre o mapa na chegada. Ações principais ficam embaixo, ao alcance do polegar, em largura total. Linhas de toque crescem com a fonte do sistema (alturas mínimas, não fixas).
+Toda aba tem a mesma barra fixa no topo (nome Pedalaqui, selo da bike, engrenagem de Ajustes); telas abertas por cima trazem a própria barra com fechar ou voltar.
+
+Quando há mapa, ele ocupa a tela inteira (pedal; na miniatura do Android, uma janela 16:9 só com o mapa) ou a metade de cima (chegada), e o conteúdo flutua: cartões a 18 dp de canto no topo e na base do pedal, folha branca de canto 24 subindo sobre o mapa na chegada. Ações principais ficam embaixo, ao alcance do polegar, em largura total. Linhas de toque crescem com a fonte do sistema (alturas mínimas, não fixas).
 
 ## Elevation & Depth
 
@@ -263,7 +258,7 @@ O sistema é plano: cartões, folhas e a barra de abas usam elevação 0 e se se
 
 ## Shapes
 
-Formas arredondadas e macias. Tudo que se toca é pílula (999); cartões têm 20 dp de canto, cartões sobre o mapa 18, folhas 24 só no topo, faixas de aviso e sucesso 16, campos, blocos de número e quadrados de ícone de 44 dp 14, quadrados de ícone de Ajustes 12, barra de progresso 6, pílulas de progresso da calibração 4. Círculos marcam estado e lugar: checks verdes das etapas, dias pedalados no calendário, ponto de saída (branco com borda verde de 4 dp), posição azul, fantasma roxo com borda branca, o círculo-contador e o botão de pedalar.
+Formas arredondadas e macias. Tudo que se toca é pílula (999); cartões têm 20 dp de canto, cartões sobre o mapa 18, folhas 24 só no topo, faixas de aviso e sucesso 16, campos, blocos de número e quadrados de ícone de 44 dp 14, quadrados de ícone de 40 dp (recordes, passos da calibração) e de Ajustes 12, barra de progresso 6, barras de giro da calibração 3. Círculos marcam estado e lugar: checks verdes das etapas, dias pedalados no calendário, ponto de saída (branco com borda verde de 4 dp), posição azul, fantasma roxo com borda branca, a bolinha do selo da bike e o botão de pedalar.
 
 A forma assinatura é o traço da rota: linha grossa de pontas redondas que passa por colinas e vira o pino. O ícone do app é esse traço branco num quadrado verde com cantos de 22,7 % do lado.
 
@@ -273,14 +268,17 @@ A forma assinatura é o traço da rota: linha grossa de pontas redondas que pass
 Grandes, em pílula, sem sombra; diz o que acontece ("Fazer a volta · 2,91 km", "Pronto, pedalar").
 - **Shape:** pílula (999), altura mínima 52 dp; Pausar no pedal 116 × 52.
 - **Primary:** fundo destaque, texto branco Bold 16. Começar ou seguir.
-- **Escuro:** fundo escuro, texto branco. Concluir ou pausar dentro de uma tarefa.
+- **Escuro:** fundo escuro, texto branco. Concluir ou pausar dentro de uma tarefa ("Salvar", "O botão não gira mais").
 - **Contornado:** fundo transparente, borda borda-botao, texto tinta Bold 15. Alternativa ("Concluir", "Mais dados", "Usar bike simulada", Encerrar a 44 dp no topo do pedal).
-- **Texto:** TextButton verde para ações leves ("Desconectar", "Procurar de novo", "Desfazer o último toque").
+- **Texto:** TextButton verde para ações leves ("Desconectar", "Procurar de novo", "Desfazer uma volta", "Calibrar de novo").
+- **Ícone tonal:** IconButton.filledTonal para − / + (controle de carga, ajuste do número na calibração).
 - **States:** ripple padrão do Material 3; desabilitado pelo tema.
 
 ### Chips
 - **Selo escuro sobre o mapa:** pílula escuro a 85 a 100 %, texto branco ExtraBold 13 a 14, ícone à esquerda ("Chegada · Entre pontes", diferença para o fantasma).
 - **Selo ao vivo:** bolinha de 8 dp mais texto ExtraBold 12 na cor do estado (verde ao vivo, âmbar parada ou sem dados, cinza reconectando).
+- **Selo da bike (topo):** pílula branca com borda borda-botao, 44 dp de altura mínima; bolinha de 8 dp (verde vivo ao vivo, âmbar ou cinza nos outros estados) e o nome da bike em ExtraBold 13 tinta. Sem bike: ícone de bluetooth e "Conectar" em destaque-texto. Tocar abre a conexão.
+- **Filtro de dia (histórico):** pílula escura com o nome do dia em ExtraBold 13 branco e um X; tocar no X ou fora limpa o filtro.
 - **Em breve:** pílula neutro, texto-suave ExtraBold 12.
 - **Escolha de métrica (gráficos):** ChoiceChip do Material, selecionado em verde claro.
 
@@ -298,7 +296,7 @@ Grandes, em pílula, sem sombra; diz o que acontece ("Fazer a volta · 2,91 km",
 ### Navigation
 - **Barra de abas:** cinco posições de largura igual (Início, Explorar, botão de pedalar, Treinos, Você), fundo branco com borda de cima, itens de 56 dp mínimos com ícone contornado e rótulo 11. Ativa em destaque e Bold; inativa em texto-suave.
 - **Botão de pedalar:** círculo verde de 62 dp com play branco, subindo 14 dp acima da barra.
-- **Barra do topo:** cor do fundo, sem elevação, título à esquerda; a engrenagem de Ajustes fica no canto direito de toda aba.
+- **Barra do topo (fixa nas abas):** cor do fundo, sem elevação, borda de 1 px borda embaixo; PedalaquiWordmark 22 à esquerda, selo da bike e engrenagem de Ajustes à direita. A engrenagem não se repete dentro das abas.
 
 ### Faixas (AvisoFaixa e sucesso)
 Faixa de largura total, canto 16, ícone à esquerda e texto Bold. Aviso em âmbar (aviso-fundo/aviso-texto), com ação opcional à direita; sucesso em destaque-suave/destaque-texto ("Tudo certo: giro, potência e velocidade estão vindo da bike.").
@@ -315,8 +313,17 @@ Topo: nome da rota, selo ao vivo, voz, Encerrar, "1,84 de 2,91 km" (26 e texto-s
 ### Calendário do histórico
 Grade do mês num cartão; dias pedalados em círculos de 34 dp em três tons de verde (mais escuro = mais km), dia escolhido com anel escuro de 2 dp, dias futuros esmaecidos; rodapé com três MetricTile (pedais, km, dias seguidos).
 
-### Contador de calibração
-Círculo destaque de 220 dp com halo destaque-suave, número Contador branco, "voltas" e "toque aqui"; abaixo, pílulas de progresso (destaque feitas, borda faltando).
+### Cartões do Início
+"Hoje": cartão de canto 20 com o mapa da rota em 150 dp (traço com contorno branco e ponto de saída), nome e km, linha do fantasma (bolinha roxa e "Seu recorde: m:ss. Bora bater?") e "Pedalar de novo" verde. Meta da semana com barra de 8 dp. "Pedal livre" é uma linha clara com quadrado de ícone neutro. Sem rota: quadrado de ícone 44 destaque-suave e "Crie sua primeira rota".
+
+### Seus recordes (Você)
+Um cartão: quatro MetricTile de totais (km, pedais, tempo como "1h23", m de subida), depois linhas de recorde com quadrado de ícone de 40 dp destaque-suave, título, de onde veio e o número tabular à direita, separadas por divisória. Abaixo do calendário, "Todos os pedais" agrupado por dia; só dias pedalados são tocáveis e filtram a lista.
+
+### Calibração guiada do botão
+Introdução com quatro passos em quadrados de ícone e faixa âmbar se não há bike. Durante: faixa da voz (destaque-suave, fala entre aspas em destaque-texto ExtraBold 15), medidor em arco de 0 a 100 rpm com a faixa de 55 a 65 em calendario-tom-1 e o arco vivo em destaque (aviso-texto abaixo de 50 rpm), giro a 56, "Volta N · próxima em X s" com barra de 6 dp, cartão "Giro em cada volta" com uma barra por volta (destaque = manteve, aviso-texto = caiu, verde claro = atual, neutro = por vir), "Desfazer uma volta" em texto e "O botão não gira mais" escuro. Resultado: número a 64 entre botões − / + tonais, achados em linhas com ícone e "Salvar" escuro.
+
+### Miniatura do pedal (picture-in-picture)
+Janela 16:9 só com o mapa: selo escuro de velocidade no canto de cima (número a 14 branco e "km/h"), crédito do OpenStreetMap e barra de progresso de 4 dp colada embaixo.
 
 ### Marcas do mapa
 Ponto de saída (bolinha branca de 18 dp com borda verde de 4), bandeira quadriculada desenhada (mastro e pano 4 × 3 em escuro e branco), posição azul e fantasma roxo. São desenhos próprios, não ícones de fonte.
@@ -348,5 +355,5 @@ Ponto de saída (bolinha branca de 18 dp com borda verde de 4), bandeira quadric
 - Não existe tema escuro ainda; o pedal noturno roda no tema claro.
 - O caractere "↑" ainda aparece como ícone em `route_tile.dart`, `criar_rota_screen.dart`, `gerar_volta_sheet.dart` e `preparar_pedal_screen.dart`. É um defeito a corrigir, não um padrão.
 - O texto dos botões herda a fonte do tema por `labelLarge` (em `buildAppTheme`); sem esse vínculo os botões saem na fonte padrão do Android.
-- Títulos da barra do topo saem no titleLarge do Material (Regular 22), enquanto os títulos dentro do conteúdo são ExtraBold; ainda não há uma regra única.
-- Divisória (divisoria), borda do botão (borda-botao), os tons do calendário e o verde vivo do selo ao vivo (#1FB866) estão escritos direto no código, fora de `AppColors`.
+- Nas telas abertas por cima das abas (Calibrar, Ajustes, Conectar, Treino…), o título da barra sai no titleLarge do Material (Regular 22), enquanto os títulos dentro do conteúdo são ExtraBold; as abas já usam o nome Pedalaqui. Ainda não há uma regra única.
+- Divisória (divisoria), borda do botão (borda-botao, também no selo da bike), os tons do calendário (calendario-tom-1 também no medidor e nas barras da calibração) e o verde vivo do selo ao vivo e do selo da bike (#1FB866) estão escritos direto no código, fora de `AppColors`.

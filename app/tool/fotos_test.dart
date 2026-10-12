@@ -18,6 +18,7 @@ import 'package:pedal_local/bike/bike_controller.dart';
 import 'package:pedal_local/bike/bike_live.dart';
 import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/bike/bike_scanner.dart';
+import 'package:pedal_local/core/miniatura.dart';
 import 'package:pedal_local/core/router/app_router.dart';
 import 'package:pedal_local/core/theme/app_theme.dart';
 import 'package:pedal_local/core/voice.dart';
@@ -70,6 +71,12 @@ class _PedalFixo extends RideController {
 
   @override
   Future<void> start() async {}
+}
+
+/// Sempre na miniatura (a janela flutuante do Android).
+class _NaMiniatura extends Miniatura {
+  @override
+  bool build() => true;
 }
 
 /// “Ao vivo” fixo, com uma leitura.
@@ -143,6 +150,72 @@ Future<void> fotografar(
   }
   await depois?.call(tester, container);
   await expectLater(find.byType(MaterialApp), matchesGoldenFile('fotos/$nome.png'));
+}
+
+/// As rotas do dono: Entre pontes (3,2 km) e Casa trabalho (9,6 km, a mesma forma maior).
+MemoryRoutesStore rotasDoDono() {
+  final pontos = rotaEntrePontes();
+  final perfil = RouteProfile(pontos);
+  return MemoryRoutesStore()
+    ..upsert(
+      RouteRecord(
+        id: 'r1',
+        name: 'Entre pontes',
+        createdAt: DateTime(2026, 10, 1),
+        waypoints: [pontos.first.geo, pontos.last.geo],
+        points: pontos,
+        distanceM: perfil.distance,
+        gainM: 50,
+        lossM: 50,
+      ),
+    )
+    ..upsert(
+      RouteRecord(
+        id: 'r2',
+        name: 'Casa trabalho',
+        createdAt: DateTime(2026, 10, 2),
+        waypoints: [pontos.first.geo, pontos.last.geo],
+        points: pontos,
+        distanceM: 9619,
+        gainM: 339,
+        lossM: 238,
+        colorIndex: 1,
+      ),
+    );
+}
+
+/// Os pedais do dono de 8 a 11 de outubro (sem amostras).
+Future<MemoryRidesStore> pedaisDoDono() async {
+  final pedais = MemoryRidesStore();
+  var n = 0;
+  for (final (rota, quando, km, s, subida, ida) in [
+    ('r2', DateTime(2026, 10, 8, 13, 46), 9.62, 1214.0, 341.0, true),
+    ('r1', DateTime(2026, 10, 8, 14, 7), 3.20, 385.0, 81.0, true),
+    ('r1', DateTime(2026, 10, 10, 18, 5), 1.59, 151.0, 14.0, true),
+    ('r2', DateTime(2026, 10, 10, 20, 14), 9.62, 2003.0, 339.0, true),
+    ('r1', DateTime(2026, 10, 11, 17, 48), 5.30, 1286.0, 75.0, false),
+  ]) {
+    await pedais.upsert(
+      RideRecord(
+        id: 'p${n++}',
+        routeId: rota,
+        mode: RideMode.rota,
+        startedAt: quando,
+        movingTimeS: s,
+        distanceM: km * 1000,
+        avgPowerW: 180,
+        avgSpeedKmh: km / s * 3600,
+        gainM: subida,
+        kcal: 60,
+        completed: ida,
+        laps: 1,
+        loop: !ida,
+        reversed: !ida,
+        track: rotaEntrePontes(),
+      ),
+    );
+  }
+  return pedais;
 }
 
 void main() {
@@ -250,27 +323,128 @@ void main() {
     );
   });
 
-  testWidgets('início com a engrenagem', (tester) async {
+  // shortcut: a foto do Início com rota trava na captura (o crédito do mapa, com Tooltip, dentro da
+  // lista); o cartão da rota é conferido no celular. Aqui, só o Início sem rota.
+  testWidgets('início: sem rota', (tester) async {
+    await fotografar(tester, 'inicio', '/inicio');
+  });
+
+  testWidgets('calibrar o botão: antes', (tester) async {
+    await fotografar(tester, 'calibrar_botao', '/bike/botao', ajustes: const AppSettings(nome: 'Estéfano', voltasBotao: 13));
+  });
+
+  // Pedala calibrando: 61 rpm até a volta 8, depois não aguenta (44 rpm).
+  Future<void> pedalarCalibrando(WidgetTester tester, ProviderContainer container, int segundos) async {
+    final b = FakeBikeSource(name: 'WINNEK BT-151');
+    await container.read(bikeControllerProvider.notifier).useSource(b);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.text('Começar'));
+    for (var s = 0; s < segundos * 2; s++) {
+      final volta = s < 30 ? 0 : 1 + (s - 30) ~/ 20;
+      final giro = volta <= 8 ? 61.0 - volta % 3 : 44.0;
+      b.emitReading(BikeReading(cadence: giro, power: (giro * 2.48).round(), timestamp: DateTime(2026)));
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+  }
+
+  testWidgets('calibrar o botão: pedalando', (tester) async {
     await fotografar(
       tester,
-      'inicio',
-      '/inicio',
-      ajustes: const AppSettings(nome: 'Estéfano', ultimaBikeId: 'AA', ultimaBikeNome: 'WINNEK BT-151'),
-      overrides: comBike(),
+      'calibrar_botao_pedalando',
+      '/bike/botao',
+      overrides: [ftmsFactoryProvider.overrideWithValue((id, nome) => bike)],
+      depois: (tester, container) => pedalarCalibrando(tester, container, 15 + 10 * 4 + 4),
     );
   });
 
-  testWidgets('calibrar o botão', (tester) async {
+  testWidgets('calibrar o botão: pronto', (tester) async {
     await fotografar(
       tester,
-      'calibrar_botao',
+      'calibrar_botao_pronto',
       '/bike/botao',
+      overrides: [ftmsFactoryProvider.overrideWithValue((id, nome) => bike)],
       depois: (tester, container) async {
-        for (var i = 0; i < 5; i++) {
-          await tester.tap(find.byKey(const Key('contar-volta')));
+        await pedalarCalibrando(tester, container, 15 + 10 * 11 + 2);
+        await tester.tap(find.text('O botão não gira mais'));
+        for (var i = 0; i < 6; i++) {
           await tester.pump(const Duration(milliseconds: 100));
         }
-        await tester.pump(const Duration(milliseconds: 600));
+      },
+    );
+  });
+
+  testWidgets('miniatura do pedal', (tester) async {
+    await withClock(Clock.fixed(DateTime(2026, 10, 11, 20, 41)), () async {
+      final v = RideView(
+        started: true,
+        state: RideState.pedalando,
+        speedKmh: 21.4,
+        power: 173,
+        cadence: 66,
+        distance: 1840,
+        total: perfil.distance,
+        movingTime: 312,
+        routeName: 'Entre pontes',
+        position: perfil.positionAt(1840),
+        profile: perfil,
+        voiceOn: true,
+      );
+      await fotografar(
+        tester,
+        'miniatura',
+        '/pedal-rota/r1',
+        overrides: [
+          ...comBike(),
+          miniaturaProvider.overrideWith(_NaMiniatura.new),
+          rideProvider(const RideTarget(routeId: 'r1')).overrideWith(() => _PedalFixo(const RideTarget(routeId: 'r1'), v)),
+        ],
+        depois: (tester, container) async {
+          // A janela flutuante: 16:9, uns 260 × 146 dp.
+          tester.view.physicalSize = const Size(780, 438);
+          tester.view.padding = FakeViewPadding.zero;
+          tester.view.viewPadding = FakeViewPadding.zero;
+          for (var i = 0; i < 5; i++) {
+            await tester.pump(const Duration(milliseconds: 100));
+          }
+        },
+      );
+    });
+  });
+
+  testWidgets('você: recordes', (tester) async {
+    await fotografar(tester, 'voce', '/voce', rotas: rotasDoDono(), pedais: await pedaisDoDono());
+  });
+
+  testWidgets('você: calendário e todos os pedais', (tester) async {
+    await fotografar(
+      tester,
+      'voce_lista',
+      '/voce',
+      rotas: rotasDoDono(),
+      pedais: await pedaisDoDono(),
+      depois: (tester, container) async {
+        await tester.drag(find.byType(ListView).first, const Offset(0, -480));
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+      },
+    );
+  });
+
+  testWidgets('você: filtrado pelo dia', (tester) async {
+    await fotografar(
+      tester,
+      'voce_filtro',
+      '/voce',
+      rotas: rotasDoDono(),
+      pedais: await pedaisDoDono(),
+      depois: (tester, container) async {
+        await tester.drag(find.byType(ListView).first, const Offset(0, -480));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.text('10').first);
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
       },
     );
   });
