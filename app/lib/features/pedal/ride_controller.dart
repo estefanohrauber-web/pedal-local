@@ -55,6 +55,10 @@ const _historyLength = 300; // 5 minutos de amostras
 const _staleAfter = Duration(seconds: 3);
 const _saveEverySeconds = 15.0;
 
+/// Menos que isso andando (e sem chegar ao fim) não é pedal: é um teste ou um engano, e não fica
+/// no histórico.
+const minimoParaGuardarS = 30.0;
+
 /// O que pedalar: pedal livre (sem rota), uma rota no sentido e começo escolhidos (com ou
 /// sem fantasma) ou um treino.
 @immutable
@@ -252,6 +256,7 @@ class RideController extends Notifier<RideView> {
   RouteProfile? _profile;
   String? _routeName;
   WakeLock? _wakeLock;
+  BikeController? _bike;
   Timer? _ticker;
   StreamSubscription<BikeReading>? _readingSub;
   StreamSubscription<BikeConnection>? _connectionSub;
@@ -267,6 +272,7 @@ class RideController extends Notifier<RideView> {
   bool _pausedByBike = false;
   bool _starting = false;
   bool _finished = false;
+  bool _descartado = false;
   final List<double> _history = [];
 
   @override
@@ -332,7 +338,7 @@ class RideController extends Notifier<RideView> {
     _vozLigada = settings.voz;
     _voz = ref.read(voiceProvider);
     await _voz!.choose(settings.vozId);
-    if (!ref.mounted) return;
+    if (!ref.mounted || _finished) return; // encerraram enquanto abria
     _narrador = RideNarrator(routeLength: _loop == null ? _profile?.distance : null);
     final relogio = ref.read(clockProvider);
     final Terrain terreno = _loop ?? _profile ?? _terrenoTreino ?? const FlatTerrain();
@@ -353,9 +359,11 @@ class RideController extends Notifier<RideView> {
     final source = ref.read(bikeControllerProvider).source;
     _readingSub = source?.readings.listen(onReading);
     _connectionSub = source?.connection.listen(_onConnection);
+    // Durante o pedal, a reconexão não desiste (a bike dorme parada e acorda ao pedalar).
+    _bike = ref.read(bikeControllerProvider.notifier);
+    _bike!.manterConectada(true);
     _wakeLock = ref.read(wakeLockProvider);
     await _wakeLock!.enable();
-    await _save(completed: false);
     if (!ref.mounted) return;
     _ticker = Timer.periodic(ref.read(rideTickProvider), (_) => tick());
     _publish();
@@ -380,6 +388,12 @@ class RideController extends Notifier<RideView> {
   void _onConnection(BikeConnection c) {
     final session = _session;
     if (session == null || !ref.mounted) return;
+    if (c == BikeConnection.conectada && _controle != null) {
+      // Reconectou: a bike pode ter voltado à carga padrão. A meta vai de novo, pelo controle
+      // da conexão nova.
+      _controle = ref.read(bikeControllerProvider).source?.control ?? _controle;
+      _alvoEnviado = null;
+    }
     final caiu = c == BikeConnection.caiu || c == BikeConnection.desconectada;
     if (caiu && session.state == RideState.pedalando) {
       session
@@ -459,8 +473,11 @@ class RideController extends Notifier<RideView> {
     _sinceSave += dt;
     if (_sinceSave >= _saveEverySeconds) {
       _sinceSave = 0;
-      _save(completed: false);
+      if (snap.movingTime > 0) _save(completed: false);
     }
+    // Chegou ao fim (da rota ou do treino): já fica guardado como concluído, mesmo se o app
+    // fechar antes do Encerrar (na miniatura, o resumo espera a volta ao app).
+    if (session.state == RideState.concluido) _save(completed: true);
     _publish();
   }
 
@@ -519,7 +536,9 @@ class RideController extends Notifier<RideView> {
       final ultimo = _alvoEnviado;
       if (mudouPasso || forcar || ultimo == null || (alvo - ultimo).abs() >= 5) {
         _alvoEnviado = alvo;
-        controle.setPower(alvo);
+        controle.setPower(alvo).then((chegou) {
+          if (!chegou && _alvoEnviado == alvo) _alvoEnviado = null; // tenta de novo no próximo instante
+        });
       }
     } else if (mudouPasso && controle.features.simulation) {
       controle.setGrade(frame.step.grade);
@@ -595,12 +614,31 @@ class RideController extends Notifier<RideView> {
     _publish();
   }
 
-  /// Encerra, salva como concluído e devolve o id do pedal. Chamar de novo só devolve o id.
-  Future<String> finish() async {
-    final session = _session!;
-    if (_finished) return _rideId!;
+  /// Encerra, salva como concluído e devolve o id do pedal. Devolve null quando não há pedal para
+  /// guardar: ainda estava abrindo, ou andou menos de [minimoParaGuardarS] sem chegar ao fim (aí
+  /// apaga o que a gravação periódica guardou). Chamar de novo devolve o mesmo.
+  Future<String?> finish() async {
+    final session = _session;
+    if (_finished) return _descartado ? null : _rideId;
     _finished = true;
+    if (session == null) {
+      _descartado = true;
+      return null;
+    }
     final snap = session.snapshot();
+    if (session.state != RideState.concluido && snap.movingTime < minimoParaGuardarS) {
+      _descartado = true;
+      session.finish();
+      _stop();
+      await ref.read(ridesStoreProvider).delete(_rideId!);
+      if (ref.mounted) {
+        ref
+          ..invalidate(recentRidesProvider)
+          ..invalidate(rideStatsProvider);
+        _publish();
+      }
+      return null;
+    }
     final perfil = _profile;
     final ghost = _ghost;
     if (_workout != null) {
@@ -711,6 +749,8 @@ class RideController extends Notifier<RideView> {
     _connectionSub = null;
     _wakeLock?.disable();
     _wakeLock = null;
+    _bike?.manterConectada(false);
+    _bike = null;
     _controle?.release();
     _controle = null;
   }

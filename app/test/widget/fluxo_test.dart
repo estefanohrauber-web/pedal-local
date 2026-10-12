@@ -1,8 +1,10 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/app.dart';
 import 'package:pedal_local/bike/bike_controller.dart';
+import 'package:pedal_local/bike/bike_reading.dart';
 import 'package:pedal_local/core/voice.dart';
 import 'package:pedal_local/core/wake_lock.dart';
 import 'package:pedal_local/core/widgets/app_map.dart';
@@ -78,6 +80,12 @@ void main() {
     Navigator.of(tester.element(find.text('Carga 5'))).pop();
     await tester.pump(const Duration(milliseconds: 400));
 
+    // Pedala meio minuto (menos que isso não vai para o histórico).
+    for (var i = 0; i < 64; i++) {
+      bike.emitReading(BikeReading(cadence: 80, power: 150, timestamp: clock.now()));
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
     await tester.tap(find.text('Pausar'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Continuar'), findsOneWidget);
@@ -92,8 +100,30 @@ void main() {
     expect(find.text('Pedal concluído!'), findsOneWidget);
     expect((await rides.recent()).single.completed, isTrue);
 
+    final lista = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+    await tester.scrollUntilVisible(find.text('Concluir'), 300, scrollable: lista);
     await tester.tap(find.text('Concluir'));
     await tester.pumpAndSettle();
     expect(find.text('Bora pedalar?'), findsOneWidget);
+  });
+
+  testWidgets('pedal livre aberto e encerrado sem pedalar: não vai para o histórico', (tester) async {
+    celularPequeno(tester);
+    final rides = MemoryRidesStore();
+    final container = await abrirApp(tester, rides);
+    await container.read(bikeControllerProvider.notifier).useSource(FakeBikeSource(name: 'FS-TESTE'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pedal livre').first);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.text('Encerrar'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('menos de 30 segundos'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Encerrar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bora pedalar?'), findsOneWidget); // voltou, sem resumo
+    expect(await rides.recent(), isEmpty);
   });
 }

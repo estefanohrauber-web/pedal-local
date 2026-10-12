@@ -39,14 +39,17 @@ class _TreinoPedalScreenState extends ConsumerState<TreinoPedalScreen> {
   Future<void> _finalizar() async {
     if (_encerrando) return;
     setState(() => _encerrando = true);
+    final pedalou = ref.read(rideProvider(_alvo)).movingTime > 0;
     final id = await ref.read(rideProvider(_alvo).notifier).finish();
     if (!mounted) return;
+    if (id == null) return sairSemGuardar(context, pedalou: pedalou);
     context.go('/resumo/$id?novo=1');
   }
 
   Future<void> _encerrar() async {
     if (_encerrando) return;
-    if (await confirmarEncerrar(context)) await _finalizar();
+    final curto = ref.read(rideProvider(_alvo)).movingTime < minimoParaGuardarS;
+    if (await confirmarEncerrar(context, curto: curto)) await _finalizar();
   }
 
   @override

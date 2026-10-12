@@ -95,9 +95,16 @@ class FakeBikeControl implements BikeControl {
   final grades = <double>[];
   int releases = 0;
 
+  /// Os próximos envios de meta falham (a escrita no Bluetooth não chegou).
+  int falharProximos = 0;
+
   @override
   Future<bool> setPower(int watts) async {
     if (!features.power) return false;
+    if (falharProximos > 0) {
+      falharProximos--;
+      return false;
+    }
     powers.add(watts);
     return true;
   }

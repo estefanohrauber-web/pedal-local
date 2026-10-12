@@ -57,8 +57,10 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
   Future<void> _finalizar() async {
     if (_encerrando) return;
     setState(() => _encerrando = true);
+    final pedalou = ref.read(rideProvider(widget.target)).movingTime > 0;
     final id = await ref.read(rideProvider(widget.target).notifier).finish();
     if (!mounted) return;
+    if (id == null) return sairSemGuardar(context, pedalou: pedalou);
     final gap = ref.read(rideProvider(widget.target)).ghostGapS;
     context.go(
       '/resumo/$id?novo=1${gap == null ? '' : '&fantasma=${gap.toStringAsFixed(1)}'}',
@@ -67,7 +69,8 @@ class _PedalRotaScreenState extends ConsumerState<PedalRotaScreen> {
 
   Future<void> _encerrar() async {
     if (_encerrando) return;
-    if (await confirmarEncerrar(context)) await _finalizar();
+    final curto = ref.read(rideProvider(widget.target)).movingTime < minimoParaGuardarS;
+    if (await confirmarEncerrar(context, curto: curto)) await _finalizar();
   }
 
   @override

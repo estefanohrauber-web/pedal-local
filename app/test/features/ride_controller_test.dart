@@ -144,15 +144,35 @@ void main() {
   }
 
   group('pedal livre', () {
-    test('start liga a tela, salva o pedal e começa pedalando', () async {
+    test('start liga a tela e começa pedalando; só grava depois que anda', () async {
       await ctrl(null).start();
       expect(wake.enabled, isTrue);
       expect(view(null).started, isTrue);
       expect(view(null).state, RideState.pedalando);
       expect(view(null).isRoute, isFalse);
+      expect(await rides.byId('p1'), isNull); // ainda nada pedalado
+      await pedalar(null, 16);
       final salvo = await rides.byId('p1');
       expect(salvo!.completed, isFalse);
       expect(salvo.mode, RideMode.livre);
+    });
+
+    test('encerrar enquanto o pedal ainda abre: não trava, não começa e não salva', () async {
+      final abrindo = ctrl(null).start();
+      expect(await ctrl(null).finish(), isNull);
+      await abrindo;
+      expect(view(null).started, isFalse);
+      expect(wake.enabled, isFalse);
+      expect(await rides.recent(), isEmpty);
+    });
+
+    test('pedal curto (menos de 30 s andando) é descartado ao encerrar', () async {
+      await ctrl(null).start();
+      await pedalar(null, 20);
+      expect(await rides.byId('p1'), isNotNull); // a gravação de 15 s em 15 s já tinha guardado
+      expect(await ctrl(null).finish(), isNull);
+      expect(await ctrl(null).finish(), isNull);
+      expect(await rides.recent(), isEmpty);
     });
 
     test('pedalando com 150 W ganha velocidade e grava o histórico de potência', () async {
@@ -200,12 +220,12 @@ void main() {
 
     test('finish salva concluído, desliga a tela e é idempotente', () async {
       await ctrl(null).start();
-      await pedalar(null, 12);
+      await pedalar(null, 32);
       expect(await ctrl(null).finish(), 'p1');
       expect(await ctrl(null).finish(), 'p1');
       final salvo = await rides.byId('p1');
       expect(salvo!.completed, isTrue);
-      expect(salvo.samples.length, greaterThanOrEqualTo(12));
+      expect(salvo.samples.length, greaterThanOrEqualTo(32));
       expect(wake.enabled, isFalse);
     });
   });
@@ -223,6 +243,8 @@ void main() {
       }
       expect(view('r').state, RideState.concluido);
       expect(view('r').position!.lat, greaterThan(inicio.lat));
+      // Chegou: já fica salvo como concluído, mesmo que o app feche antes do Encerrar (miniatura).
+      expect((await rides.byId('p1'))!.completed, isTrue);
       await ctrl('r').finish();
       final salvo = (await rides.byId('p1'))!;
       expect(salvo.mode, RideMode.rota);
@@ -262,7 +284,7 @@ void main() {
       await ctrl(inverso).start();
       final inicio = view(inverso).position!;
       expectNear(inicio.lat, northLine(6, 20).last.lat, 1e-9);
-      await pedalar(inverso, 5);
+      await pedalar(inverso, 31);
       expect(view(inverso).position!.lat, lessThan(inicio.lat));
       await ctrl(inverso).finish();
       final salvo = (await rides.byId('p1'))!;
@@ -271,9 +293,9 @@ void main() {
     });
 
     test('ida até o fim conta 1 volta; encerrar no meio conta 0', () async {
-      await routes.upsert(rotaDeTeste('r', List.filled(6, 760)));
+      await routes.upsert(rotaDeTeste('r', List.filled(41, 760))); // 800 m
       await ctrl('r').start();
-      await pedalar('r', 3);
+      await pedalar('r', 31);
       await ctrl('r').finish();
       expect((await rides.byId('p1'))!.laps, 0);
     });
@@ -418,6 +440,32 @@ void main() {
   });
 
   group('treino', () {
+    test('a bike caiu e voltou no meio do trecho: a meta vai de novo', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200));
+      final controle = FakeBikeControl();
+      bike.control = controle;
+      const alvo = RideTarget.treino('curto');
+      await ctrl(alvo).start();
+      await pedalar(alvo, 2);
+      expect(controle.powers, [100]);
+      bike.emitConnection(BikeConnection.caiu);
+      await settle();
+      bike.emitConnection(BikeConnection.conectada);
+      await settle();
+      await pedalar(alvo, 1);
+      expect(controle.powers, [100, 100]); // ao reconectar, a bike pode voltar à carga padrão
+    });
+
+    test('a meta que não chegou na bike vai de novo', () async {
+      await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200));
+      final controle = FakeBikeControl()..falharProximos = 1;
+      bike.control = controle;
+      const alvo = RideTarget.treino('curto');
+      await ctrl(alvo).start();
+      await pedalar(alvo, 2);
+      expect(controle.powers, [100]);
+    });
+
     test('metas pelo FTP, voz, bike segurando a potência, subida do trecho e fim sozinho', () async {
       await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200));
       final controle = FakeBikeControl();

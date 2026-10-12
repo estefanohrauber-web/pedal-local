@@ -35,11 +35,13 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
 
   Future<void> _encerrar() async {
     if (_encerrando) return;
-    final ok = await confirmarEncerrar(context);
+    final v = ref.read(rideProvider(RideTarget.livre));
+    final ok = await confirmarEncerrar(context, curto: v.movingTime < minimoParaGuardarS);
     if (!ok || !mounted) return;
     setState(() => _encerrando = true);
     final id = await ref.read(rideProvider(RideTarget.livre).notifier).finish();
     if (!mounted) return;
+    if (id == null) return sairSemGuardar(context, pedalou: v.movingTime > 0);
     context.go('/resumo/$id?novo=1');
   }
 
@@ -246,12 +248,17 @@ class _PedalLivreScreenState extends ConsumerState<PedalLivreScreen> {
 }
 
 /// Pergunta se a pessoa quer mesmo encerrar o pedal.
-Future<bool> confirmarEncerrar(BuildContext context) async {
+/// [curto]: andou menos de [minimoParaGuardarS] (não vai para o histórico).
+Future<bool> confirmarEncerrar(BuildContext context, {bool curto = false}) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (c) => AlertDialog(
       title: const Text('Encerrar o pedal?'),
-      content: const Text('O pedal vai ser salvo no seu histórico.'),
+      content: Text(
+        curto
+            ? 'Com menos de 30 segundos pedalando, ele não vai para o histórico.'
+            : 'O pedal vai ser salvo no seu histórico.',
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(c, false),
@@ -265,4 +272,19 @@ Future<bool> confirmarEncerrar(BuildContext context) async {
     ),
   );
   return ok == true;
+}
+
+/// Encerrou sem pedal para guardar (curto demais, ou ainda abrindo): volta para onde estava e,
+/// se chegou a pedalar, avisa que não salvou.
+void sairSemGuardar(BuildContext context, {required bool pedalou}) {
+  if (pedalou) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Pedal curto demais: não foi para o histórico.')),
+    );
+  }
+  if (context.canPop()) {
+    context.pop();
+  } else {
+    context.go('/inicio');
+  }
 }
