@@ -122,6 +122,14 @@ class FtmsSource implements BikeSource {
       rethrow;
     } catch (e) {
       log?.add('falhou ao conectar: $e');
+      // Um passo falhou depois de a bike atender: solta a ligação, para a próxima tentativa não
+      // começar por cima de uma conexão pela metade (a queda não conta como "caiu").
+      _manual = true;
+      try {
+        await UniversalBle.disconnect(deviceId);
+      } catch (_) {
+        // nem chegou a ligar
+      }
       _set(BikeConnection.desconectada);
       rethrow;
     }

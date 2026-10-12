@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,6 +42,42 @@ Future<void> passar(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('abrir a tela enquanto o app ainda reconecta a bike de sempre: não conecta duas vezes', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final bike = FakeBikeSource(name: 'WINNEK BT-151')..hold = Completer<void>();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsStoreProvider.overrideWithValue(
+            MemorySettingsStore(const AppSettings(ultimaBikeId: 'AA', ultimaBikeNome: 'WINNEK BT-151')),
+          ),
+          ridesStoreProvider.overrideWithValue(MemoryRidesStore()),
+          routesStoreProvider.overrideWithValue(MemoryRoutesStore()),
+          customWorkoutsStoreProvider.overrideWithValue(MemoryCustomWorkoutsStore()),
+          wakeLockProvider.overrideWithValue(FakeWakeLock()),
+          voiceProvider.overrideWithValue(FakeVoice()),
+          mapTilesEnabledProvider.overrideWithValue(false),
+          ftmsFactoryProvider.overrideWithValue((id, nome) => bike),
+          bikeScannerProvider.overrideWithValue(
+            _ScannerFalso(const [FoundDevice(id: 'AA', name: 'WINNEK BT-151', likelyBike: true)]),
+          ),
+        ],
+        child: const PedalLocalApp(),
+      ),
+    );
+    await passar(tester); // ao abrir, o app já tenta a bike de sempre (e ela demora)
+    final container = ProviderScope.containerOf(tester.element(find.byType(PedalLocalApp)));
+    expect(bike.connectCalls, 1);
+    container.read(appRouterProvider).push('/bike');
+    await passar(tester);
+    expect(bike.connectCalls, 1); // a busca achou a mesma bike, mas ela já estava conectando
+    bike.hold!.complete();
+    await passar(tester);
+    expect(container.read(bikeControllerProvider).connected, isTrue);
+  });
+
   testWidgets(
     'conectar: a bike de sempre conecta sozinha e a lista mostra os dados chegando',
     (tester) async {

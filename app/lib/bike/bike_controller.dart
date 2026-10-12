@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -41,6 +42,12 @@ class BikeController extends Notifier<BikeState> {
   Timer? _retry;
   int _attempt = 0;
   bool _reconnecting = false;
+
+  /// Pedal aberto: a reconexão não desiste. Parada mais de um minuto, a bike dorme e a conexão
+  /// cai; ela acorda quando a pessoa volta a pedalar, e o app precisa estar tentando.
+  bool _pedalAberto = false;
+
+  void manterConectada(bool sim) => _pedalAberto = sim;
 
   @override
   BikeState build() {
@@ -101,9 +108,10 @@ class BikeController extends Notifier<BikeState> {
   }
 
   /// O erro 133 do Android quase sempre é a bike dormindo: o painel desliga quando ela fica parada.
+  /// O detalhe técnico vai para o diário da bike; na tela, só o que fazer.
   static String _motivo(Object e) => '$e'.contains('133')
       ? 'Não achei a bike. Ela desliga quando fica parada: pedale um pouco para acordar o painel e tente de novo.'
-      : 'Não foi possível conectar: $e';
+      : 'Não foi possível conectar. Confira se a bike está ligada e perto do celular, e tente de novo.';
 
   Future<void> _drop(BikeSource source) async {
     await _sub?.cancel();
@@ -120,11 +128,11 @@ class BikeController extends Notifier<BikeState> {
 
   void _scheduleRetry() {
     final delays = ref.read(reconnectDelaysProvider);
-    if (_attempt >= delays.length) {
+    if (_attempt >= delays.length && !_pedalAberto) {
       state = state.copyWith(connection: BikeConnection.caiu, message: 'A bike desconectou. Toque em Reconectar.');
       return;
     }
-    final delay = delays[_attempt++];
+    final delay = delays[math.min(_attempt++, delays.length - 1)];
     _retry = Timer(delay, () async {
       final source = state.source;
       if (source == null) return;
@@ -147,7 +155,9 @@ class BikeController extends Notifier<BikeState> {
     try {
       await source.connect();
     } catch (e) {
-      if (ref.mounted) state = state.copyWith(message: 'Não reconectou: $e');
+      if (ref.mounted) {
+        state = state.copyWith(message: 'Não reconectou. Pedale um pouco para acordar o painel e tente de novo.');
+      }
     }
   }
 

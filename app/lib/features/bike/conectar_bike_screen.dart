@@ -100,7 +100,8 @@ class _ConectarBikeScreenState extends ConsumerState<ConectarBikeScreen>
   void _conectarAUltima(List<FoundDevice> lista) {
     final bike = ref.read(bikeControllerProvider);
     final ultima = ref.read(settingsProvider).value?.ultimaBikeId;
-    final ocupado = bike.connected || _connectingId != null;
+    // Conectando também conta: o app pode já estar tentando a bike de sempre desde que abriu.
+    final ocupado = bike.connected || bike.connection == BikeConnection.conectando || _connectingId != null;
     if (_tentouAUltima || ultima == null || ocupado) return;
     for (final d in lista) {
       if (d.id == ultima) {

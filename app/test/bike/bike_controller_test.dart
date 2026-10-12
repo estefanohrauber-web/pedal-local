@@ -95,6 +95,28 @@ void main() {
     expect(estado().message, contains('Reconectar'));
   });
 
+  test('com um pedal aberto, não desiste: tenta até a bike acordar', () async {
+    await ctrl().useDevice('AA:BB', 'FS-1234');
+    ctrl().manterConectada(true);
+    fake.failNext = 6; // a bike dormiu: mais falhas do que as 3 esperas
+    fake.emitConnection(BikeConnection.caiu);
+    await settle();
+    expect(fake.connectCalls, 8); // conexão inicial + 6 falhas + 1 sucesso
+    expect(estado().connection, BikeConnection.conectada);
+  });
+
+  test('erros em português simples, sem o texto técnico', () async {
+    fake.failWith = Exception('PlatformException(sem conexão)');
+    await ctrl().useDevice('AA:BB', 'FS-1234');
+    expect(estado().message, isNot(contains('Exception')));
+    fake = FakeBikeSource(name: 'FS-1234'); // a primeira foi descartada na falha
+    await ctrl().useDevice('AA:BB', 'FS-1234');
+    fake.failWith = Exception('PlatformException(sem conexão)');
+    await ctrl().reconnectNow();
+    expect(estado().message, startsWith('Não reconectou'));
+    expect(estado().message, isNot(contains('Exception')));
+  });
+
   test('bike simulada', () async {
     await ctrl().useSimulated();
     expect(estado().connected, isTrue);
