@@ -5,12 +5,22 @@ import 'package:pedal_local/domain/power.dart';
 void main() {
   const botao = BotaoPeso(8);
 
-  test('posição do botão para cada inclinação: o botão todo cobre até 10%', () {
-    expect(botao.posicaoPara(0), 0);
-    expect(botao.posicaoPara(0.06), 5); // 4,8 voltas
-    expect(botao.posicaoPara(0.10), 8);
-    expect(botao.posicaoPara(0.15), 8); // não passa do mais pesado
-    expect(botao.posicaoPara(-0.04), 0); // descida: mais leve
+  test('posição do botão numa subida: 10% pede tudo o que dá para pedalar', () {
+    const b = BotaoPeso(13, limiteMedido: 9);
+    expect(b.posicaoPara(0), 0);
+    expect(b.posicaoPara(0.041), 4); // a ponte do Entre pontes (antes pedia 8 voltas)
+    expect(b.posicaoPara(0.054), 5);
+    expect(b.posicaoPara(0.10), 9);
+    expect(b.posicaoPara(0.15), 9); // não passa do que dá para pedalar
+    expect(b.posicaoPara(-0.04), 0); // descida: mais leve
+  });
+
+  test('sem o limite medido, supõe que dá para pedalar até 70% das voltas', () {
+    expect(const BotaoPeso(13).limite, 9);
+    expect(botao.limite, 6);
+    expect(const BotaoPeso(1).limite, 1);
+    expect(const BotaoPeso(8, limiteMedido: 20).limite, 8);
+    expect(const BotaoPeso(8, limiteMedido: 0).limite, 1);
   });
 
   test('carga equivalente (1 a 10) para a estimativa dos watts', () {

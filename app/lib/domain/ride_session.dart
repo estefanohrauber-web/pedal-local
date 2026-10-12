@@ -43,9 +43,15 @@ enum RideState { pronto, pedalando, pausado, concluido }
 enum AlertKind { subida, descida }
 
 class RideAlert {
-  const RideAlert(this.kind, this.grade);
+  const RideAlert(this.kind, this.grade, [double? media]) : media = media ?? grade;
   final AlertKind kind;
+
+  /// O pedaço de 100 m mais íngreme logo à frente (é o que a voz anuncia).
   final double grade;
+
+  /// Os 200 m mais fortes logo à frente: o esforço da subida, que decide as voltas do botão
+  /// (numa rampa curta de ponte, bem menos que o pedaço mais íngreme).
+  final double media;
 }
 
 class RideSample {
@@ -219,20 +225,20 @@ class RideSession {
     if (g > descentAlertGrade / 2) _armDescent = true;
     if (_armClimb && g >= climbAlertGrade) {
       _armClimb = false;
-      return RideAlert(AlertKind.subida, _steepest(g, 1));
+      return RideAlert(AlertKind.subida, _steepest(g, 1), _steepest(g, 1, span: alertLookaheadM));
     }
     if (_armDescent && g <= descentAlertGrade) {
       _armDescent = false;
-      return RideAlert(AlertKind.descida, _steepest(g, -1));
+      return RideAlert(AlertKind.descida, _steepest(g, -1), _steepest(g, -1, span: alertLookaheadM));
     }
     return null;
   }
 
-  /// O trecho de [steepestSpanM] mais íngreme nos próximos 300 m ([sinal] 1 = subida, −1 = descida).
-  double _steepest(double media, int sinal) {
+  /// O trecho de [span] mais íngreme nos próximos 200 m ([sinal] 1 = subida, −1 = descida).
+  double _steepest(double media, int sinal, {double span = steepestSpanM}) {
     var pior = media;
     for (var k = 0.0; k <= alertLookaheadM + 1e-9; k += 20) {
-      final g = terrain.lookahead(_distance + k, steepestSpanM);
+      final g = terrain.lookahead(_distance + k, span);
       if (g * sinal > pior * sinal) pior = g;
     }
     return pior;

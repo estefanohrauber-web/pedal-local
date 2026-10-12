@@ -313,7 +313,7 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
       },
     ),
     const _Ajuda(
-      'A aba Você mostra quanto já foi da meta na semana (segunda a domingo).',
+      'O Início mostra quanto já foi da meta na semana (segunda a domingo).',
     ),
   ];
 
@@ -349,7 +349,8 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
       Text(
         voltas == null
             ? 'Ainda não calibrado.'
-            : 'Calibrado: $voltas ${voltas == 1 ? 'volta' : 'voltas'} do mais leve ao mais pesado.',
+            : 'Calibrado: $voltas ${voltas == 1 ? 'volta' : 'voltas'} do mais leve ao mais pesado'
+                '${s.limiteBotao == null ? '.' : '; dá para pedalar até a volta ${s.limiteBotao}.'}',
         style: AppText.corpoForte,
       ),
       const _Ajuda(

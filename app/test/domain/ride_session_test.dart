@@ -89,6 +89,15 @@ void main() {
     expect(alerts.first.grade, closeTo(0.10, 0.005));
   });
 
+  test('o aviso também traz a média da subida (para o botão), não só o pedaço mais íngreme', () {
+    // 300 m planos, uma rampa de 100 m a 10 % (como a de uma ponte) e plano de novo.
+    final alts = [for (var i = 0; i < 41; i++) i <= 15 ? 760.0 : 760.0 + (i - 15).clamp(0, 5) * 2];
+    final ride = nova(terrain: RouteProfile(northProfile(alts)))..setInputs(powerW: 200, cadence: 85);
+    final alerta = pedal(ride, 60).first;
+    expect(alerta.grade, closeTo(0.10, 0.005));
+    expect(alerta.media, closeTo(0.05, 0.005));
+  });
+
   test('aviso de descida', () {
     final ride = nova(terrain: FakeTerrain(ahead: (_) => -0.05))..setInputs(powerW: 100, cadence: 70);
     expect(pedal(ride, 30).map((a) => a.kind), [AlertKind.descida]);

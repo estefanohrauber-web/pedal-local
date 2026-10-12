@@ -338,7 +338,7 @@ class RideController extends Notifier<RideView> {
     final Terrain terreno = _loop ?? _profile ?? _terrenoTreino ?? const FlatTerrain();
     _session = RideSession(terrain: terreno, riderMassKg: settings.pesoKg)..start();
     final voltas = settings.voltasBotao;
-    _botao = voltas == null || voltas < 1 ? null : BotaoPeso(voltas);
+    _botao = voltas == null || voltas < 1 ? null : BotaoPeso(voltas, limiteMedido: settings.limiteBotao);
     _resolver = PowerResolver(
       mode: settings.modoPotencia,
       calibration: PowerCalibration(base: settings.base, factor: settings.fator),
@@ -414,7 +414,7 @@ class RideController extends Notifier<RideView> {
       final botao = _botao;
       if (botao != null) {
         final alerta = alerts.last;
-        final alvo = alerta.kind == AlertKind.subida ? botao.posicaoPara(alerta.grade) : 0;
+        final alvo = alerta.kind == AlertKind.subida ? botao.posicaoPara(alerta.media) : 0;
         dica = BotaoPeso.instrucao(_level, alvo) ?? '';
         _level = alvo;
       }

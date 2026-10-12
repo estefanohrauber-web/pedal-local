@@ -71,10 +71,15 @@ void main() {
   test('botão de peso: voltas guardadas e apagadas', () async {
     final store = SqliteSettingsStore(db);
     expect((await store.load()).voltasBotao, isNull);
-    await store.save(const AppSettings().copyWith(voltasBotao: 8));
+    await store.save(const AppSettings().copyWith(voltasBotao: 8, limiteBotao: 6));
     expect((await store.load()).voltasBotao, 8);
+    expect((await store.load()).limiteBotao, 6);
+    await store.save((await store.load()).copyWith(voltasBotao: 9, semLimite: true));
+    expect((await store.load()).limiteBotao, isNull); // recontou sem a bike: o limite antigo não vale
+    await store.save((await store.load()).copyWith(limiteBotao: 5));
     await store.save((await store.load()).copyWith(semBotao: true));
     expect((await store.load()).voltasBotao, isNull);
+    expect((await store.load()).limiteBotao, isNull);
   });
 
   test('voz escolhida; automática = nenhuma', () async {

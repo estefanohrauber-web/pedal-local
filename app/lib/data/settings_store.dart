@@ -22,6 +22,7 @@ class AppSettings {
     this.intensidade = 1,
     this.controleBike = true,
     this.voltasBotao,
+    this.limiteBotao,
   });
 
   final double pesoKg;
@@ -61,6 +62,9 @@ class AppSettings {
   /// Voltas do botão de peso, do mais leve ao mais pesado (calibração); null = não calibrado.
   final int? voltasBotao;
 
+  /// Até que volta do botão dá para pedalar (medido na calibração guiada); null = não medido.
+  final int? limiteBotao;
+
   AppSettings copyWith({
     double? pesoKg,
     PowerMode? modoPotencia,
@@ -82,6 +86,8 @@ class AppSettings {
     double? intensidade,
     bool? controleBike,
     int? voltasBotao,
+    int? limiteBotao,
+    bool semLimite = false,
     bool semBotao = false,
   }) =>
       AppSettings(
@@ -103,6 +109,7 @@ class AppSettings {
         intensidade: intensidade ?? this.intensidade,
         controleBike: controleBike ?? this.controleBike,
         voltasBotao: semBotao ? null : (voltasBotao ?? this.voltasBotao),
+        limiteBotao: semBotao || semLimite ? null : (limiteBotao ?? this.limiteBotao),
       );
 
   Map<String, String> toMap() => {
@@ -124,6 +131,7 @@ class AppSettings {
         'intensidade': '$intensidade',
         'controleBike': controleBike ? '1' : '0',
         'voltasBotao': ?voltasBotao?.toString(),
+        'limiteBotao': ?limiteBotao?.toString(),
       };
 
   factory AppSettings.fromMap(Map<String, String> m) {
@@ -150,6 +158,7 @@ class AppSettings {
       intensidade: dbl('intensidade', d.intensidade),
       controleBike: m['controleBike'] != '0',
       voltasBotao: int.tryParse(m['voltasBotao'] ?? ''),
+      limiteBotao: int.tryParse(m['limiteBotao'] ?? ''),
     );
   }
 }

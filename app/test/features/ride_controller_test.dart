@@ -573,9 +573,10 @@ void main() {
         for (var i = 0; i < 120 && view('r').distance < 250; i++) {
           await pedalar('r', 1, power: 233);
         }
-        expect(voz.spoken, contains('Subida de 10 por cento chegando. Gire o botão mais 8 voltas.'));
-        expect(view('r').level, 8);
-        expect(view('r').alertHint, 'Gire o botão mais 8 voltas.');
+        // 10% pede o que dá para pedalar: sem a medida, 70% das 8 voltas.
+        expect(voz.spoken, contains('Subida de 10 por cento chegando. Gire o botão mais 6 voltas.'));
+        expect(view('r').level, 6);
+        expect(view('r').alertHint, 'Gire o botão mais 6 voltas.');
       });
 
       test('treino: não confia no "ajusto sozinha" da bike e guia o botão pela meta', () async {
