@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
+import '../../data/ha_envio.dart';
 import '../../data/providers.dart';
 import '../../data/routes_store.dart';
 
@@ -37,6 +38,7 @@ class RouteTile extends ConsumerWidget {
     if (ok != true) return;
     await ref.read(routesStoreProvider).delete(route.id);
     ref.invalidate(routesProvider);
+    ref.read(haEnvioProvider).pedir(); // os pedais dela passam a se chamar “Rota” no painel da casa
   }
 
   @override

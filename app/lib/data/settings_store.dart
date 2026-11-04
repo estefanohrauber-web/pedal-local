@@ -23,6 +23,7 @@ class AppSettings {
     this.controleBike = true,
     this.voltasBotao,
     this.limiteBotao,
+    this.haEndereco,
   });
 
   final double pesoKg;
@@ -65,6 +66,9 @@ class AppSettings {
   /// Até que volta do botão dá para pedalar (medido na calibração guiada); null = não medido.
   final int? limiteBotao;
 
+  /// Endereço do Home Assistant da casa (o webhook deste celular) para mandar os pedais; vazio = não manda.
+  final String? haEndereco;
+
   AppSettings copyWith({
     double? pesoKg,
     PowerMode? modoPotencia,
@@ -89,6 +93,7 @@ class AppSettings {
     int? limiteBotao,
     bool semLimite = false,
     bool semBotao = false,
+    String? haEndereco,
   }) =>
       AppSettings(
         pesoKg: pesoKg ?? this.pesoKg,
@@ -110,6 +115,7 @@ class AppSettings {
         controleBike: controleBike ?? this.controleBike,
         voltasBotao: semBotao ? null : (voltasBotao ?? this.voltasBotao),
         limiteBotao: semBotao || semLimite ? null : (limiteBotao ?? this.limiteBotao),
+        haEndereco: haEndereco ?? this.haEndereco,
       );
 
   Map<String, String> toMap() => {
@@ -132,6 +138,7 @@ class AppSettings {
         'controleBike': controleBike ? '1' : '0',
         'voltasBotao': ?voltasBotao?.toString(),
         'limiteBotao': ?limiteBotao?.toString(),
+        'haEndereco': ?haEndereco,
       };
 
   factory AppSettings.fromMap(Map<String, String> m) {
@@ -159,6 +166,7 @@ class AppSettings {
       controleBike: m['controleBike'] != '0',
       voltasBotao: int.tryParse(m['voltasBotao'] ?? ''),
       limiteBotao: int.tryParse(m['limiteBotao'] ?? ''),
+      haEndereco: m['haEndereco'],
     );
   }
 }

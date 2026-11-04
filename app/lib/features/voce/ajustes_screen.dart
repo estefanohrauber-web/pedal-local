@@ -7,6 +7,7 @@ import '../../core/format/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/voice.dart';
 import '../../core/widgets/common.dart';
+import '../../data/ha_envio.dart';
 import '../../data/providers.dart';
 import '../../data/settings_store.dart';
 import '../../domain/power.dart';
@@ -20,6 +21,8 @@ final salvarAjusteProvider =
         final store = ref.read(settingsStoreProvider);
         await store.save(mudar(await store.load()));
         ref.invalidate(settingsProvider);
+        // nome, peso ou endereço novos vão para a casa (só manda se o retrato mudou)
+        ref.read(haEnvioProvider).pedir();
       });
     });
 
@@ -59,7 +62,7 @@ class AjustesScreen extends ConsumerWidget {
     Assunto.pedal => 'Margem da volta ${(s.margemVolta * 100).round()}%',
     Assunto.treinos =>
       s.ftp == null ? 'FTP pelo peso' : 'FTP ${formatNumber(s.ftp!)} W',
-    Assunto.avancado => 'Potência, estimativa e dados da bike',
+    Assunto.avancado => 'Potência, estimativa, dados da bike e Home Assistant',
   };
 
   @override
@@ -199,6 +202,7 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
   final _base = TextEditingController();
   final _fator = TextEditingController();
   final _ftp = TextEditingController();
+  final _ha = TextEditingController();
   AppSettings? _s;
   List<VoiceOption> _vozes = const [];
 
@@ -215,6 +219,7 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
         _base.text = s.base.toString().replaceAll('.', ',');
         _fator.text = s.fator.toString().replaceAll('.', ',');
         _ftp.text = s.ftp == null ? '' : s.ftp!.round().toString();
+        _ha.text = s.haEndereco ?? '';
       });
       if (widget.assunto == Assunto.voz) _carregarVozes(s.vozId);
     });
@@ -222,7 +227,7 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nome, _peso, _meta, _base, _fator, _ftp]) {
+    for (final c in [_nome, _peso, _meta, _base, _fator, _ftp, _ha]) {
       c.dispose();
     }
     super.dispose();
@@ -621,7 +626,83 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
     const _Ajuda(
       'Mostra ao vivo o que a sua bike manda e o diário da conexão.',
     ),
+    const SizedBox(height: 24),
+    const SectionTitle('Home Assistant'),
+    TextField(
+      key: const Key('endereco-ha'),
+      controller: _ha,
+      keyboardType: TextInputType.url,
+      autocorrect: false,
+      decoration: const InputDecoration(
+        labelText: 'Enviar para o Home Assistant',
+        hintText: 'http://…/api/webhook/…',
+      ),
+      onChanged: (v) => _mudar((s) => s.copyWith(haEndereco: v.trim())),
+    ),
+    const _Ajuda(
+      'O endereço da casa para este celular. Com ele, os seus pedais aparecem no painel da TV '
+      '(com o celular no Wi-Fi de casa). Vazio: não manda.',
+    ),
+    if ((s.haEndereco ?? '').trim().isNotEmpty) const _EnvioCasa(),
   ];
+}
+
+/// Como foi o último envio para o Home Assistant, e o botão para mandar agora.
+class _EnvioCasa extends ConsumerStatefulWidget {
+  const _EnvioCasa();
+
+  @override
+  ConsumerState<_EnvioCasa> createState() => _EnvioCasaState();
+}
+
+class _EnvioCasaState extends ConsumerState<_EnvioCasa> {
+  bool _mandando = false;
+
+  Future<void> _mandar() async {
+    setState(() => _mandando = true);
+    final r = await ref.read(haEnvioProvider).enviarAgora();
+    if (!mounted) return;
+    setState(() => _mandando = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          r == HaResultado.enviado
+              ? 'Pedais mandados para o Home Assistant.'
+              : 'Não consegui mandar. Confira se o celular está no Wi-Fi de casa e o endereço.',
+        ),
+      ),
+    );
+  }
+
+  String _situacao(HaEnvioEstado? e) {
+    if (e == null) return '';
+    final tentativa = e.tentativaEm;
+    if (e.falhou && tentativa != null) {
+      return 'Não consegui mandar em ${formatDateTime(tentativa)}. '
+          'Ele tenta de novo sozinho.';
+    }
+    final ok = e.okEm;
+    return ok == null
+        ? 'Ainda não mandou.'
+        : 'Último envio: ${formatDateTime(ok)}.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final e = ref.watch(haEnvioEstadoProvider).value;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Expanded(child: Text(_situacao(e), style: AppText.suave)),
+          TextButton(
+            onPressed: _mandando ? null : _mandar,
+            child: Text(_mandando ? 'Mandando…' : 'Mandar agora'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Ajuda extends StatelessWidget {

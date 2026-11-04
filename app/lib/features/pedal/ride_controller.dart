@@ -10,6 +10,7 @@ import '../../bike/bike_reading.dart';
 import '../../bike/bike_source.dart';
 import '../../core/voice.dart';
 import '../../core/wake_lock.dart';
+import '../../data/ha_envio.dart';
 import '../../data/providers.dart';
 import '../../data/rides_store.dart';
 import '../../domain/geo.dart';
@@ -635,6 +636,7 @@ class RideController extends Notifier<RideView> {
         ref
           ..invalidate(recentRidesProvider)
           ..invalidate(rideStatsProvider);
+        ref.read(haEnvioProvider).pedir();
         _publish();
       }
       return null;
@@ -671,6 +673,7 @@ class RideController extends Notifier<RideView> {
         ..invalidate(recentRidesProvider)
         ..invalidate(rideStatsProvider)
         ..invalidate(doneWorkoutsProvider);
+      ref.read(haEnvioProvider).pedir(); // o pedal novo vai para o painel da casa
       _publish();
     }
     return _rideId!;

@@ -92,6 +92,17 @@ void main() {
     expect(s.copyWith(pesoKg: 80).vozId, s.vozId);
   });
 
+  test('endereço do Home Assistant: guardado; vazio = não manda', () async {
+    final store = SqliteSettingsStore(db);
+    expect((await store.load()).haEndereco, isNull);
+    const url = 'http://192.168.3.70/api/webhook/pedalaqui-teste';
+    await store.save(const AppSettings().copyWith(haEndereco: url));
+    expect((await store.load()).haEndereco, url);
+    expect((await store.load()).copyWith(pesoKg: 80).haEndereco, url);
+    await store.save((await store.load()).copyWith(haEndereco: ''));
+    expect((await store.load()).haEndereco, '');
+  });
+
   test('versão em memória', () async {
     final store = MemorySettingsStore();
     await store.save(const AppSettings(pesoKg: 90));

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'bike/bike_controller.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'data/ha_envio.dart';
 import 'data/providers.dart';
 import 'data/relief_upgrade.dart';
 import 'data/routes_store.dart';
@@ -23,6 +24,17 @@ class _PedalLocalAppState extends ConsumerState<PedalLocalApp> {
     super.initState();
     Future.microtask(() => ref.read(bikeControllerProvider.notifier).reconnectLast());
     Future.microtask(_refazerRelevo);
+    Future.microtask(_mandarParaCasa);
+  }
+
+  /// Pedais para o Home Assistant da casa, se o último envio falhou, se já faz 1 dia ou se algo
+  /// mudou (sem endereço nos Ajustes, não faz nada).
+  Future<void> _mandarParaCasa() async {
+    try {
+      await ref.read(haEnvioProvider).aoAbrir();
+    } catch (_) {
+      // tenta na próxima vez
+    }
   }
 
   /// Rotas salvas antes das pontes em reta: refaz o relevo (quando houver internet).

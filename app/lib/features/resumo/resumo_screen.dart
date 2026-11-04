@@ -11,6 +11,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_map.dart';
 import '../../core/widgets/bandeira.dart';
 import '../../core/widgets/common.dart';
+import '../../data/ha_envio.dart';
 import '../../data/providers.dart';
 import '../../data/rides_store.dart';
 import '../../domain/laps.dart';
@@ -81,6 +82,7 @@ class _ConteudoState extends ConsumerState<_Conteudo> {
       ..invalidate(recentRidesProvider)
       ..invalidate(rideStatsProvider)
       ..invalidate(rideByIdProvider(ride.id));
+    ref.read(haEnvioProvider).pedir();
     if (!mounted) return;
     if (widget.novo || !context.canPop()) {
       context.go('/inicio');
