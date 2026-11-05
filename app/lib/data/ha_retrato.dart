@@ -104,26 +104,55 @@ String corpoHa({
 /// nos dois eixos (como no desenho do app), centralizado, com o y crescendo para o norte.
 /// Vazio quando não há o que desenhar.
 List<List<int>> formaHa(List<ProfilePoint> caminho, {int maxPontos = 24}) {
-  if (caminho.length < 2) return const [];
-  final escala = math.cos(caminho.first.lat * math.pi / 180);
-  final xs = [for (final p in caminho) p.lon * escala];
-  final ys = [for (final p in caminho) p.lat];
-  final minX = xs.reduce(math.min), maxX = xs.reduce(math.max);
-  final minY = ys.reduce(math.min), maxY = ys.reduce(math.max);
-  final lado = math.max(maxX - minX, maxY - minY);
-  if (lado < 1e-9) return const [];
-  final k = 100 / lado;
-  final dx = (100 - (maxX - minX) * k) / 2;
-  final dy = (100 - (maxY - minY) * k) / 2;
-  final px = [for (final x in xs) dx + (x - minX) * k];
-  final py = [for (final y in ys) dy + (y - minY) * k];
+  final projecao = ProjecaoHa.de(caminho);
+  if (projecao == null) return const [];
+  final px = <double>[], py = <double>[];
+  for (final p in caminho) {
+    final (x, y) = projecao.xy(p.lat, p.lon);
+    px.add(x);
+    py.add(y);
+  }
+  // até sobrar só desvio menor que meia unidade (some no arredondamento)
+  final forma = <List<int>>[];
+  for (final i in simplificarHa(px, py, maxPontos: maxPontos, tolerancia: 0.5)) {
+    final ponto = [px[i].round(), py[i].round()];
+    if (forma.isEmpty || forma.last[0] != ponto[0] || forma.last[1] != ponto[1]) forma.add(ponto);
+  }
+  return forma.length < 2 ? const [] : forma;
+}
 
-  // Simplifica: começa pelas pontas e vai pondo o ponto que mais foge do desenho atual, até
-  // [maxPontos] ou até sobrar só desvio menor que meia unidade (some no arredondamento).
-  final escolhidos = <int>[0, caminho.length - 1];
+/// Leva latitude e longitude para o quadrado de 0 a 100 de um caminho: a mesma escala nos dois
+/// eixos (como no desenho do app), centralizado, com o y crescendo para o norte.
+class ProjecaoHa {
+  ProjecaoHa._(this._escala, this._minX, this._minY, this._k, this._dx, this._dy);
+
+  /// A projeção que enquadra [caminho]; null quando não há o que desenhar.
+  static ProjecaoHa? de(List<ProfilePoint> caminho) {
+    if (caminho.length < 2) return null;
+    final escala = math.cos(caminho.first.lat * math.pi / 180);
+    final xs = [for (final p in caminho) p.lon * escala];
+    final ys = [for (final p in caminho) p.lat];
+    final minX = xs.reduce(math.min), maxX = xs.reduce(math.max);
+    final minY = ys.reduce(math.min), maxY = ys.reduce(math.max);
+    final lado = math.max(maxX - minX, maxY - minY);
+    if (lado < 1e-9) return null;
+    final k = 100 / lado;
+    return ProjecaoHa._(escala, minX, minY, k, (100 - (maxX - minX) * k) / 2, (100 - (maxY - minY) * k) / 2);
+  }
+
+  final double _escala, _minX, _minY, _k, _dx, _dy;
+
+  (double, double) xy(double lat, double lon) => (_dx + (lon * _escala - _minX) * _k, _dy + (lat - _minY) * _k);
+}
+
+/// Simplifica um desenho: começa pelas pontas e vai pondo o ponto que mais foge do desenho atual,
+/// até [maxPontos] ou até nenhum fugir mais que [tolerancia]. Devolve os índices, em ordem.
+List<int> simplificarHa(List<double> px, List<double> py, {required int maxPontos, required double tolerancia}) {
+  if (px.length < 2) return [for (var i = 0; i < px.length; i++) i];
+  final escolhidos = <int>[0, px.length - 1];
   while (escolhidos.length < maxPontos) {
     var pior = -1;
-    var desvio = 0.5;
+    var desvio = tolerancia;
     for (var s = 0; s + 1 < escolhidos.length; s++) {
       final a = escolhidos[s], b = escolhidos[s + 1];
       for (var i = a + 1; i < b; i++) {
@@ -139,12 +168,7 @@ List<List<int>> formaHa(List<ProfilePoint> caminho, {int maxPontos = 24}) {
       ..add(pior)
       ..sort();
   }
-  final forma = <List<int>>[];
-  for (final i in escolhidos) {
-    final ponto = [px[i].round(), py[i].round()];
-    if (forma.isEmpty || forma.last[0] != ponto[0] || forma.last[1] != ponto[1]) forma.add(ponto);
-  }
-  return forma.length < 2 ? const [] : forma;
+  return escolhidos;
 }
 
 double _distanciaAoTrecho(double x, double y, double ax, double ay, double bx, double by) {

@@ -103,6 +103,18 @@ void main() {
     expect((await store.load()).haEndereco, '');
   });
 
+  test('2.º endereço do Home Assistant (detalhe de cada pedal): guardado à parte', () async {
+    final store = SqliteSettingsStore(db);
+    expect((await store.load()).haDetalheEndereco, isNull);
+    const url = 'http://192.168.3.70/api/webhook/pedalaqui-teste-pedal';
+    await store.save(const AppSettings().copyWith(haEndereco: 'http://x/1', haDetalheEndereco: url));
+    expect((await store.load()).haDetalheEndereco, url);
+    expect((await store.load()).haEndereco, 'http://x/1');
+    expect((await store.load()).copyWith(pesoKg: 80).haDetalheEndereco, url);
+    await store.save((await store.load()).copyWith(haDetalheEndereco: ''));
+    expect((await store.load()).haDetalheEndereco, '');
+  });
+
   test('versão em memória', () async {
     final store = MemorySettingsStore();
     await store.save(const AppSettings(pesoKg: 90));

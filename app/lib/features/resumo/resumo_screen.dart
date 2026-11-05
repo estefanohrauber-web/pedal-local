@@ -11,13 +11,13 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_map.dart';
 import '../../core/widgets/bandeira.dart';
 import '../../core/widgets/common.dart';
+import '../../data/cabecalho_pedal.dart';
 import '../../data/ha_envio.dart';
 import '../../data/providers.dart';
 import '../../data/rides_store.dart';
 import '../../domain/laps.dart';
 import '../../domain/ride_analysis.dart';
 import '../../domain/route_profile.dart';
-import '../../domain/route_variant.dart';
 import '../../domain/training_plans.dart';
 import 'metric_chart.dart';
 
@@ -520,31 +520,8 @@ class _Cabecalho extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rota = ride.mode == RideMode.rota;
-    final treino = ride.mode == RideMode.treino;
-    final concluiu = rota || treino ? ride.laps >= 1 : ride.completed;
-    final titulo = !ride.completed
-        ? 'Pedal salvo'
-        : rota
-            ? (ride.laps >= 1 ? 'Rota concluída!' : 'Pedal encerrado')
-            : treino
-                ? (ride.laps >= 1 ? 'Treino concluído!' : 'Treino encerrado')
-                : 'Pedal concluído!';
+    final (:titulo, :detalhes, :concluiu) = cabecalhoPedal(ride, perfil);
     final subtitulo = [rideName(ride, routeName: nomeRota), formatDateTime(ride.startedAt)].join(' · ');
-    final p = perfil;
-    final detalhes = <String>[];
-    if (rota && p != null) {
-      if (ride.loop) {
-        final extra = ride.distanceM - ride.laps * p.distance;
-        final voltas = ride.laps == 1 ? '1 volta' : '${ride.laps} voltas';
-        detalhes.add(extra > 1 ? '$voltas + ${formatKm(extra)}' : voltas);
-        detalhes.add(isClockwise(ride.track!) ? 'sentido horário' : 'sentido anti-horário');
-      } else {
-        if (ride.reversed) detalhes.add('sentido invertido');
-        if (ride.laps == 0) detalhes.add('faltaram ${formatKm(math.max(0, p.distance - ride.distanceM))}');
-      }
-    }
-    if (ride.trimmedM > 0) detalhes.add('volta fechada: ${formatNumber(ride.trimmedM)} m a mais descartados');
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

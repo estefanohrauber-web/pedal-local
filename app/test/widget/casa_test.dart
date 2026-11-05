@@ -17,6 +17,7 @@ import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/routes_store.dart';
 import 'package:pedal_local/data/services/location_service.dart';
 import 'package:pedal_local/data/settings_store.dart';
+import 'package:pedal_local/domain/ride_session.dart';
 
 import '../support/fakes.dart';
 
@@ -42,6 +43,10 @@ Future<ProviderContainer> abrir(WidgetTester tester, List<http.Request> pedidos,
     gainM: 0,
     kcal: 224,
     completed: true,
+    samples: [
+      for (var i = 0; i < 60; i++)
+        RideSample(t: i + 1.0, distance: (i + 1) * 6.0, speedKmh: 21.6, power: 161, cadence: 85),
+    ],
   ));
   await tester.pumpWidget(ProviderScope(
     overrides: [
@@ -55,6 +60,7 @@ Future<ProviderContainer> abrir(WidgetTester tester, List<http.Request> pedidos,
       locationServiceProvider.overrideWithValue(const FixedLocationService(null)),
       bikeLogProvider.overrideWithValue(BikeLog()),
       haEnvioEstadoStoreProvider.overrideWithValue(MemoryHaEnvioEstadoStore()),
+      haDetalheEstadoStoreProvider.overrideWithValue(MemoryHaDetalheEstadoStore()),
       httpClientProvider.overrideWithValue(MockClient((req) async {
         pedidos.add(req);
         return http.Response('', 200);
@@ -106,6 +112,33 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
     expect(pedidos, hasLength(1));
+  });
+
+  testWidgets('Ajustes › Avançado: o 2.º endereço manda o detalhe de cada pedal', (tester) async {
+    const detalhe = 'http://192.168.3.70/api/webhook/pedalaqui-teste-pedal';
+    final pedidos = <http.Request>[];
+    final container = await abrir(tester, pedidos);
+    await tester.tap(find.text('Você').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Ajustes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançado'));
+    await tester.pumpAndSettle();
+
+    final campo = find.byKey(const Key('endereco-ha-detalhe'));
+    await tester.scrollUntilVisible(campo, 300, scrollable: lista);
+    expect(find.text('Detalhe de cada pedal'), findsOneWidget);
+    await tester.enterText(campo, detalhe);
+    await tester.pump(const Duration(seconds: 3)); // espera para juntar as teclas
+    await tester.pumpAndSettle();
+    expect((await container.read(settingsStoreProvider).load()).haDetalheEndereco, detalhe);
+    expect(pedidos.map((p) => p.url.toString()), [detalhe], reason: 'sem o 1.º endereço, só o detalhe');
+    final corpo = jsonDecode(pedidos.single.body) as Map<String, dynamic>;
+    expect(corpo['inicio'], DateTime(2026, 11, 3, 19).millisecondsSinceEpoch ~/ 1000);
+    expect(corpo['amostras'], hasLength(60));
+    await tester.scrollUntilVisible(find.text('Mandar agora'), 300, scrollable: lista);
+    expect(find.textContaining('Detalhe: tudo mandado'), findsOneWidget);
+    expect(find.text('Ainda não mandou.'), findsNothing, reason: 'sem o 1.º endereço, não fala do resumo');
   });
 
   testWidgets('ao abrir o app com endereço e sem envio ainda, manda uma vez', (tester) async {

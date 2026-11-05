@@ -203,6 +203,7 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
   final _fator = TextEditingController();
   final _ftp = TextEditingController();
   final _ha = TextEditingController();
+  final _haDetalhe = TextEditingController();
   AppSettings? _s;
   List<VoiceOption> _vozes = const [];
 
@@ -220,6 +221,7 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
         _fator.text = s.fator.toString().replaceAll('.', ',');
         _ftp.text = s.ftp == null ? '' : s.ftp!.round().toString();
         _ha.text = s.haEndereco ?? '';
+        _haDetalhe.text = s.haDetalheEndereco ?? '';
       });
       if (widget.assunto == Assunto.voz) _carregarVozes(s.vozId);
     });
@@ -227,7 +229,7 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nome, _peso, _meta, _base, _fator, _ftp, _ha]) {
+    for (final c in [_nome, _peso, _meta, _base, _fator, _ftp, _ha, _haDetalhe]) {
       c.dispose();
     }
     super.dispose();
@@ -643,13 +645,38 @@ class _AjustesAssuntoScreenState extends ConsumerState<AjustesAssuntoScreen> {
       'O endereço da casa para este celular. Com ele, os seus pedais aparecem no painel da TV '
       '(com o celular no Wi-Fi de casa). Vazio: não manda.',
     ),
-    if ((s.haEndereco ?? '').trim().isNotEmpty) const _EnvioCasa(),
+    const SizedBox(height: 16),
+    TextField(
+      key: const Key('endereco-ha-detalhe'),
+      controller: _haDetalhe,
+      keyboardType: TextInputType.url,
+      autocorrect: false,
+      decoration: const InputDecoration(
+        labelText: 'Detalhe de cada pedal',
+        hintText: 'http://…/api/webhook/…',
+      ),
+      onChanged: (v) => _mudar((s) => s.copyWith(haDetalheEndereco: v.trim())),
+    ),
+    const _Ajuda(
+      'O 2.º endereço da casa. Com ele, o painel da TV abre cada pedal com o mapa pintado e o '
+      'gráfico, como aqui no app. Vazio: não manda.',
+    ),
+    if ((s.haEndereco ?? '').trim().isNotEmpty || (s.haDetalheEndereco ?? '').trim().isNotEmpty)
+      _EnvioCasa(
+        resumo: (s.haEndereco ?? '').trim().isNotEmpty,
+        detalhe: (s.haDetalheEndereco ?? '').trim().isNotEmpty,
+      ),
   ];
 }
 
-/// Como foi o último envio para o Home Assistant, e o botão para mandar agora.
+/// Como foi o último envio para o Home Assistant (o resumo e o detalhe), e o botão para mandar
+/// agora.
 class _EnvioCasa extends ConsumerStatefulWidget {
-  const _EnvioCasa();
+  const _EnvioCasa({required this.resumo, required this.detalhe});
+
+  /// Tem o endereço do resumo / do detalhe.
+  final bool resumo;
+  final bool detalhe;
 
   @override
   ConsumerState<_EnvioCasa> createState() => _EnvioCasaState();
@@ -666,12 +693,26 @@ class _EnvioCasaState extends ConsumerState<_EnvioCasa> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          r == HaResultado.enviado
-              ? 'Pedais mandados para o Home Assistant.'
-              : 'Não consegui mandar. Confira se o celular está no Wi-Fi de casa e o endereço.',
+          switch (r) {
+            HaResultado.enviado || HaResultado.jaEstava => 'Pedais mandados para o Home Assistant.',
+            HaResultado.semEndereco => 'Mandando o detalhe dos pedais para o Home Assistant.',
+            HaResultado.falhou => 'Não consegui mandar. Confira se o celular está no Wi-Fi de casa e o endereço.',
+          },
         ),
       ),
     );
+  }
+
+  String _situacaoDetalhe(HaDetalheEstado? e) {
+    if (e == null) return '';
+    final tentativa = e.tentativaEm;
+    if (e.falhou && tentativa != null) {
+      return 'Detalhe: não consegui mandar em ${formatDateTime(tentativa)}. Ele tenta de novo sozinho.';
+    }
+    if (e.faltam > 0) return 'Detalhe: ${e.faltam == 1 ? 'falta 1 pedal' : 'faltam ${e.faltam} pedais'}.';
+    final ok = e.okEm;
+    if (ok != null) return 'Detalhe: tudo mandado (último em ${formatDateTime(ok)}).';
+    return tentativa == null ? 'Detalhe: ainda não mandou.' : 'Detalhe: nenhum pedal para mandar ainda.';
   }
 
   String _situacao(HaEnvioEstado? e) {
@@ -689,12 +730,20 @@ class _EnvioCasaState extends ConsumerState<_EnvioCasa> {
 
   @override
   Widget build(BuildContext context) {
-    final e = ref.watch(haEnvioEstadoProvider).value;
+    final linhas = [
+      if (widget.resumo) _situacao(ref.watch(haEnvioEstadoProvider).value),
+      if (widget.detalhe) _situacaoDetalhe(ref.watch(haDetalheEstadoProvider).value),
+    ];
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Row(
         children: [
-          Expanded(child: Text(_situacao(e), style: AppText.suave)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [for (final l in linhas) if (l.isNotEmpty) Text(l, style: AppText.suave)],
+            ),
+          ),
           TextButton(
             onPressed: _mandando ? null : _mandar,
             child: Text(_mandando ? 'Mandando…' : 'Mandar agora'),

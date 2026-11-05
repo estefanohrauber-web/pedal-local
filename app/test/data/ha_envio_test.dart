@@ -9,6 +9,7 @@ import 'package:pedal_local/data/ha_envio.dart';
 import 'package:pedal_local/data/rides_store.dart';
 import 'package:pedal_local/data/routes_store.dart';
 import 'package:pedal_local/data/settings_store.dart';
+import 'package:pedal_local/domain/ride_session.dart';
 
 const endereco = 'http://192.168.3.70/api/webhook/pedalaqui-teste';
 
@@ -192,4 +193,179 @@ void main() {
     await arquivo.writeAsString('{quebrado');
     expect((await store.load()).falhou, isFalse, reason: 'arquivo estragado = começa do zero');
   });
+
+  group('detalhe de cada pedal', () {
+    late MemoryHaDetalheEstadoStore estadoDetalhe;
+    late HaEnvio comDetalhe;
+
+    List<http.Request> doDetalhe() => [for (final p in pedidos) if (p.url.toString() == enderecoDetalhe) p];
+    int inicio(http.Request p) => (jsonDecode(p.body) as Map<String, dynamic>)['inicio'] as int;
+    int seg(DateTime d) => d.millisecondsSinceEpoch ~/ 1000;
+
+    setUp(() async {
+      await ajustes.save((await ajustes.load()).copyWith(haDetalheEndereco: enderecoDetalhe));
+      // 'a' (do setUp de fora) não tem amostras; 'b' e 'c' têm
+      await pedais.upsert(comAmostras('b', DateTime(2026, 11, 1, 7)));
+      await pedais.upsert(comAmostras('c', DateTime(2026, 11, 2, 7)));
+      estadoDetalhe = MemoryHaDetalheEstadoStore();
+      comDetalhe = HaEnvio(
+        ajustes: ajustes,
+        pedais: pedais,
+        rotas: MemoryRoutesStore(),
+        estado: estado,
+        estadoDetalhe: estadoDetalhe,
+        client: MockClient((req) {
+          pedidos.add(req);
+          return responder(req);
+        }),
+        agora: () => agora,
+        espera: const Duration(milliseconds: 20),
+        prazo: const Duration(milliseconds: 100),
+        intervalo: Duration.zero,
+        aoMudar: () => mudou++,
+      );
+    });
+    tearDown(() => comDetalhe.dispose());
+
+    test('um pedido por pedal com amostras, do mais novo ao mais velho, no 2.º endereço', () async {
+      await comDetalhe.mandarDetalhes();
+      final d = doDetalhe();
+      expect([for (final p in d) inicio(p)], [seg(DateTime(2026, 11, 2, 7)), seg(DateTime(2026, 11, 1, 7))]);
+      expect(d.first.method, 'POST');
+      expect(d.first.headers['Content-Type'], startsWith('application/json'));
+      expect((jsonDecode(d.first.body) as Map)['amostras'], hasLength(120));
+      expect(pedidos.where((p) => p.url.toString() == endereco), isEmpty, reason: 'o resumo só vai quando pedido');
+      final e = await estadoDetalhe.load();
+      expect(e.endereco, enderecoDetalhe);
+      expect(e.enviados.keys, unorderedEquals(['a', 'b', 'c']), reason: "'a' sem amostras fica marcado para não olhar de novo");
+      expect(e.faltam, 0);
+      expect(e.okEm, agora);
+      expect(e.falhou, isFalse);
+    });
+
+    test('não manda de novo o que já foi; manda o que mudou', () async {
+      await comDetalhe.mandarDetalhes();
+      pedidos.clear();
+      await comDetalhe.mandarDetalhes();
+      expect(pedidos, isEmpty);
+      await pedais.upsert(comAmostras('b', DateTime(2026, 11, 1, 7), n: 150));
+      await comDetalhe.mandarDetalhes();
+      expect([for (final p in doDetalhe()) inicio(p)], [seg(DateTime(2026, 11, 1, 7))]);
+    });
+
+    test('endereço novo: manda tudo de novo para ele', () async {
+      await comDetalhe.mandarDetalhes();
+      pedidos.clear();
+      const outro = 'http://192.168.3.70/api/webhook/outro';
+      await ajustes.save((await ajustes.load()).copyWith(haDetalheEndereco: outro));
+      await comDetalhe.mandarDetalhes();
+      expect(pedidos.map((p) => p.url.toString()), [outro, outro]);
+    });
+
+    test('pedal apagado sai da lista do que já foi', () async {
+      await comDetalhe.mandarDetalhes();
+      await pedais.delete('c');
+      await comDetalhe.mandarDetalhes();
+      expect((await estadoDetalhe.load()).enviados.keys, unorderedEquals(['a', 'b']));
+    });
+
+    test('falhou: para, marca o que falta e continua na próxima vez', () async {
+      responder = (_) async => throw const SocketException('sem rede');
+      await comDetalhe.mandarDetalhes();
+      expect(doDetalhe(), hasLength(1), reason: 'na primeira falha, não insiste com os outros');
+      var e = await estadoDetalhe.load();
+      expect(e.falhou, isTrue);
+      expect(e.faltam, 2);
+      expect(e.okEm, isNull);
+      responder = (_) async => http.Response('', 200);
+      pedidos.clear();
+      await comDetalhe.mandarDetalhes();
+      expect(doDetalhe(), hasLength(2));
+      e = await estadoDetalhe.load();
+      expect(e.falhou, isFalse);
+      expect(e.faltam, 0);
+    });
+
+    test('ao abrir o app, depois do resumo, manda o detalhe', () async {
+      expect(await comDetalhe.aoAbrir(), HaResultado.enviado);
+      await comDetalhe.mandarDetalhes(); // espera a passada que o aoAbrir começou
+      expect(pedidos.first.url.toString(), endereco);
+      expect(doDetalhe(), hasLength(2));
+    });
+
+    test('só com o endereço do detalhe, pedir também manda', () async {
+      await ajustes.save((await ajustes.load()).copyWith(haEndereco: ''));
+      comDetalhe.pedir();
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await comDetalhe.mandarDetalhes();
+      expect(pedidos.where((p) => p.url.toString() == endereco), isEmpty);
+      expect(doDetalhe(), hasLength(2));
+    });
+
+    test('espera entre um pedal e o próximo', () async {
+      await pedais.upsert(comAmostras('d', DateTime(2026, 11, 3, 7)));
+      final devagar = HaEnvio(
+        ajustes: ajustes,
+        pedais: pedais,
+        rotas: MemoryRoutesStore(),
+        estado: estado,
+        estadoDetalhe: MemoryHaDetalheEstadoStore(),
+        client: MockClient((req) async {
+          pedidos.add(req);
+          return http.Response('', 200);
+        }),
+        intervalo: const Duration(milliseconds: 60),
+      );
+      addTearDown(devagar.dispose);
+      final relogio = Stopwatch()..start();
+      await devagar.mandarDetalhes();
+      expect(doDetalhe(), hasLength(3));
+      expect(relogio.elapsedMilliseconds, greaterThanOrEqualTo(120), reason: '2 pausas entre 3 pedais');
+    });
+
+    test('o estado do detalhe fica num arquivo do app e volta igual', () async {
+      final pasta = await Directory.systemTemp.createTemp('ha_detalhe');
+      addTearDown(() => pasta.delete(recursive: true));
+      final arquivo = File('${pasta.path}/ha_detalhe.json');
+      final store = ArquivoHaDetalheEstadoStore(() async => arquivo);
+      expect((await store.load()).enviados, isEmpty, reason: 'sem arquivo ainda');
+      await store.save(HaDetalheEstado(
+        endereco: enderecoDetalhe,
+        enviados: const {'b': 'v1|120|600'},
+        okEm: DateTime(2026, 11, 5, 8),
+        tentativaEm: DateTime(2026, 11, 5, 9),
+        falhou: true,
+        faltam: 3,
+      ));
+      final lido = await store.load();
+      expect(lido.endereco, enderecoDetalhe);
+      expect(lido.enviados, {'b': 'v1|120|600'});
+      expect(lido.okEm, DateTime(2026, 11, 5, 8));
+      expect(lido.tentativaEm, DateTime(2026, 11, 5, 9));
+      expect(lido.falhou, isTrue);
+      expect(lido.faltam, 3);
+      await arquivo.writeAsString('{quebrado');
+      expect((await store.load()).enviados, isEmpty, reason: 'arquivo estragado = começa do zero');
+    });
+  });
 }
+
+const enderecoDetalhe = 'http://192.168.3.70/api/webhook/pedalaqui-teste-pedal';
+
+/// Um pedal livre com [n] amostras (uma por segundo, a 5 m/s).
+RideRecord comAmostras(String id, DateTime inicio, {int n = 120}) => RideRecord(
+  id: id,
+  mode: RideMode.livre,
+  startedAt: inicio,
+  movingTimeS: n.toDouble(),
+  distanceM: n * 5.0,
+  avgPowerW: 130,
+  avgSpeedKmh: 18,
+  gainM: 0,
+  kcal: 20,
+  completed: true,
+  samples: [
+    for (var i = 0; i < n; i++)
+      RideSample(t: i + 1.0, distance: (i + 1) * 5.0, speedKmh: 18, power: 130, cadence: 80),
+  ],
+);

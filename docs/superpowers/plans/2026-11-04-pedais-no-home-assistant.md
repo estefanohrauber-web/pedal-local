@@ -32,6 +32,29 @@ de casa. O lado do Home Assistant (dois sensores por webhook, `sensor.pedalaqui_
   à soma do banco (6 pedais, 27 870 m), com nome, 75 kg, os 6 pedais e as 2 rotas desenhadas.
   O log do Home Assistant ficou sem avisos; o banco do celular ficou igual (6 pedais).
 
+## Parte 2 — detalhe de cada pedal (5/11/2026)
+
+Pedido novo: no painel, abrir um pedal do histórico e ver o mesmo que a tela do pedal do app (o
+mapa pintado, o gráfico, as voltas e os números). Formato final em `pedalaqui-ha.md`, seção
+“Detalhe de cada pedal”.
+
+- [x] **8. Montar o detalhe** — `data/ha_detalhe.dart`: `detalheHa()`/`corpoDetalheHa()`: o topo
+  da tela (`data/cabecalho_pedal.dart`, a mesma função da tela), os números, as métricas com a
+  faixa de cores (percentis 5 e 95, como a tela), as voltas, o caminho e até 600 amostras já
+  suavizadas, com `x`/`y` na mesma escala de 0 a 100 da forma das rotas (`ProjecaoHa`, tirada do
+  `formaHa`). Abaixo de 60 KB. Testes em `test/data/ha_detalhe_test.dart`.
+- [x] **9. 2.º endereço** — `AppSettings.haDetalheEndereco`; campo “Detalhe de cada pedal” em
+  Ajustes › Avançado, com a situação embaixo (“Detalhe: tudo mandado…”).
+- [x] **10. Mandar** — `HaEnvio.mandarDetalhes()`: depois de cada envio do resumo, um POST por
+  pedal que ainda não foi (ou que mudou), do mais novo ao mais velho, com 0,5 s entre eles; para
+  na 1.ª falha e continua na próxima vez. O que já foi fica em `files/ha_detalhe.json` (o banco
+  não muda). Testes em `test/data/ha_envio_test.dart` e `test/widget/casa_test.dart`.
+- [ ] **11. No celular** — prints da tela do pedal para o painel, instalar, pôr o 2.º endereço,
+  conferir os arquivos no Home Assistant (depois de o usuário reiniciar o HA).
+
+**Paradas:** o app não guarda. As amostras só andam com a bike em movimento (1 por segundo de
+tempo em movimento); parado, nada é gravado.
+
 ## Notas da execução
 
 - **Manda só quando precisa:** guarda um resumo (endereço + JSON) do último envio certo. Ao abrir

@@ -24,6 +24,7 @@ class AppSettings {
     this.voltasBotao,
     this.limiteBotao,
     this.haEndereco,
+    this.haDetalheEndereco,
   });
 
   final double pesoKg;
@@ -69,6 +70,10 @@ class AppSettings {
   /// Endereço do Home Assistant da casa (o webhook deste celular) para mandar os pedais; vazio = não manda.
   final String? haEndereco;
 
+  /// 2.º endereço do Home Assistant (outro webhook deste celular) para o detalhe de cada pedal (o
+  /// mapa pintado e o gráfico no painel); vazio = não manda.
+  final String? haDetalheEndereco;
+
   AppSettings copyWith({
     double? pesoKg,
     PowerMode? modoPotencia,
@@ -94,6 +99,7 @@ class AppSettings {
     bool semLimite = false,
     bool semBotao = false,
     String? haEndereco,
+    String? haDetalheEndereco,
   }) =>
       AppSettings(
         pesoKg: pesoKg ?? this.pesoKg,
@@ -116,6 +122,7 @@ class AppSettings {
         voltasBotao: semBotao ? null : (voltasBotao ?? this.voltasBotao),
         limiteBotao: semBotao || semLimite ? null : (limiteBotao ?? this.limiteBotao),
         haEndereco: haEndereco ?? this.haEndereco,
+        haDetalheEndereco: haDetalheEndereco ?? this.haDetalheEndereco,
       );
 
   Map<String, String> toMap() => {
@@ -139,6 +146,7 @@ class AppSettings {
         'voltasBotao': ?voltasBotao?.toString(),
         'limiteBotao': ?limiteBotao?.toString(),
         'haEndereco': ?haEndereco,
+        'haDetalheEndereco': ?haDetalheEndereco,
       };
 
   factory AppSettings.fromMap(Map<String, String> m) {
@@ -167,6 +175,7 @@ class AppSettings {
       voltasBotao: int.tryParse(m['voltasBotao'] ?? ''),
       limiteBotao: int.tryParse(m['limiteBotao'] ?? ''),
       haEndereco: m['haEndereco'],
+      haDetalheEndereco: m['haDetalheEndereco'],
     );
   }
 }
