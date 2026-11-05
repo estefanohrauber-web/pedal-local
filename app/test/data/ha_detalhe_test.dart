@@ -99,6 +99,33 @@ void main() {
       expect(n['cadencia_media_rpm'], 80, reason: 'as paradas de giro (0 rpm) não entram na média');
     });
 
+    test('os tempos vão como o app escreve (20:07,9 é 20:07)', () {
+      final r = voltaDoBairro();
+      final d = detalheHa(RideRecord(
+        id: r.id,
+        routeId: r.routeId,
+        mode: r.mode,
+        startedAt: r.startedAt,
+        movingTimeS: 1207.9,
+        distanceM: r.distanceM,
+        avgPowerW: r.avgPowerW,
+        avgSpeedKmh: r.avgSpeedKmh,
+        gainM: r.gainM,
+        kcal: r.kcal,
+        completed: r.completed,
+        samples: [
+          for (final s in r.samples)
+            RideSample(t: s.t - 0.1, distance: s.distance, speedKmh: s.speedKmh, power: s.power, cadence: s.cadence),
+        ],
+        laps: r.laps,
+        loop: r.loop,
+        track: r.track,
+      ));
+      expect((d['numeros'] as Map)['tempo_s'], 1207);
+      // a 1.ª volta fecha em 319,9 s: “Volta 1 · 5:19”
+      expect(((d['voltas'] as List).first as Map)['tempo_s'], 319);
+    });
+
     test('as métricas na ordem dos botões, com a faixa de cores da tela', () {
       final r = voltaDoBairro();
       final d = detalheHa(r);
@@ -181,7 +208,8 @@ void main() {
       expect(detalheHa(voltaDoBairro())['voltas'], [
         {'inicio_m': 0, 'metros': 1600, 'tempo_s': 320, 'completa': true},
         {'inicio_m': 1600, 'metros': 1600, 'tempo_s': 320, 'completa': true},
-        {'inicio_m': 3200, 'metros': 1600, 'tempo_s': 60, 'completa': false},
+        // a conta dá 59,999… s: o app também escreve “Volta 3 · 0:59 (parcial)”
+        {'inicio_m': 3200, 'metros': 1600, 'tempo_s': 59, 'completa': false},
       ]);
     });
   });

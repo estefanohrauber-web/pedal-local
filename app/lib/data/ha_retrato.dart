@@ -52,7 +52,7 @@ Map<String, Object?> retratoHa({
     linhas.add([
       p.startedAt.millisecondsSinceEpoch ~/ 1000,
       _inteiro(p.distanceM),
-      _inteiro(p.movingTimeS),
+      _segundos(p.movingTimeS),
       _inteiro(p.avgPowerW),
       _umaCasa(p.avgSpeedKmh),
       _inteiro(p.gainM),
@@ -72,7 +72,7 @@ Map<String, Object?> retratoHa({
     'resumo': {
       'pedais': total.count,
       'distancia_m': _inteiro(total.distanceM),
-      'tempo_s': _inteiro(total.movingTimeS),
+      'tempo_s': _segundos(total.movingTimeS),
       'subida_m': _inteiro(total.gainM),
     },
     'colunas': haColunas,
@@ -182,3 +182,6 @@ double _distanciaAoTrecho(double x, double y, double ax, double ay, double bx, d
 int _inteiro(double v) => v.isFinite ? v.round() : 0;
 
 double _umaCasa(double v) => v.isFinite ? (v * 10).round() / 10 : 0;
+
+/// Segundos inteiros como o app escreve o tempo (sem arredondar para cima: 20:07,9 é 20:07).
+int _segundos(double v) => v.isFinite ? v.floor() : 0;

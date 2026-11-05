@@ -136,7 +136,7 @@ Map<String, Object?> detalheHa(
           {
             'inicio_m': _inteiro(f.start),
             'metros': _inteiro(f.length),
-            'tempo_s': f.index < tempos.length ? _inteiro(tempos[f.index]) : null,
+            'tempo_s': f.index < tempos.length ? _segundos(tempos[f.index]) : null,
             'completa': f.complete,
           },
     ],
@@ -170,7 +170,7 @@ Map<String, Object?> _numeros(RideRecord ride) {
   final cadMedia = girando.isEmpty ? 0.0 : girando.reduce((a, b) => a + b) / girando.length;
   return {
     'distancia_m': _inteiro(ride.distanceM),
-    'tempo_s': _inteiro(ride.movingTimeS),
+    'tempo_s': _segundos(ride.movingTimeS),
     'velocidade_kmh': _umaCasa(ride.avgSpeedKmh),
     'potencia_w': _inteiro(ride.avgPowerW),
     'subida_m': _inteiro(ride.gainM),
@@ -200,3 +200,6 @@ List<List<double>> _forma(List<ProfilePoint> caminho, ProjecaoHa projecao, int m
 int _inteiro(double v) => v.isFinite ? v.round() : 0;
 
 double _umaCasa(double v) => v.isFinite ? (v * 10).round() / 10 : 0;
+
+/// Segundos inteiros como o app escreve o tempo (sem arredondar para cima: 20:07,9 é 20:07).
+int _segundos(double v) => v.isFinite ? v.floor() : 0;

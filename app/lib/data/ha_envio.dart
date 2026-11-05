@@ -191,11 +191,15 @@ class MemoryHaDetalheEstadoStore implements HaDetalheEstadoStore {
   Future<void> save(HaDetalheEstado estado) async => _estado = estado;
 }
 
+/// Muda quando o conteúdo do detalhe muda sem mudar o formato (manda tudo de novo). r2: tempos
+/// sem arredondar para cima, como o app escreve.
+const _revisaoDetalhe = 'r2';
+
 /// Resumo do que muda num pedal já salvo (ele cresce enquanto é gravado e muda ao fechar a
-/// volta). Igual = o detalhe que foi continua valendo.
-/// O 2.º campo é o “inicio” do pedal (para mandar o “apagar” se ele sumir do app).
+/// volta). Igual = o detalhe que foi continua valendo. O 2.º campo é o “inicio” do pedal (para
+/// mandar o “apagar” se ele sumir do app).
 String assinaturaDetalhe(RideRecord r) => [
-  'v$haDetalheVersao',
+  'v$haDetalheVersao$_revisaoDetalhe',
   r.startedAt.millisecondsSinceEpoch ~/ 1000,
   r.movingTimeS.round(),
   r.distanceM.round(),

@@ -95,12 +95,18 @@ void main() {
     expect(r['resumo'], {
       'pedais': 2,
       'distancia_m': s.distanceM.round(),
-      'tempo_s': s.movingTimeS.round(),
+      'tempo_s': s.movingTimeS.floor(),
       'subida_m': s.gainM.round(),
     });
     expect(r['rotas'], isEmpty);
     // vira JSON de verdade (sem tipos do Dart no meio)
     expect(jsonDecode(jsonEncode(r)), r);
+  });
+
+  test('o tempo vai como o app escreve: 20:07,9 é 20:07 (não arredonda para cima)', () {
+    final r = retratoHa(nome: null, pesoKg: 75, pedais: [pedal('a', inicio: utc, tempo: 1207.9)], rotas: const []);
+    expect(((r['pedais'] as List).single as List)[2], 1207);
+    expect((r['resumo'] as Map)['tempo_s'], 1207);
   });
 
   test('cada pedal na ordem das colunas, do mais novo ao mais velho', () {
