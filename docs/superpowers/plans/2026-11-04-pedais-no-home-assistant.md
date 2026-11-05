@@ -49,8 +49,12 @@ mapa pintado, o gráfico, as voltas e os números). Formato final em `pedalaqui-
   pedal que ainda não foi (ou que mudou), do mais novo ao mais velho, com 0,5 s entre eles; para
   na 1.ª falha e continua na próxima vez. O que já foi fica em `files/ha_detalhe.json` (o banco
   não muda). Testes em `test/data/ha_envio_test.dart` e `test/widget/casa_test.dart`.
-- [ ] **11. No celular** — prints da tela do pedal para o painel, instalar, pôr o 2.º endereço,
-  conferir os arquivos no Home Assistant (depois de o usuário reiniciar o HA).
+- [x] **11. No celular** — instalar, pôr o 2.º endereço, conferir os arquivos no Home Assistant.
+  Feito em 5/11 às 20h37 (cópia do banco antes; nenhum pedal em andamento): ao guardar o endereço,
+  os 6 pedais foram sozinhos e viraram 6 arquivos em `/config/www/casa/pedais/estefano/` (8 a 28 KB,
+  com o `index.json`), iguais ao detalhe montado no PC a partir do banco do celular.
+- [ ] **12. Prints** da tela do pedal (os modos de cor e as voltas) em
+  `C:\Projetos\Home Assistant\pedalaqui-prints\`: o celular desligou (bateria em 1 %) antes.
 
 **Paradas:** o app não guarda. As amostras só andam com a bike em movimento (1 por segundo de
 tempo em movimento); parado, nada é gravado.
