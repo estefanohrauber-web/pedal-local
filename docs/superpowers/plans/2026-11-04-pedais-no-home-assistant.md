@@ -25,7 +25,12 @@ de casa. O lado do Home Assistant (dois sensores por webhook, `sensor.pedalaqui_
   rota, ao mudar um ajuste e ao abrir o app.
 - [x] **5. Android** — `res/xml/network_security_config.xml`: `http` liberado só para `192.168.3.70`.
 - [x] **6. Tela** — `test/widget/casa_test.dart`: o campo, o “Mandar agora” e o envio ao abrir.
-- [ ] **7. No celular** — instalar, pôr o endereço, conferir o sensor no Home Assistant.
+- [x] **7. No celular** — instalar, pôr o endereço, conferir o sensor no Home Assistant.
+  Feito em 4/11 às 21h51 no celular de testes (cópia do banco antes; nenhum pedal em andamento):
+  ao guardar o endereço do Estéfano o app mandou sozinho, e o “Mandar agora” mandou de novo
+  (“Pedais mandados para o Home Assistant.”). `sensor.pedalaqui_estefano` = **27,87 km**, igual
+  à soma do banco (6 pedais, 27 870 m), com nome, 75 kg, os 6 pedais e as 2 rotas desenhadas.
+  O log do Home Assistant ficou sem avisos; o banco do celular ficou igual (6 pedais).
 
 ## Notas da execução
 
