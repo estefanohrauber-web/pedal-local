@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clock/clock.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
@@ -192,8 +193,10 @@ class MemoryHaDetalheEstadoStore implements HaDetalheEstadoStore {
 
 /// Resumo do que muda num pedal já salvo (ele cresce enquanto é gravado e muda ao fechar a
 /// volta). Igual = o detalhe que foi continua valendo.
+/// O 2.º campo é o “inicio” do pedal (para mandar o “apagar” se ele sumir do app).
 String assinaturaDetalhe(RideRecord r) => [
   'v$haDetalheVersao',
+  r.startedAt.millisecondsSinceEpoch ~/ 1000,
   r.movingTimeS.round(),
   r.distanceM.round(),
   r.laps,
@@ -337,13 +340,26 @@ class HaEnvio {
     final enviados = mesmo ? {...antes.enviados} : <String, String>{};
     final lista = await pedais.recent(limit: 1 << 30); // sem as amostras
     final existem = {for (final r in lista) r.id};
-    final sumiram = enviados.keys.where((id) => !existem.contains(id)).toList();
-    for (final id in sumiram) {
-      enviados.remove(id);
+    // apagados no app: os que foram vão como “apagar”; os que nem foram (sem amostras) só saem
+    final sumiram = <String>[];
+    for (final e in enviados.entries.toList()) {
+      if (existem.contains(e.key)) continue;
+      if (e.value.startsWith(_semAmostras) || _inicioDaAssinatura(e.value) == null) {
+        enviados.remove(e.key);
+      } else {
+        sumiram.add(e.key);
+      }
     }
-    final faltam = [for (final r in lista) if (enviados[r.id] != assinaturaDetalhe(r)) r];
+    bool emDia(RideRecord r) {
+      final a = assinaturaDetalhe(r);
+      final v = enviados[r.id];
+      return v == a || v == '$_semAmostras$a';
+    }
+
+    final faltam = [for (final r in lista) if (!emDia(r)) r];
+    var restam = sumiram.length + faltam.length;
     var okEm = mesmo ? antes.okEm : null;
-    HaDetalheEstado estadoAgora(int restam, {bool falhou = false}) => HaDetalheEstado(
+    HaDetalheEstado estadoAgora({bool falhou = false}) => HaDetalheEstado(
       endereco: endereco,
       enviados: Map.unmodifiable(enviados),
       okEm: okEm,
@@ -351,25 +367,18 @@ class HaEnvio {
       falhou: falhou,
       faltam: restam,
     );
-    if (faltam.isEmpty) {
-      if (!mesmo || sumiram.isNotEmpty || antes.falhou || antes.faltam != 0) await _guardarDetalhe(estadoAgora(0));
+    if (restam == 0) {
+      if (!mesmo || !mapEquals(enviados, antes.enviados) || antes.falhou || antes.faltam != 0) {
+        await _guardarDetalhe(estadoAgora());
+      }
       return;
     }
-    Map<String, String>? nomes;
+
     var mandou = false;
-    for (var i = 0; i < faltam.length; i++) {
-      if (_fechado) return;
-      final completo = await pedais.byId(faltam[i].id);
-      if (completo == null) continue;
-      if (completo.samples.length < 2) {
-        // sem amostras (pedal antigo ou curto demais): não há o que mostrar
-        enviados[completo.id] = assinaturaDetalhe(completo);
-        continue;
-      }
+    // Manda um corpo (com a pausa entre um e outro); false = falhou (já fica marcado).
+    Future<bool> mandar(String corpo) async {
       if (mandou) await Future<void>.delayed(intervalo);
-      if (_fechado) return;
-      nomes ??= {for (final r in await rotas.all()) r.id: r.name};
-      final corpo = corpoDetalheHa(completo, nomeRota: completo.routeId == null ? null : nomes[completo.routeId]);
+      if (_fechado) return false;
       var recebeu = false;
       try {
         final resposta = await client.post(uri, headers: appJsonHeaders, body: corpo).timeout(prazo);
@@ -378,15 +387,53 @@ class HaEnvio {
         // sem rede, Home Assistant desligado ou demorou demais
       }
       if (!recebeu) {
-        await _guardarDetalhe(estadoAgora(faltam.length - i, falhou: true));
-        return;
+        if (!_fechado) await _guardarDetalhe(estadoAgora(falhou: true));
+        return false;
       }
       mandou = true;
-      enviados[completo.id] = assinaturaDetalhe(completo);
       okEm = agora();
-      await _guardarDetalhe(estadoAgora(faltam.length - i - 1));
+      return true;
     }
-    await _guardarDetalhe(estadoAgora(0));
+
+    for (final id in sumiram) {
+      final corpo = jsonEncode({'versao': haDetalheVersao, 'inicio': _inicioDaAssinatura(enviados[id]!), 'apagar': true});
+      if (!await mandar(corpo)) return;
+      enviados.remove(id);
+      restam--;
+      await _guardarDetalhe(estadoAgora());
+    }
+
+    Map<String, String>? nomes;
+    for (final r in faltam) {
+      if (_fechado) return;
+      final completo = await pedais.byId(r.id);
+      if (completo == null) {
+        restam--;
+        continue;
+      }
+      if (completo.samples.length < 2) {
+        // sem amostras (pedal antigo ou curto demais): não há o que mostrar
+        enviados[completo.id] = '$_semAmostras${assinaturaDetalhe(completo)}';
+        restam--;
+        continue;
+      }
+      nomes ??= {for (final rota in await rotas.all()) rota.id: rota.name};
+      final corpo = corpoDetalheHa(completo, nomeRota: completo.routeId == null ? null : nomes[completo.routeId]);
+      if (!await mandar(corpo)) return;
+      enviados[completo.id] = assinaturaDetalhe(completo);
+      restam--;
+      await _guardarDetalhe(estadoAgora());
+    }
+    restam = 0;
+    await _guardarDetalhe(estadoAgora());
+  }
+
+  /// Marca, no que já foi, o pedal que não tinha o que mandar.
+  static const _semAmostras = '-';
+
+  static int? _inicioDaAssinatura(String assinatura) {
+    final partes = assinatura.split('|');
+    return partes.length > 1 ? int.tryParse(partes[1]) : null;
   }
 
   Future<void> _guardarDetalhe(HaDetalheEstado novo) async {

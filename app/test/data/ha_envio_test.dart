@@ -262,11 +262,34 @@ void main() {
       expect(pedidos.map((p) => p.url.toString()), [outro, outro]);
     });
 
-    test('pedal apagado sai da lista do que já foi', () async {
+    test('pedal apagado no app: manda “apagar” (só dos que tinham ido) e tira da lista', () async {
+      await comDetalhe.mandarDetalhes();
+      pedidos.clear();
+      await pedais.delete('c');
+      await pedais.delete('a'); // sem amostras: nunca foi, não há o que apagar
+      await comDetalhe.mandarDetalhes();
+      expect([for (final p in doDetalhe()) jsonDecode(p.body)], [
+        {'versao': 1, 'inicio': seg(DateTime(2026, 11, 2, 7)), 'apagar': true},
+      ]);
+      expect((await estadoDetalhe.load()).enviados.keys, ['b']);
+    });
+
+    test('“apagar” que falhou fica para a próxima vez', () async {
       await comDetalhe.mandarDetalhes();
       await pedais.delete('c');
+      responder = (_) async => http.Response('', 500);
       await comDetalhe.mandarDetalhes();
-      expect((await estadoDetalhe.load()).enviados.keys, unorderedEquals(['a', 'b']));
+      var e = await estadoDetalhe.load();
+      expect(e.falhou, isTrue);
+      expect(e.faltam, 1);
+      expect(e.enviados.keys, contains('c'));
+      responder = (_) async => http.Response('', 200);
+      pedidos.clear();
+      await comDetalhe.mandarDetalhes();
+      expect(doDetalhe(), hasLength(1));
+      e = await estadoDetalhe.load();
+      expect(e.enviados.keys, isNot(contains('c')));
+      expect(e.faltam, 0);
     });
 
     test('falhou: para, marca o que falta e continua na próxima vez', () async {
