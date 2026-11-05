@@ -53,8 +53,10 @@ mapa pintado, o gráfico, as voltas e os números). Formato final em `pedalaqui-
   Feito em 5/11 às 20h37 (cópia do banco antes; nenhum pedal em andamento): ao guardar o endereço,
   os 6 pedais foram sozinhos e viraram 6 arquivos em `/config/www/casa/pedais/estefano/` (8 a 28 KB,
   com o `index.json`), iguais ao detalhe montado no PC a partir do banco do celular.
-- [ ] **12. Prints** da tela do pedal (os modos de cor e as voltas) em
-  `C:\Projetos\Home Assistant\pedalaqui-prints\`: o celular desligou (bateria em 1 %) antes.
+- [x] **12. Prints** da tela do pedal (os modos de cor e as voltas) em
+  `C:\Projetos\Home Assistant\pedalaqui-prints\` (9 prints, 5/11 às 20h53). Comparando com a tela,
+  os tempos iam arredondados para cima (1208 s em vez de 20:07): agora vão como o app escreve
+  (`f628877`); os 6 detalhes foram de novo sozinhos ao abrir o app (20h59) e o sensor também.
 
 **Paradas:** o app não guarda. As amostras só andam com a bike em movimento (1 por segundo de
 tempo em movimento); parado, nada é gravado.
