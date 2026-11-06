@@ -1,6 +1,6 @@
 # Pedalaqui — resumo do projeto
 
-Atualizado em 11/10/2026. Este documento serve para continuar o projeto em outro computador
+Atualizado em 11/10/2026 (e em 6/11/2026: o painel da casa, seção 7.9). Este documento serve para continuar o projeto em outro computador
 (ou numa conversa nova com o Claude) sem perder nada: o que é o app, o que já foi feito, como
 montar o computador, o jeito de trabalhar combinado e os próximos passos.
 
@@ -336,6 +336,29 @@ desenho nem o histórico). Relatórios na pasta avaliacao, dentro de C:/dev/tmp 
 - Tema escuro; exportar para o Strava.
 - A resistência automática **já existe** (modo ERG) para bikes que aceitam comando.
 
+### 7.9 Painel da casa (Home Assistant), 4 a 6/11
+
+O painel da TV da casa (projeto do Home Assistant, outra pasta do PC de casa) mostra a aba Você
+de cada pessoa e abre cada pedal como a tela do pedal do app. O app manda os dados sozinho.
+
+- **Onde:** Ajustes › Avançado › Home Assistant, dois campos: “Enviar para o Home Assistant” (o
+  resumo: todos os pedais, recordes, rotas) e “Detalhe de cada pedal” (o mapa pintado, o gráfico,
+  as voltas e os números, um pedal por vez). Vazio = não manda.
+- **Os endereços não estão no GitHub** (o repositório é público): estão no contrato
+  `pedalaqui-ha.md` (pasta do Home Assistant do PC de casa; uma cópia vai no .zip, pasta `casa/`).
+  Cada celular tem os seus; o celular de testes já tem os do Estéfano.
+- **Só funciona no Wi-Fi de casa** (`http://192.168.3.70`, liberado só para esse IP em
+  `network_security_config.xml`). Fora de casa, o app só anota que falhou e tenta de novo depois.
+- **Código:** `data/ha_retrato.dart` (resumo), `data/ha_detalhe.dart` (detalhe),
+  `data/ha_envio.dart` (quando mandar; o que já foi fica em `files/ha_envio.json` e
+  `files/ha_detalhe.json` do celular, fora do banco), `data/cabecalho_pedal.dart` (o topo da tela
+  do pedal, usado pelo app e pelo detalhe). Plano e notas:
+  `docs/superpowers/plans/2026-11-04-pedais-no-home-assistant.md`.
+- **Mudar o formato do JSON:** só junto com a sessão do Home Assistant/painel (o contrato é o
+  `pedalaqui-ha.md`). Mudou o conteúdo do detalhe sem mudar o formato: troque a revisão
+  (`_revisaoDetalhe` em `ha_envio.dart`) para todos os pedais irem de novo.
+- **Falta:** o celular da Eduarda (instalar e colar os 2 endereços dela).
+
 ## 8. Dicas e ferramentas
 
 - **Cópia do banco do celular:**
@@ -365,6 +388,7 @@ desenho nem o histórico). Relatórios na pasta avaliacao, dentro de C:/dev/tmp 
 | `claude/settings.local.json` | os avisos de design do Impeccable | `%USERPROFILE%\.claude\` (corrigir caminhos se o usuário mudar) |
 | `backups-do-celular/` | cópias do banco do app (versões 6 e 7) | guardar; os dados de verdade estão no celular |
 | `ferramentas/` | scripts de fotos da tela e do banco | `C:\dev\tmp\` |
+| `casa/` | o contrato com o Home Assistant (`pedalaqui-ha.md`, com os endereços de cada celular) e os prints da tela do pedal | só para ler; o original fica na pasta do Home Assistant do PC de casa |
 
 **Guarde o .zip só para você.** Ele tem a chave do app e as suas rotas, que mostram onde fica a sua
 casa e o seu trabalho.
