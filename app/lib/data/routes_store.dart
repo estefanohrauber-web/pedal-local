@@ -6,8 +6,9 @@ import '../domain/geo.dart';
 import '../domain/route_profile.dart';
 
 /// Versão do cálculo do relevo: 0 = rota plana (a altitude falhou), 1 = altitude do terreno,
-/// 2 = com pontes e túneis em reta. Rotas abaixo da atual são refeitas quando houver internet.
-const reliefVersion = 2;
+/// 2 = com pontes e túneis em reta, 3 = alisado em sino de 60 m (antes, média de 5 pontos).
+/// Rotas abaixo da atual são refeitas quando houver internet.
+const reliefVersion = 3;
 
 /// Quantas cores de rota existem (a paleta fica em AppColors.rotas).
 const routeColorCount = 6;

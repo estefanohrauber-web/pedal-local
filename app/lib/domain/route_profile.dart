@@ -18,20 +18,42 @@ class ProfilePoint {
   GeoPoint get geo => GeoPoint(lat, lon);
 }
 
-List<double> smoothElevations(List<double> alts, [int window = 5]) {
-  final half = window ~/ 2;
-  return [
-    for (var i = 0; i < alts.length; i++)
-      () {
-        var soma = 0.0;
-        var n = 0;
-        for (var j = math.max(0, i - half); j <= math.min(alts.length - 1, i + half); j++) {
-          soma += alts[j];
-          n++;
-        }
-        return soma / n;
-      }(),
-  ];
+/// Quanto alisar o relevo do terreno (m). O modelo do terreno erra uns ±5 m de um ponto para
+/// outro (árvores, prédios, a encosta ao lado da rua): sem alisar, a beira-rio plana vira um
+/// sobe e desce de 5 %. Com 60 m, as ladeiras de verdade (de 200 m ou mais) quase não mudam.
+const smoothSigmaM = 60.0;
+
+/// Relevo alisado: em cada ponto, a reta que melhor passa pelos vizinhos até 3·[sigmaM]
+/// metros (antes e depois), com mais peso nos mais perto (curva em sino). No meio da rota é a
+/// média dos vizinhos; perto das pontas, a reta não deixa achatar uma rota que começa ou
+/// termina numa ladeira. [dists]: metros desde o começo.
+List<double> smoothElevations(List<double> dists, List<double> alts, {double sigmaM = smoothSigmaM}) {
+  assert(dists.length == alts.length);
+  final alcance = 3 * sigmaM;
+  final out = List<double>.filled(alts.length, 0);
+  for (var i = 0; i < alts.length; i++) {
+    // Somas com peso de 1, x, x², y e x·y (x = metros até o ponto i).
+    var s0 = 0.0, s1 = 0.0, s2 = 0.0, t0 = 0.0, t1 = 0.0;
+    void somar(int j) {
+      final x = dists[j] - dists[i];
+      final p = math.exp(-x * x / (2 * sigmaM * sigmaM));
+      s0 += p;
+      s1 += p * x;
+      s2 += p * x * x;
+      t0 += p * alts[j];
+      t1 += p * x * alts[j];
+    }
+
+    for (var j = i; j >= 0 && dists[i] - dists[j] <= alcance; j--) {
+      somar(j);
+    }
+    for (var j = i + 1; j < alts.length && dists[j] - dists[i] <= alcance; j++) {
+      somar(j);
+    }
+    final det = s0 * s2 - s1 * s1;
+    out[i] = det > 1e-9 * s0 * s2 ? (s2 * t0 - s1 * t1) / det : t0 / s0;
+  }
+  return out;
 }
 
 /// Relevo da rota: inclinação por trecho, totais e consultas pela distância percorrida.

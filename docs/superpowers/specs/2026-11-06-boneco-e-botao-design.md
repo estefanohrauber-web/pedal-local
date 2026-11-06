@@ -52,7 +52,7 @@ Simulação de uma volta do Entre pontes (80 kg, giro 75, watts estimados pelo b
 
 ## Fica para depois
 
-- **Relevo do terreno:** suavizar mais forte o relevo do Valhalla (as ondinhas de ±5 m) ou
+- **Relevo do terreno:** feito em `2026-11-06-relevo-alisado-design.md` (alisado em sino de 60 m). Antes: suavizar mais forte o relevo do Valhalla (as ondinhas de ±5 m) ou
   achatar a beira-rio; o Google é a referência que mais faz sentido (↑31 m, 521–551 m, plano
   de 0,8 a 2,5 km e uma subida de uns 6 % de 2,55 a 2,98 km).
 - Testar no pedal de verdade se 150 m entre as falas é bom ou se pede mais (ou menos).

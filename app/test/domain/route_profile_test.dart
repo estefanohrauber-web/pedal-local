@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pedal_local/domain/route_profile.dart';
 
@@ -7,15 +9,39 @@ import '../support/geo_helpers.dart';
 RouteProfile perfil() => RouteProfile(northProfile([0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 5]));
 
 void main() {
-  test('smoothElevations: média móvel centrada', () {
-    final out = smoothElevations([0, 0, 10, 0, 0], 3);
-    for (final (i, v) in [0.0, 10 / 3, 10 / 3, 10 / 3, 0.0].indexed) {
-      expectNear(out[i], v, 1e-9);
-    }
-  });
+  group('smoothElevations', () {
+    List<double> cada20(int n) => [for (var i = 0; i < n; i++) i * 20.0];
 
-  test('smoothElevations: altitude constante não muda', () {
-    expect(smoothElevations([5, 5, 5, 5, 5, 5]), [5, 5, 5, 5, 5, 5]);
+    test('altitude constante não muda', () {
+      for (final v in smoothElevations(cada20(6), [5, 5, 5, 5, 5, 5])) {
+        expectNear(v, 5, 1e-9);
+      }
+    });
+
+    test('ladeira reta continua reta, até nas pontas', () {
+      final dists = cada20(30);
+      final alts = [for (final d in dists) 600 + d * 0.08];
+      final out = smoothElevations(dists, alts);
+      for (var i = 0; i < out.length; i++) {
+        expectNear(out[i], alts[i], 1e-6);
+      }
+    });
+
+    test('ondinha de 5 m no plano quase some', () {
+      final dists = cada20(41);
+      final alts = [for (var i = 0; i < 41; i++) i == 20 ? 105.0 : 100.0];
+      final out = smoothElevations(dists, alts);
+      expect(out.reduce(math.max) - 100, lessThan(1));
+    });
+
+    test('ladeira de verdade (300 m a 10 %) fica perto de 10 % no meio', () {
+      // 300 m plano, 300 m a 10 %, 300 m plano.
+      final dists = cada20(46);
+      final alts = [for (final d in dists) 100 + (d.clamp(300, 600) - 300) * 0.10];
+      final p = RouteProfile(northProfile(smoothElevations(dists, alts)));
+      expect(p.lookahead(350, 200), greaterThan(0.09));
+      expectNear(p.gain, 30, 0.5);
+    });
   });
 
   test('totais', () {

@@ -32,7 +32,7 @@ void main() {
     expect(r.createdAt, DateTime(2026, 10, 8, 9));
     expect(r.points.length, 6);
     expectNear(r.distanceM, 100, 0.5);
-    expectNear(r.gainM, 6, 1e-9); // 0,2,4,6,8,10 suavizado → 2,3,4,6,7,8
+    expectNear(r.gainM, 10, 1e-6); // 0,2,4,6,8,10: rampa reta, o alisamento não muda
     expect(r.lossM, 0);
     expect(r.waypoints, _linha);
     expect(r.relief, reliefVersion);

@@ -62,7 +62,8 @@ class RouteBuilder {
     );
   }
 
-  /// Refaz o relevo de uma rota salva (mesmos pontos), com as pontes e os túneis em reta.
+  /// Refaz o relevo de uma rota salva (mesmos pontos), com as pontes e os túneis em reta e o
+  /// alisamento atual.
   /// null = não deu agora (sem internet ou serviço fora do ar); tente de novo depois.
   Future<RouteRecord?> refreshRelief(RouteRecord rota) async {
     final relevo = await _relevo([for (final p in rota.points) p.geo]);
@@ -75,8 +76,8 @@ class RouteBuilder {
     return rota.copyWith(points: pontos, gainM: perfil.gain, lossM: perfil.loss, relief: relevo.versao);
   }
 
-  /// Altitude suavizada de cada ponto, com pontes e túneis em reta. Se o serviço das pontes
-  /// falhar, fica a altitude do terreno (versão 1). null = a altitude falhou.
+  /// Altitude alisada de cada ponto, com pontes e túneis em reta. Se o serviço das pontes
+  /// falhar, fica a altitude do terreno alisada (versão 1). null = a altitude falhou.
   Future<({List<double> alts, int versao})?> _relevo(List<GeoPoint> pontos) async {
     final List<double> brutas;
     try {
@@ -84,12 +85,13 @@ class RouteBuilder {
     } catch (_) {
       return null;
     }
+    final cum = cumulativeDistances(pontos);
     try {
       final pontes = await routing.structures(pontos);
-      final retas = flattenStructures(cumulativeDistances(pontos), brutas, pontes);
-      return (alts: smoothElevations(retas), versao: reliefVersion);
+      final retas = flattenStructures(cum, brutas, pontes);
+      return (alts: smoothElevations(cum, retas), versao: reliefVersion);
     } catch (_) {
-      return (alts: smoothElevations(brutas), versao: 1);
+      return (alts: smoothElevations(cum, brutas), versao: 1);
     }
   }
 }

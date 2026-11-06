@@ -37,7 +37,7 @@ class _PedalLocalAppState extends ConsumerState<PedalLocalApp> {
     }
   }
 
-  /// Rotas salvas antes das pontes em reta: refaz o relevo (quando houver internet).
+  /// Rotas salvas com um relevo de versão antiga: refaz o relevo (quando houver internet).
   Future<void> _refazerRelevo() async {
     try {
       final store = ref.read(routesStoreProvider);
