@@ -194,6 +194,13 @@ class RideSession {
     return alerts;
   }
 
+  /// Um aviso de subida ou descida vai sair nos próximos [metros] (o guia do botão espera por
+  /// ele em vez de falar duas vezes seguidas).
+  bool avisoChegando(double metros) {
+    final g = terrain.lookahead(_distance + metros, alertLookaheadM);
+    return (_armClimb && g >= climbAlertGrade) || (_armDescent && g <= descentAlertGrade);
+  }
+
   RideSnapshot snapshot() => RideSnapshot(
         state: _state,
         distance: _distance,

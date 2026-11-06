@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'power.dart';
 
 /// O botão de peso (manual) da bike, calibrado pelas voltas que ele dá do mais leve ao mais
@@ -22,6 +24,18 @@ class BotaoPeso {
   /// [grade]; descida = mais leve.
   int posicaoPara(double grade) =>
       (grade / subidaMaxima * limite).round().clamp(0, limite);
+
+  /// Posição no plano: um quarto do caminho até o [limite] (no plano também se faz força; no
+  /// mais leve, o pedal fica solto demais).
+  int get plano => (limite / 4).round();
+
+  /// Descida que já pede o botão no mais leve (mais suave que isso, é plano).
+  static const descidaLeve = 0.015;
+
+  /// Posição para um relevo de inclinação [grade]: na descida (a partir de [descidaLeve]), o
+  /// mais leve; no resto, a de [posicaoPara], nunca abaixo do [plano].
+  int posicaoNoRelevo(double grade) =>
+      grade <= -descidaLeve ? 0 : math.max(plano, posicaoPara(grade));
 
   /// A carga equivalente (1 a 10) de uma posição, para estimar os watts.
   double cargaEquivalente(int posicao) =>

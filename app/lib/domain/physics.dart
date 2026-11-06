@@ -37,5 +37,16 @@ double stepSpeed(
       0.5 * c.rho * c.cda * speedMs * speedMs;
   final drive = powerW / math.max(speedMs, 1.0);
   final accel = (drive - resist) / m;
-  return (speedMs + accel * dt).clamp(0.0, c.maxSpeedMs).toDouble();
+  var next = (speedMs + accel * dt).clamp(0.0, c.maxSpeedMs).toDouble();
+  // Pedalando, o boneco nunca para: com pouca força num morro forte, ele sobe devagar, na
+  // velocidade em que a força dá conta do morro (força ÷ peso morro acima). Sem isto, abaixo de
+  // 1 m/s a conta acima trata a força como se a bike já andasse a 1 m/s e o boneco empacava em 0.
+  if (powerW > 0) {
+    final morro = m * c.g * (math.sin(theta) + c.crr * math.cos(theta));
+    if (morro > 0) {
+      final devagar = powerW / morro;
+      if (devagar < 1.0 && next < devagar) next = devagar;
+    }
+  }
+  return next;
 }

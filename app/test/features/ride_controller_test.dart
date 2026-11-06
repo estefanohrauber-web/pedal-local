@@ -627,6 +627,33 @@ void main() {
         expect(view('r').alertHint, 'Gire o botão mais 6 voltas.');
       });
 
+      test('rota: fora dos avisos, o botão acompanha o relevo (plano e subida suave)', () async {
+        // A Winnek: 13 voltas. 580 m planos e depois 580 m a 3 % (sem aviso, que é a partir de 4 %).
+        await container.read(settingsStoreProvider).save(const AppSettings(voltasBotao: 13));
+        await routes.upsert(rotaDeTeste('r', [for (var i = 0; i < 59; i++) i < 30 ? 760.0 : 760.0 + (i - 29) * 0.6]));
+        await ctrl('r').start();
+        for (var i = 0; i < 600 && view('r').state != RideState.concluido; i++) {
+          await pedalar('r', 1);
+        }
+        final falas = voz.spoken.where((f) => f.contains(':')).toList();
+        expect(falas, [
+          'Trecho plano: gire o botão mais duas voltas.',
+          'Subida de 3 por cento: gire o botão mais uma volta.',
+        ]);
+        expect(view('r').level, 3);
+        expect(view('r').knobTip, falas.last);
+        expect(view('r').knobTipAt, isNotNull);
+        expect(view('r').alert, isNull);
+      });
+
+      test('pedal livre: o botão fica onde a pessoa deixou (o guia é só da rota)', () async {
+        await container.read(settingsStoreProvider).save(const AppSettings(voltasBotao: 13));
+        await ctrl(null).start();
+        await pedalar(null, 120);
+        expect(view(null).level, 0);
+        expect(view(null).knobTip, isNull);
+      });
+
       test('treino: não confia no "ajusto sozinha" da bike e guia o botão pela meta', () async {
         await container.read(settingsStoreProvider).save(const AppSettings(ftp: 200, voltasBotao: 8));
         final controle = FakeBikeControl();

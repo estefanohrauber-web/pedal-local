@@ -17,6 +17,7 @@ import '../../domain/geo.dart';
 import '../../domain/ghost.dart';
 import '../../domain/laps.dart';
 import '../../domain/botao_peso.dart';
+import '../../domain/guia_botao.dart';
 import '../../domain/power.dart';
 import '../../domain/ride_narrator.dart';
 import '../../domain/ride_session.dart';
@@ -55,6 +56,9 @@ final findWorkoutProvider = Provider<Workout? Function(String id)>((ref) {
 const _historyLength = 300; // 5 minutos de amostras
 const _staleAfter = Duration(seconds: 3);
 const _saveEverySeconds = 15.0;
+
+/// Um aviso que sai nestes metros cuida do botão: o guia espera por ele.
+const _avisoPertoM = 40.0;
 
 /// Menos que isso andando (e sem chegar ao fim) não é pedal: é um teste ou um engano, e não fica
 /// no histórico.
@@ -144,6 +148,8 @@ class RideView {
     this.suggestedLevel,
     this.knobTurns,
     this.alertHint,
+    this.knobTip,
+    this.knobTipAt,
   });
 
   final bool started;
@@ -208,6 +214,11 @@ class RideView {
   /// O que fazer com o botão no aviso de subida ou descida (vazio = já está no lugar).
   final String? alertHint;
 
+  /// Mudança do botão pelo caminho, fora dos avisos (“Trecho plano: gire o botão mais duas
+  /// voltas.”) e quando ela foi dita.
+  final String? knobTip;
+  final DateTime? knobTipAt;
+
   bool get isWorkout => workout != null;
 
   bool get hasGhost => ghostGapS != null;
@@ -240,6 +251,11 @@ class RideController extends Notifier<RideView> {
   /// Botão de peso calibrado (null = sem calibração; a carga vai de 1 a 10).
   BotaoPeso? _botao;
   String? _alertHint;
+
+  /// Na rota, com o botão calibrado: guia o botão pelo relevo (null = treino ou pedal livre).
+  GuiaBotao? _guia;
+  String? _knobTip;
+  DateTime? _knobTipAt;
 
   /// A meta mudou por um ajuste (mais leve, mais forte): vai para a bike mesmo se for pouco.
   bool _alvoMudou = false;
@@ -353,6 +369,7 @@ class RideController extends Notifier<RideView> {
     );
     // Com o botão calibrado, o pedal sempre começa no mais leve, e o app conta as voltas dali.
     _level = _botao == null ? settings.cargaPadrao : 0;
+    _guia = _botao != null && _profile != null && _runner == null ? GuiaBotao(_botao!) : null;
     if (_botao != null) _falar(['Comece com o botão de peso no mais leve.']);
     _startedAt = relogio();
     _lastTick = _startedAt;
@@ -420,6 +437,7 @@ class RideController extends Notifier<RideView> {
     final last = _lastReading;
     if (last == null || now.difference(last) > _staleAfter) session.setInputs(powerW: 0, cadence: 0);
     final alerts = session.advance(dt);
+    final snap = session.snapshot();
     String? dica;
     if (alerts.isNotEmpty) {
       _alert = alerts.last;
@@ -427,15 +445,35 @@ class RideController extends Notifier<RideView> {
       // Botão calibrado: a subida (ou descida) pede uma posição do botão; o app diz quantas
       // voltas girar e passa a contar o botão nela.
       final botao = _botao;
-      if (botao != null) {
-        final alerta = alerts.last;
+      final guia = _guia;
+      final alerta = alerts.last;
+      if (guia != null) {
+        // Na rota, o guia decide: na subida, pesa para a rampa mais forte; na descida, só alivia
+        // depois do topo (antes dele, o aviso sai sem mexer no botão).
+        final novo = guia.noAviso(session.terrain, snap.distance, _level, alerta);
+        dica = novo == null ? '' : BotaoPeso.instrucao(_level, novo)!;
+        if (novo != null) _level = novo;
+      } else if (botao != null) {
         final alvo = alerta.kind == AlertKind.subida ? botao.posicaoPara(alerta.media) : 0;
         dica = BotaoPeso.instrucao(_level, alvo) ?? '';
         _level = alvo;
       }
       _alertHint = dica;
+    } else if (_guia != null && session.state == RideState.pedalando) {
+      // Fora dos avisos, o botão acompanha o relevo: plano, subida suave, fim da subida.
+      final mudanca = _guia!.passo(
+        session.terrain,
+        snap.distance,
+        _level,
+        avisoChegando: session.avisoChegando(_avisoPertoM),
+      );
+      if (mudanca != null) {
+        _level = mudanca.posicao;
+        _knobTip = mudanca.frase;
+        _knobTipAt = now;
+        _falar([mudanca.frase]);
+      }
     }
-    final snap = session.snapshot();
     final loop = _loop;
     LapAlert? novaVolta;
     if (loop != null) {
@@ -813,6 +851,8 @@ class RideController extends Notifier<RideView> {
           : ((_frame!.targetWatts / 85 - _calibracao.base) / _calibracao.factor).round().clamp(1, 10),
       knobTurns: _botao?.voltas,
       alertHint: _alertHint,
+      knobTip: _knobTip,
+      knobTipAt: _knobTipAt,
     );
   }
 }

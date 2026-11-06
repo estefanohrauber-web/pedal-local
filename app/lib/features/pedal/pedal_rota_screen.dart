@@ -449,6 +449,20 @@ class _Aviso extends ConsumerWidget {
             'Volta ${volta.number} concluída em ${formatTime(volta.time)}! Seguindo para a volta ${volta.number + 1}.',
       );
     }
+    // Com o botão calibrado, as mudanças pelo caminho (“Trecho plano: gire o botão mais duas
+    // voltas”). A mais nova entre ela e o aviso é a que aparece.
+    final dicaBotao = v.knobTip;
+    final dicaQuando = v.knobTipAt;
+    if (dicaBotao != null &&
+        dicaQuando != null &&
+        agora.difference(dicaQuando) < _alertaVisivel &&
+        (quando == null || dicaQuando.isAfter(quando))) {
+      final texto = dicaBotao.replaceAll(' por cento', '%');
+      return AvisoFaixa(
+        icone: Icons.tune,
+        texto: texto.endsWith('.') ? texto.substring(0, texto.length - 1) : texto,
+      );
+    }
     if (alerta != null &&
         quando != null &&
         agora.difference(quando) < _alertaVisivel) {

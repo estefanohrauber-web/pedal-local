@@ -44,6 +44,23 @@ void main() {
     expect(menor, greaterThanOrEqualTo(0));
   });
 
+  // Do pedal real em Entre pontes: pouca força estimada (48–83 W) em subidas de 6–11 %. Pedalando,
+  // o boneco anda devagar, mas nunca fica parado.
+  for (final (watts, rampa) in [(48.0, 0.06), (83.0, 0.11), (20.0, 0.10)]) {
+    test('subida de ${(rampa * 100).round()} % pedalando com $watts W: anda devagar, nunca para', () {
+      final forca = 85 * 9.81 * (rampa + 0.005); // peso morro acima + rolamento (aprox.)
+      final esperado = watts / forca;
+      for (final v0 in [0.0, 5.0]) {
+        var menor = double.infinity;
+        final v = simulate(v0, powerW: watts, grade: rampa, seconds: 120, onStep: (x) {
+          if (x < menor) menor = x;
+        });
+        expect(menor, greaterThan(0), reason: 'saindo de $v0 m/s');
+        expect(v, closeTo(esperado, esperado * 0.05), reason: 'saindo de $v0 m/s');
+      }
+    });
+  }
+
   test('velocidade máxima limitada', () {
     expect(simulate(0, powerW: 0, grade: -0.2, seconds: 600), lessThanOrEqualTo(physics.maxSpeedMs));
   });
